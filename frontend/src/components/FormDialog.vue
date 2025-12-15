@@ -65,7 +65,14 @@
 		</template>
 
 		<template #actions>
-			<Button variant="solid" label="Add Fields" @click="() => addFields()" class="w-full" />
+			<div class="space-y-1">
+				<Button 
+					variant="solid" 
+					label="Add Fields" 
+					@click="() => addFields()" 
+					class="w-full"
+				/>
+			</div>
 		</template>
 	</Dialog>
 </template>
