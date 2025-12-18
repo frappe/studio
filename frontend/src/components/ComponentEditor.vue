@@ -6,6 +6,7 @@
 		:data-component-id="block.componentId"
 		:class="getStyleClasses"
 		@click.stop="handleClick"
+		@mousedown.prevent="handleMove"
 	>
 		<!-- Component name label -->
 		<span
@@ -94,6 +95,9 @@ import BoxResizer from "@/components/BoxResizer.vue"
 import PaddingHandler from "@/components/PaddingHandler.vue"
 import MarginHandler from "@/components/MarginHandler.vue"
 import Code from "@/components/Code.vue"
+import { numberToPx } from "@/utils/helpers";
+import setGuides from "../utils/guidesTracker";
+
 
 import Block from "@/utils/block"
 import useStudioStore from "@/stores/studioStore"
@@ -128,7 +132,8 @@ const resizing = ref(false)
 const tracker = ref<Tracker>()
 
 const canvasProps = inject("canvasProps") as CanvasProps
-
+const guides = setGuides(props.target, canvasProps);
+const moving = ref(false)
 const showMarginPaddingHandlers = computed(() => {
 	return isBlockSelected.value && !props.block.isRoot() && !resizing.value && !canvasStore.isDragging
 })
@@ -189,6 +194,59 @@ const handleClick = (ev: MouseEvent) => {
 		element.dispatchEvent(new MouseEvent("click", ev))
 	}
 }
+
+
+const handleMove = (ev: MouseEvent) => {
+	if (props.block.isRoot()) return;
+	const pauseId = canvasStore.activeCanvas?.history?.pause();
+	const target = ev.target as HTMLElement;
+	const startX = ev.clientX;
+	const startY = ev.clientY;
+	const startLeft = (props.target as HTMLElement).offsetLeft || 0;
+	const startTop = (props.target as HTMLElement).offsetTop || 0;
+
+	moving.value = true;
+	guides.showX();
+
+	// to disable cursor jitter
+	const docCursor = document.body.style.cursor;
+	document.body.style.cursor = "grabbing";
+	target.style.cursor = "grabbing";
+
+	const mousemove = async (mouseMoveEvent: MouseEvent) => {
+		const scale = canvasProps.scale;
+		const movementX = (mouseMoveEvent.clientX - startX) / scale;
+		const movementY = (mouseMoveEvent.clientY - startY) / scale;
+		let finalLeft = startLeft + movementX;
+		let finalTop = startTop + movementY;
+		props.block.setStyle("left", numberToPx(finalLeft));
+		props.block.setStyle("top", numberToPx(finalTop));
+		const { leftOffset, rightOffset } = guides.getPositionOffset();
+		if (leftOffset !== 0) {
+			props.block.setStyle("left", numberToPx(finalLeft + leftOffset));
+		}
+		if (rightOffset !== 0) {
+			props.block.setStyle("left", numberToPx(finalLeft + rightOffset));
+		}
+
+		mouseMoveEvent.preventDefault();
+		preventClick.value = true;
+	};
+	document.addEventListener("mousemove", mousemove);
+	document.addEventListener(
+		"mouseup",
+		(mouseUpEvent) => {
+			moving.value = false;
+			document.body.style.cursor = docCursor;
+			target.style.cursor = "grab";
+			document.removeEventListener("mousemove", mousemove);
+			mouseUpEvent.preventDefault();
+			guides.hideX();
+			canvasStore.activeCanvas?.history?.resume(pauseId, true);
+		},
+		{ once: true },
+	);
+};
 
 watchEffect(() => {
 	props.block.getStyle("top")
