@@ -11,16 +11,13 @@
  "link": "/studio",
  "link_type": "External",
  "logo_url": "/assets/studio/frontend/studio-logo.svg",
- "modified": "2026-02-12 09:57:32.125109",
+ "modified": "2026-02-17 21:44:47.936958",
  "modified_by": "Administrator",
  "name": "Studio",
  "owner": "Administrator",
  "parent_icon": "",
  "restrict_removal": 1,
  "roles": [
-  {
-   "role": "Administrator"
-  },
   {
    "role": "APP - Studio User"
   }
