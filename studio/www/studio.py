@@ -10,6 +10,7 @@ def get_context(context):
 	context.csrf_token = csrf_token
 	context.site_url = get_site_url()
 	context.is_developer_mode = cint(frappe.conf.developer_mode)
+	context.site_name = frappe.local.site
 
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
