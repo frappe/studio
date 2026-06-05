@@ -1,0 +1,14 @@
+{
+  "name": "studio-vue-importer",
+  "version": "1.0.0",
+  "description": "Parses a frappe Vue SPA and emits a Studio import manifest",
+  "main": "index.js",
+  "scripts": {
+    "parse": "node index.js"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.24.0",
+    "@babel/traverse": "^7.24.0",
+    "@vue/compiler-sfc": "^3.4.0"
+  }
+}

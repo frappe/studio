@@ -7,6 +7,7 @@ from frappe import _
 from frappe.model import display_fieldtypes, no_value_fields, table_fields
 
 from studio.constants import STANDARD_COMPONENT_NAMES
+import studio.importer as importer
 
 
 @frappe.whitelist()
@@ -104,6 +105,28 @@ def check_app_permission() -> bool:
 	):
 		return True
 	return False
+
+
+@frappe.whitelist()
+def get_importable_apps() -> list[dict]:
+	"""Return installed frappe apps that have a detectable Vue frontend."""
+	return importer.get_importable_apps()
+
+
+@frappe.whitelist()
+def preview_import(frappe_app: str) -> dict:
+	"""Run the Vue parser and return the manifest without writing to the DB."""
+	return importer.preview_import(frappe_app)
+
+
+@frappe.whitelist()
+def start_import(frappe_app: str, selected_pages: list | str | None = None, selected_components: list | str | None = None) -> str:
+	"""Trigger a full import and return the Studio Import Log name."""
+	if isinstance(selected_pages, str):
+		selected_pages = frappe.parse_json(selected_pages)
+	if isinstance(selected_components, str):
+		selected_components = frappe.parse_json(selected_components)
+	return importer.import_app(frappe_app, selected_pages, selected_components)
 
 
 @frappe.whitelist()
