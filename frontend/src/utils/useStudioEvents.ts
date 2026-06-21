@@ -122,7 +122,7 @@ export function useStudioEvents() {
 		}
 
 		// redo
-		if (isKey(e, "z") && e.shiftKey && isCtrlOrCmd(e) && canvasStore.activeCanvas?.history?.canRedo) {
+		if (isKey(e, "z") && e.shiftKey && isCtrlOrCmd(e) && canvasStore.activeCanvas?.history?.canRedo()) {
 			canvasStore.activeCanvas?.history.redo()
 			e.preventDefault()
 			return
