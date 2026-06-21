@@ -439,6 +439,12 @@ function getColorFromToken(tokenString: string) {
 }
 
 // general utils
+
+function isKey(e: KeyboardEvent | KeyboardEvent, key: string) {
+	if (!e.key) return false
+	return e.key.toLowerCase() === key.toLowerCase()
+}
+
 function isCtrlOrCmd(e: KeyboardEvent | MouseEvent) {
 	return e.ctrlKey || e.metaKey;
 }
@@ -563,6 +569,7 @@ export {
 	isColorToken,
 	getColorFromToken,
 	// general utils
+	isKey,
 	isCtrlOrCmd,
 	copyToClipboard,
 	setClipboardData,

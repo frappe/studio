@@ -2,7 +2,7 @@ import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
 import { useEventListener } from "@vueuse/core"
 import blockController from "@/utils/blockController"
-import { isCtrlOrCmd, isTargetEditable, setClipboardData, numberToPx, isHTML } from "@/utils/helpers"
+import { isKey, isCtrlOrCmd, isTargetEditable, setClipboardData, numberToPx, isHTML } from "@/utils/helpers"
 import { getBlockCopy, getBlockCopyWithoutParent, getComponentBlock, isJSONString } from "@/utils/serializer"
 import Block from "@/utils/block"
 import type { BlockOptions } from "@/types"
@@ -95,7 +95,7 @@ export function useStudioEvents() {
 		if (isTargetEditable(e)) return
 
 		// delete
-		if ((e.key === "Backspace" || e.key === "Delete") && blockController.isAnyBlockSelected()) {
+		if ((isKey(e, "Backspace") || isKey(e, "Delete")) && blockController.isAnyBlockSelected()) {
 			for (const block of blockController.getSelectedBlocks()) {
 				canvasStore.activeCanvas?.removeBlock(block, e.shiftKey)
 			}
@@ -105,7 +105,7 @@ export function useStudioEvents() {
 		}
 
 		// duplicate
-		if (e.key === "d" && isCtrlOrCmd(e)) {
+		if (isKey(e, "d") && isCtrlOrCmd(e)) {
 			if (blockController.isAnyBlockSelected() && !blockController.multipleBlocksSelected()) {
 				e.preventDefault()
 				const block = blockController.getSelectedBlocks()[0]
@@ -115,21 +115,21 @@ export function useStudioEvents() {
 		}
 
 		// undo
-		if (e.key === "z" && isCtrlOrCmd(e) && !e.shiftKey && canvasStore.activeCanvas?.history?.canUndo()) {
+		if (isKey(e, "z") && isCtrlOrCmd(e) && !e.shiftKey && canvasStore.activeCanvas?.history?.canUndo()) {
 			canvasStore.activeCanvas?.history.undo()
 			e.preventDefault()
 			return
 		}
 
 		// redo
-		if (e.key === "z" && e.shiftKey && isCtrlOrCmd(e) && canvasStore.activeCanvas?.history?.canRedo) {
+		if (isKey(e, "z") && e.shiftKey && isCtrlOrCmd(e) && canvasStore.activeCanvas?.history?.canRedo) {
 			canvasStore.activeCanvas?.history.redo()
 			e.preventDefault()
 			return
 		}
 
 		// search block
-		if (e.key === "f" && isCtrlOrCmd(e) && e.shiftKey) {
+		if (isKey(e, "f") && isCtrlOrCmd(e) && e.shiftKey) {
 			e.preventDefault();
 			store.showSearchBlock = true;
 		}
@@ -138,12 +138,12 @@ export function useStudioEvents() {
 			return
 		}
 
-		if (e.key === "c") {
+		if (isKey(e, "c")) {
 			store.mode = "container"
 			return
 		}
 
-		if (e.key === "v") {
+		if (isKey(e, "v")) {
 			store.mode = "select"
 			return
 		}

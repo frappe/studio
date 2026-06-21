@@ -153,7 +153,7 @@ import Code from "@/components/Code.vue"
 import ColorInput from "@/components/ColorInput.vue"
 import PropsEditor from "@/components/PropsEditor.vue"
 import useComponentEditorStore from "@/stores/componentEditorStore"
-import { isCtrlOrCmd } from "@/utils/helpers"
+import { isCtrlOrCmd, isKey } from "@/utils/helpers"
 
 const componentEditorStore = useComponentEditorStore()
 const componentInputs = computed(() => componentEditorStore.componentInputs)
@@ -234,7 +234,7 @@ const setInputControl = () => {
 }
 
 const handleInputKeydown = (e: KeyboardEvent) => {
-	if (isCtrlOrCmd(e) && e.key === "s") {
+	if (isCtrlOrCmd(e) && isKey(e, "s")) {
 		e.preventDefault()
 		saveInput()
 	}

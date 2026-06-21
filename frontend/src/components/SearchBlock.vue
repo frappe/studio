@@ -165,6 +165,7 @@ import { computed, nextTick, onMounted, Ref, ref } from "vue"
 import { toast } from "frappe-ui"
 import OptionToggle from "@/components/OptionToggle.vue"
 import { jsToJson } from "@/utils/serializer"
+import { isKey } from "@/utils/helpers"
 
 const canvasStore = useCanvasStore()
 
@@ -291,7 +292,7 @@ const handlePrimaryAction = () => {
 
 const handleKeydown = (event: KeyboardEvent) => {
 	// Cmd+F or Ctrl+F for quick search
-	if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+	if ((event.metaKey || event.ctrlKey) && isKey(event, "f")) {
 		event.preventDefault()
 		const input = searchInput.value?.querySelector?.("input") || searchInput.value
 		if (input && "focus" in input && typeof input.focus === "function") {
@@ -299,7 +300,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 		}
 	}
 	// Escape to clear search
-	if (event.key === "Escape") {
+	if (isKey(event, "Escape")) {
 		query.value = ""
 		replaceQuery.value = ""
 	}
