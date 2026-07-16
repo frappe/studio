@@ -14,6 +14,7 @@
   "sort_field",
   "sort_order",
   "auto",
+  "cache",
   "document_resource_section",
   "document_type",
   "column_break_mkdu",
@@ -173,6 +174,13 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Auto fetch data on load"
+  },
+  {
+   "default": "0",
+   "description": "Reuse this resource and its data across page loads, keyed on url + params",
+   "fieldname": "cache",
+   "fieldtype": "Check",
+   "label": "Cache data across page loads"
   }
  ],
  "grid_page_length": 50,
