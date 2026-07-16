@@ -449,7 +449,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		switch (resource.resource_type) {
 			case "Document":
 				return getDocumentResource(resource, context)
-			case "Document List":
+			case "Document List": {
 				const params: any = {
 					doctype: resource.document_type,
 					fields: fields.length ? fields : "*",
@@ -463,7 +463,8 @@ const useCodeStore = defineStore("codeStore", () => {
 					params["orderBy"] = `${resource.sort_field} ${resource.sort_order}`
 				}
 				return createListResource(params)
-			case "API Resource":
+			}
+			case "API Resource": {
 				const apiParams = getAPIParams(resource.params, context)
 				return createResource({
 					url: resource.url,
@@ -474,6 +475,7 @@ const useCodeStore = defineStore("codeStore", () => {
 					...getTransforms(resource),
 					...getSuccessErrorHandlers(resource),
 				})
+			}
 		}
 	}
 
