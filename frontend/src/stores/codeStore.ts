@@ -55,7 +55,6 @@ const useCodeStore = defineStore("codeStore", () => {
 	async function setPageResources(page: StudioPage, setResourceConfig: boolean = false) {
 		studioPageResources.filters = { parent: page.name }
 		await studioPageResources.reload()
-		resources.value = {}
 
 		const resourcePromises = studioPageResources.data.map(async (resource: Resource) => {
 			const newResource = await getNewResource(resource, {
@@ -73,14 +72,16 @@ const useCodeStore = defineStore("codeStore", () => {
 
 		const resolvedResources = await Promise.all(resourcePromises)
 
+		const nextResources: Record<string, Resource> = {}
 		resolvedResources.forEach((item) => {
-			resources.value[item.resource_name] = item.value
+			nextResources[item.resource_name] = item.value
 			if (setResourceConfig) {
 				if (!item.value) return
-				resources.value[item.resource_name].resource_id = item.resource_id
-				resources.value[item.resource_name].resource_type = item.resource_type
+				nextResources[item.resource_name].resource_id = item.resource_id
+				nextResources[item.resource_name].resource_type = item.resource_type
 			}
 		})
+		resources.value = nextResources
 	}
 
 	async function setPageVariables(page: StudioPage) {
