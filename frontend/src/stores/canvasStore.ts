@@ -80,30 +80,34 @@ const useCanvasStore = defineStore("canvasStore", () => {
 			}, 0)
 			ev.dataTransfer.setData("componentName", componentName)
 
-			let element = document.createElement("div")
-			element.id = "placeholder"
-
-			const root = document.querySelector(".__studio_component__[data-component-id='root']")
-			if (root) {
-				dropTarget.placeholder = root.appendChild(element)
-			}
+			insertDropPlaceholder()
 		}
 	}
 
 	const handleDragEnd = () => {
-		const placeholder = document.getElementById("placeholder")
-		if (placeholder) {
-			placeholder.remove()
-		}
+		resetDropTarget()
+		dropTarget.placeholder = null
+		isDragging.value = false
+	}
 
+	// append the placeholder to the dom directly to avoid re-rendering the whole canvas
+	const insertDropPlaceholder = () => {
+		const element = document.createElement("div")
+		element.id = "placeholder"
+		const root = document.querySelector(".__studio_component__[data-component-id='root']")
+		if (root) {
+			dropTarget.placeholder = root.appendChild(element)
+		}
+	}
+
+	// detach the placeholder but hold on to it so it can be re-inserted on the next dragover
+	const resetDropTarget = () => {
+		dropTarget.placeholder?.remove()
 		dropTarget.x = null
 		dropTarget.y = null
-		dropTarget.placeholder = null
 		dropTarget.parentComponent = null
 		dropTarget.index = null
 		dropTarget.slotName = null
-
-		isDragging.value = false
 	}
 
 	// fragment mode
@@ -195,6 +199,7 @@ const useCanvasStore = defineStore("canvasStore", () => {
 		layerDraggingOverSlot,
 		handleDragStart,
 		handleDragEnd,
+		resetDropTarget,
 		// fragment mode
 		editingMode,
 		showFragmentCanvas,

@@ -15,38 +15,28 @@ export function useCanvasDropZone(
 ) {
 	const { isOverDropZone } = useDropZone(canvasContainer, {
 		onDrop: async (_files, ev) => {
-			const { parentComponent, index, slotName } = canvasStore.dropTarget
-			if (!parentComponent) return
 			const componentName = ev.dataTransfer?.getData("componentName")
-			const isStudioComponent = Boolean(ev.dataTransfer?.getData("isStudioComponent"))
-			const isCustomVueComponent = Boolean(ev.dataTransfer?.getData("isCustomVueComponent"))
-
 			if (!componentName) return
 
-			const componentDef = Block.getComponents()?.[componentName]
-			let newBlock: Block
-
-			if (componentDef?.blockTemplate) {
-				newBlock = getBlockInstance(getBlockTemplate(componentDef.blockTemplate as any))
-			} else {
-				newBlock = getComponentBlock(componentName, isStudioComponent, isCustomVueComponent)
-			}
-
-			if (slotName) {
-				parentComponent?.updateSlot(slotName, newBlock)
-			} else {
-				parentComponent?.addChild(newBlock, index)
-			}
+			const newBlock = createBlock(ev, componentName)
+			// holding shift replaces the hovered block instead of dropping into it
+			const parentComponent = ev.shiftKey ? replaceHoveredBlock(ev, newBlock) : dropIntoTarget(newBlock)
+			if (!parentComponent) return
 
 			if (newBlock.editInFragmentMode()) {
 				canvasStore.editOnCanvas(
 					newBlock,
-					(editedBlock: Block) => parentComponent?.replaceChild(newBlock, editedBlock),
+					(editedBlock: Block) => parentComponent.replaceChild(newBlock, editedBlock),
 					`Save ${componentName}`
 				)
 			}
 		},
 		onOver: (_files, ev) => {
+			if (ev.shiftKey) {
+				highlightBlockToReplace(ev)
+				return
+			}
+
 			const { parentComponent, slotName, index, layoutDirection } = findDropTarget(ev)
 			if (parentComponent) {
 				canvasStore.activeCanvas?.setHoveredBlock(parentComponent.componentId)
@@ -54,6 +44,70 @@ export function useCanvasDropZone(
 			}
 		},
 	})
+
+	const createBlock = (ev: DragEvent, componentName: string) => {
+		const componentDef = Block.getComponents()?.[componentName]
+		if (componentDef?.blockTemplate) {
+			return getBlockInstance(getBlockTemplate(componentDef.blockTemplate as any))
+		}
+		const isStudioComponent = Boolean(ev.dataTransfer?.getData("isStudioComponent"))
+		const isCustomVueComponent = Boolean(ev.dataTransfer?.getData("isCustomVueComponent"))
+		return getComponentBlock(componentName, isStudioComponent, isCustomVueComponent)
+	}
+
+	const dropIntoTarget = (newBlock: Block) => {
+		const { parentComponent, index, slotName } = canvasStore.dropTarget
+		if (!parentComponent) return null
+
+		if (slotName) {
+			parentComponent.updateSlot(slotName, newBlock)
+		} else {
+			parentComponent.addChild(newBlock, index)
+		}
+		return parentComponent
+	}
+
+	const replaceHoveredBlock = (ev: DragEvent, newBlock: Block) => {
+		const blockToReplace = getBlockToReplace(ev)
+		const parentComponent = blockToReplace?.getParentBlock()
+		if (!blockToReplace || !parentComponent) return null
+
+		if (blockToReplace.isSlotBlock()) {
+			newBlock.parentSlotName = blockToReplace.parentSlotName
+		}
+		parentComponent.replaceChild(blockToReplace, newBlock)
+		return parentComponent
+	}
+
+	// no placeholder in replace mode, outline the block that is about to be replaced instead
+	const highlightBlockToReplace = (ev: DragEvent) => {
+		canvasStore.resetDropTarget()
+		const blockToReplace = getBlockToReplace(ev)
+		canvasStore.activeCanvas?.setHoveredBlock(blockToReplace?.componentId ?? null)
+	}
+
+	const getBlockToReplace = (ev: DragEvent) => {
+		let blockToReplace = getBlockAtPoint(ev)
+		// replace the whole component instance, not the children it is composed of
+		while (blockToReplace?.isChildOfComponent) {
+			blockToReplace = blockToReplace.getParentBlock()
+		}
+		return blockToReplace?.isRoot() ? null : blockToReplace
+	}
+
+	const getBlockAtPoint = (ev: DragEvent) => {
+		const element = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement
+		const targetElement = element?.closest(".__studio_component__") as HTMLElement
+
+		// set the hoveredBreakpoint from the target element to show placeholder at the correct breakpoint canvas
+		const breakpoint = targetElement?.dataset.breakpoint || canvasStore.activeCanvas?.activeBreakpoint || null
+		if (breakpoint !== canvasStore.activeCanvas?.hoveredBreakpoint) {
+			canvasStore.activeCanvas?.setHoveredBreakpoint(breakpoint)
+		}
+
+		const componentId = targetElement?.dataset.componentId
+		return (componentId && findBlock(componentId)) || null
+	}
 
 	const getBlockElement = (block: Block) => {
 		const breakpoint = canvasStore.activeCanvas?.hoveredBreakpoint || canvasStore.activeCanvas?.activeBreakpoint
@@ -63,22 +117,14 @@ export function useCanvasDropZone(
 	const findDropTarget = (ev: DragEvent) => {
 		if (canvasStore.dropTarget.x === ev.x && canvasStore.dropTarget.y === ev.y) return {}
 
-		const element = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement
-		const targetElement = element.closest(".__studio_component__") as HTMLElement
-
-		// set the hoveredBreakpoint from the target element to show placeholder at the correct breakpoint canvas
-		const breakpoint = targetElement?.dataset.breakpoint || canvasStore.activeCanvas?.activeBreakpoint || null
-		if (breakpoint !== canvasStore.activeCanvas?.hoveredBreakpoint) {
-			canvasStore.activeCanvas?.setHoveredBreakpoint(breakpoint)
-		}
-
+		const targetBlock = getBlockAtPoint(ev)
 		let parentComponent = block.value
 		let slotName = null
 		let layoutDirection = "column" as LayoutDirection
 		let index = parentComponent?.children.length || 0
 
-		if (targetElement && targetElement.dataset.componentId) {
-			parentComponent = findBlock(targetElement.dataset.componentId) || parentComponent
+		if (targetBlock) {
+			parentComponent = targetBlock
 			// Walk up the tree until we find a component that can have children
 			while (parentComponent && !parentComponent.canHaveChildren()) {
 				parentComponent = parentComponent.getParentBlock()
@@ -146,8 +192,7 @@ export function useCanvasDropZone(
 		index: number,
 		layoutDirection: LayoutDirection
 	) => {
-		// append placeholder component to the dom directly
-		// to avoid re-rendering the whole canvas
+		// placeholder is detached while hovering in replace mode, re-inserted below
 		const { placeholder } = canvasStore.dropTarget
 		if (!parentComponent || !placeholder) return
 		let newParent = getBlockElement(parentComponent)
