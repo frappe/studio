@@ -7,6 +7,7 @@ export const studioPageResources = createListResource({
 		"resource_type",
 		"resource_name",
 		"auto",
+		"cache",
 		"fields",
 		"filters",
 		"limit",

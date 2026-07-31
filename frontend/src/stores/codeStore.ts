@@ -13,7 +13,7 @@ import * as globalUtils from "@/utils/globalUtils"
 import { getInitialVariableValue, getValueFromObject, setValueInObject } from "@/utils/helpers"
 import { isDynamicValue, normalizeDynamicValue } from "@/utils/code"
 import { isFunctionExpression, toOptionalChaining, getTopLevelBindings } from "@/utils/parseCode"
-import type { Filters, Resource, DocumentResource, DataResult } from "@/types/Studio/StudioResource"
+import type { Filters, Resource, APIResource, DocumentResource, DataResult } from "@/types/Studio/StudioResource"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { Variable } from "@/types/Studio/StudioPageVariable"
 import type { ExpressionEvaluationContext } from "@/types"
@@ -55,7 +55,6 @@ const useCodeStore = defineStore("codeStore", () => {
 	async function setPageResources(page: StudioPage, setResourceConfig: boolean = false) {
 		studioPageResources.filters = { parent: page.name }
 		await studioPageResources.reload()
-		resources.value = {}
 
 		const resourcePromises = studioPageResources.data.map(async (resource: Resource) => {
 			const newResource = await getNewResource(resource, {
@@ -73,14 +72,16 @@ const useCodeStore = defineStore("codeStore", () => {
 
 		const resolvedResources = await Promise.all(resourcePromises)
 
+		const nextResources: Record<string, Resource> = {}
 		resolvedResources.forEach((item) => {
-			resources.value[item.resource_name] = item.value
+			nextResources[item.resource_name] = item.value
 			if (setResourceConfig) {
 				if (!item.value) return
-				resources.value[item.resource_name].resource_id = item.resource_id
-				resources.value[item.resource_name].resource_type = item.resource_type
+				nextResources[item.resource_name].resource_id = item.resource_id
+				nextResources[item.resource_name].resource_type = item.resource_type
 			}
 		})
+		resources.value = nextResources
 	}
 
 	async function setPageVariables(page: StudioPage) {
@@ -449,7 +450,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		switch (resource.resource_type) {
 			case "Document":
 				return getDocumentResource(resource, context)
-			case "Document List":
+			case "Document List": {
 				const params: any = {
 					doctype: resource.document_type,
 					fields: fields.length ? fields : "*",
@@ -463,16 +464,25 @@ const useCodeStore = defineStore("codeStore", () => {
 					params["orderBy"] = `${resource.sort_field} ${resource.sort_order}`
 				}
 				return createListResource(params)
-			case "API Resource":
+			}
+			case "API Resource": {
+				const apiParams = getAPIParams(resource.params, context)
 				return createResource({
 					url: resource.url,
 					method: resource.method,
-					params: getAPIParams(resource.params, context),
+					params: apiParams,
 					auto: resource.auto,
+					cache: getCacheOption(resource, apiParams),
 					...getTransforms(resource),
 					...getSuccessErrorHandlers(resource),
 				})
+			}
 		}
+	}
+
+	function getCacheOption(resource: APIResource, params: Record<string, any> | string | null) {
+		if (!resource.cache) return undefined
+		return [resource.resource_name, resource.url, resource.method, JSON.stringify(params)]
 	}
 
 	function getAPIParams(params: Record<string, any> | string | null = null, context: ExpressionEvaluationContext) {

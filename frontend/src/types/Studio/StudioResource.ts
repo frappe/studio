@@ -9,6 +9,8 @@ interface BaseResource {
 	resource_type: ResourceType
 	/** Whether to automatically fetch data on first load */
 	auto?: boolean
+	/** Whether to reuse the resource and its data across page loads, keyed on url + params */
+	cache?: boolean
 	transform?: string | null
 	on_success?: string
 	on_error?: string

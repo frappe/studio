@@ -144,6 +144,13 @@
 
 				<Checkbox size="sm" label="Auto fetch data on load" v-model="newResource.auto" />
 
+				<Checkbox
+					v-if="newResource.resource_type === 'API Resource'"
+					size="sm"
+					label="Cache data across page loads"
+					v-model="newResource.cache"
+				/>
+
 				<!-- Transform Results for any Resource Type -->
 				<ScriptSection
 					title="Transform Results"
@@ -237,6 +244,7 @@ const emptyResource: Resource = {
 	on_success: "",
 	on_error: "",
 	auto: true,
+	cache: false,
 }
 
 const newResource = ref<Resource>({ ...emptyResource })
