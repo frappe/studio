@@ -24,6 +24,40 @@ const appSymlinkedSources = fs.readdirSync(appsDir).flatMap((entry) => {
 	}
 })
 
+// An app can also be installed from outside apps/ without a symlink — bench records the
+// checkout it resolves to as a .pth in the venv, and `frappe.get_app_source_path` hands the
+// editor component paths from there. Read the same registry so fs.allow stays in step with
+// the paths the API advertises.
+const appPthSources = readPthAppSources().flatMap((source) => {
+	const studioDir = path.join(source, "studio")
+	return fs.existsSync(studioDir) ? [studioDir] : []
+})
+
+function readPthAppSources() {
+	const libDir = path.resolve(appsDir, "..", "env", "lib")
+	if (!fs.existsSync(libDir)) return []
+	return fs.readdirSync(libDir).flatMap((pythonDir) => {
+		const sitePackages = path.join(libDir, pythonDir, "site-packages")
+		if (!fs.existsSync(sitePackages)) return []
+		return fs
+			.readdirSync(sitePackages)
+			.filter((entry) => entry.endsWith(".pth"))
+			.flatMap((entry) => readPthLines(path.join(sitePackages, entry)))
+	})
+}
+
+function readPthLines(pthFile) {
+	try {
+		return fs
+			.readFileSync(pthFile, "utf8")
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => path.isAbsolute(line))
+	} catch {
+		return []
+	}
+}
+
 // @framework/ui (apps/frappe/ui) only exists on newer frappe (develop). On older
 // frappe it's absent, so its vite plugin, aliases, and component imports must be
 // skipped or the studio build breaks. This flag gates all of them.
@@ -60,7 +94,7 @@ export default defineConfig(async () => {
 			fs: {
 				// Allow serving custom Vue components and page scripts from any app, including ones
 				// symlinked from outside apps/
-				allow: [appsDir, ...appSymlinkedSources],
+				allow: [appsDir, ...appSymlinkedSources, ...appPthSources],
 			},
 			watch: {
 				// unplugin-vue-components generates this file which causes HMR while building other studio apps
