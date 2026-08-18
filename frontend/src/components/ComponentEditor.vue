@@ -104,16 +104,21 @@ const startFreeformDrag = (ev: MouseEvent) => {
 	const initialMouseY = ev.clientY
 
 	const parentBlock = props.block.getParentBlock()
+	const directParentElement = props.target.parentElement as HTMLElement | null
+
+	// Ensure parent block is relative if static BEFORE measuring containingElement
+	if (parentBlock && directParentElement) {
+		const parentPos = parentBlock.getStyle("position") || getComputedStyle(directParentElement).position
+		if (parentPos === "static" || !parentPos) {
+			parentBlock.setBaseStyle("position", "relative")
+		}
+	}
+
+	// Re-query containing element AFTER ensuring parent is positioned
 	const containingElement =
-		(props.target.offsetParent as HTMLElement | null) || (props.target.parentElement as HTMLElement | null)
+		(props.target.offsetParent as HTMLElement | null) || directParentElement
 
 	if (!containingElement) return
-
-	// Ensure parent block is relative if static
-	const parentPos = parentBlock?.getStyle("position") || getComputedStyle(containingElement).position
-	if (parentPos === "static" || !parentPos) {
-		parentBlock?.setBaseStyle("position", "relative")
-	}
 
 	// Page/Canvas boundary element
 	const pageElement =
