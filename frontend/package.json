@@ -48,6 +48,7 @@
 		"vuedraggable": "^4.1.0"
 	},
 	"devDependencies": {
+		"@types/node": "^26.2.0",
 		"cypress": "^15.8.2",
 		"eslint": "^8.19.0",
 		"eslint-plugin-vue": "^9.11.0",

@@ -63,6 +63,7 @@
 				</div>
 
 				<AIChatPanel v-show="activeTab === 'AI Assistant'" />
+				<RevenuePanel v-show="activeTab === 'Revenue Opportunities'" />
 			</div>
 		</transition>
 	</div>
@@ -81,6 +82,7 @@ import CodePanel from "@/components/CodePanel.vue"
 import IconButton from "@/components/IconButton.vue"
 import LucideChevronsLeft from "~icons/lucide/chevrons-left"
 import AIChatPanel from "@/components/AIChatPanel.vue"
+import RevenuePanel from "@/components/RevenuePanel.vue"
 
 import Block from "@/utils/block"
 import useStudioStore from "@/stores/studioStore"
@@ -111,6 +113,10 @@ const sidebarMenu = [
 	{
 		label: "AI Assistant",
 		icon: "lucide-sparkle",
+	},
+	{
+		label: "Revenue Opportunities",
+		icon: "lucide-trending-up",
 	},
 ]
 const store = useStudioStore()
