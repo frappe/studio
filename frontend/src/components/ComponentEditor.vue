@@ -13,6 +13,11 @@
 			class="absolute -top-3 left-0 inline-flex items-center gap-1 text-xs"
 			:class="componentLabelClasses"
 		>
+			<LucideGripVertical
+				class="h-3 w-3 shrink-0 cursor-grab pointer-events-auto opacity-80 hover:opacity-100"
+				@mousedown.stop.prevent="startFreeformDrag"
+				title="Drag to move freely on canvas"
+			/>
 			<LucideRepeat v-if="block.isRepeater() || block.isRepeated()" class="h-3 w-3 shrink-0" />
 			{{ block.getBlockDescription() }}
 			<template v-if="showEditComponentAction">
@@ -79,6 +84,7 @@ import PaddingHandler from "@/components/PaddingHandler.vue"
 import MarginHandler from "@/components/MarginHandler.vue"
 import LucideRepeat from "~icons/lucide/repeat"
 import LucidePenLine from "~icons/lucide/pen-line"
+import LucideGripVertical from "~icons/lucide/grip-vertical"
 
 import Block from "@/utils/block"
 import useStudioStore from "@/stores/studioStore"
@@ -87,6 +93,107 @@ import useComponentEditorStore from "@/stores/componentEditorStore"
 import trackTarget, { Tracker } from "@/utils/trackTarget"
 
 import type { CanvasProps } from "@/types/StudioCanvas"
+
+const isDraggingFreeform = ref(false)
+
+const startFreeformDrag = (ev: MouseEvent) => {
+	if (!props.target || !props.block || props.block.isRoot()) return
+
+	const scale = canvasProps?.scale || 1
+	const initialMouseX = ev.clientX
+	const initialMouseY = ev.clientY
+
+	const parentBlock = props.block.getParentBlock()
+	const containingElement =
+		(props.target.offsetParent as HTMLElement | null) || (props.target.parentElement as HTMLElement | null)
+
+	if (!containingElement) return
+
+	// Ensure parent block is relative if static
+	const parentPos = parentBlock?.getStyle("position") || getComputedStyle(containingElement).position
+	if (parentPos === "static" || !parentPos) {
+		parentBlock?.setBaseStyle("position", "relative")
+	}
+
+	// Page/Canvas boundary element
+	const pageElement =
+		(props.target.closest(".canvas") as HTMLElement | null) ||
+		(props.target.closest("[data-component-id='root']") as HTMLElement | null) ||
+		containingElement
+
+	const targetRect = props.target.getBoundingClientRect()
+	const containingRect = containingElement.getBoundingClientRect()
+	const pageRect = pageElement.getBoundingClientRect()
+
+	const borderLeft = (containingElement.clientLeft || 0) * scale
+	const borderTop = (containingElement.clientTop || 0) * scale
+
+	const originX = containingRect.left + borderLeft
+	const originY = containingRect.top + borderTop
+
+	const startLeft = (targetRect.left - originX) / scale
+	const startTop = (targetRect.top - originY) / scale
+
+	const compWidth = targetRect.width / scale
+	const compHeight = targetRect.height / scale
+
+	// Page inner boundaries in viewport screen coordinates (accounting for CSS transform scale on canvas)
+	const pageMinX = pageRect.left + (pageElement.clientLeft || 0) * scale
+	const pageMaxX = pageMinX + pageElement.clientWidth * scale
+	const pageMinY = pageRect.top + (pageElement.clientTop || 0) * scale
+	const pageMaxY = pageMinY + pageElement.clientHeight * scale
+
+	// Convert page boundaries to containing element's local coordinate space
+	const minAllowedLeft = (pageMinX - originX) / scale
+	let maxAllowedLeft = (pageMaxX - originX) / scale - compWidth
+
+	const minAllowedTop = (pageMinY - originY) / scale
+	let maxAllowedTop = (pageMaxY - originY) / scale - compHeight
+
+	if (maxAllowedLeft < minAllowedLeft) maxAllowedLeft = minAllowedLeft
+	if (maxAllowedTop < minAllowedTop) maxAllowedTop = minAllowedTop
+
+	// Set initial absolute position styling if not already absolute
+	if (props.block.getStyle("position") !== "absolute") {
+		props.block.setStyle("position", "absolute")
+		props.block.setStyle("left", `${Math.round(startLeft)}px`)
+		props.block.setStyle("top", `${Math.round(startTop)}px`)
+	}
+
+	isDraggingFreeform.value = true
+	canvasStore.isDragging = true
+
+	const onMouseMove = (moveEv: MouseEvent) => {
+		moveEv.preventDefault()
+		const deltaX = (moveEv.clientX - initialMouseX) / scale
+		const deltaY = (moveEv.clientY - initialMouseY) / scale
+
+		const rawLeft = startLeft + deltaX
+		const rawTop = startTop + deltaY
+
+		const clampedLeft = Math.min(Math.max(rawLeft, minAllowedLeft), maxAllowedLeft)
+		const clampedTop = Math.min(Math.max(rawTop, minAllowedTop), maxAllowedTop)
+
+		const newLeft = Math.round(clampedLeft)
+		const newTop = Math.round(clampedTop)
+
+		props.block.setStyle("left", `${newLeft}px`)
+		props.block.setStyle("top", `${newTop}px`)
+
+		tracker.value?.update()
+	}
+
+	const onMouseUp = () => {
+		window.removeEventListener("mousemove", onMouseMove)
+		window.removeEventListener("mouseup", onMouseUp)
+		isDraggingFreeform.value = false
+		canvasStore.isDragging = false
+		tracker.value?.update()
+	}
+
+	window.addEventListener("mousemove", onMouseMove)
+	window.addEventListener("mouseup", onMouseUp)
+}
 
 const props = defineProps({
 	block: {
