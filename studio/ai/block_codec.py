@@ -53,11 +53,13 @@ class BlockCodec:
 		if vis := block.get("visibilityCondition"):
 			out["visibility"] = vis
 
-		children = [
-			BlockCodec.compress(c, depth + 1) for c in block.get("children", []) if isinstance(c, dict)
-		]
-		if children:
-			out["c"] = children
+		children_raw = block.get("children")
+		if isinstance(children_raw, list):
+			children = [
+				BlockCodec.compress(c, depth + 1) for c in children_raw if isinstance(c, dict)
+			]
+			if children:
+				out["c"] = children
 
 		return out
 

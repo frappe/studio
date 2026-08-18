@@ -217,9 +217,12 @@ const loading = ref(false)
 const error = ref("")
 const analysisResult = ref<any>(null)
 
+let currentRequestId = 0
+
 watch(
 	() => store.selectedPage,
 	() => {
+		currentRequestId++
 		analysisResult.value = null
 		error.value = ""
 		loading.value = false
@@ -234,7 +237,7 @@ function getPageContext(): string {
 }
 
 async function analyzeRevenue() {
-	const requestedPage = store.selectedPage
+	const requestId = ++currentRequestId
 	const pageId = store.activePage?.name || store.activePage?.page_name || ""
 	const context = getPageContext()
 
@@ -247,19 +250,18 @@ async function analyzeRevenue() {
 			page_context: context,
 		})
 
-		if (store.selectedPage === requestedPage) {
-			if (res?.status === "success" && res.result) {
-				analysisResult.value = res.result
-			} else {
-				error.value = res?.message || "Failed to analyze page revenue opportunities."
-			}
+		if (requestId !== currentRequestId) return
+
+		if (res?.status === "success" && res.result) {
+			analysisResult.value = res.result
+		} else {
+			error.value = res?.message || "Failed to analyze page revenue opportunities."
 		}
 	} catch (e: any) {
-		if (store.selectedPage === requestedPage) {
-			error.value = e?.message || "An error occurred while analyzing the page."
-		}
+		if (requestId !== currentRequestId) return
+		error.value = e?.message || "An error occurred while analyzing the page."
 	} finally {
-		if (store.selectedPage === requestedPage) {
+		if (requestId === currentRequestId) {
 			loading.value = false
 		}
 	}
