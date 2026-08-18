@@ -23,28 +23,33 @@ class BlockCodec:
 		if block.get("blockName"):
 			out["label"] = block["blockName"]
 
-		props = {k: v for k, v in (block.get("componentProps") or {}).items() if v not in (None, "", [], {})}
-		if props:
-			out["props"] = props
+		props_raw = block.get("componentProps")
+		if isinstance(props_raw, dict):
+			props = {k: v for k, v in props_raw.items() if v not in (None, "", [], {})}
+			if props:
+				out["props"] = props
 
-		style = block.get("baseStyles") or {}
-		if style:
+		style = block.get("baseStyles")
+		if isinstance(style, dict) and style:
 			out["style"] = style
 
-		mob = block.get("mobileStyles") or {}
-		if mob:
+		mob = block.get("mobileStyles")
+		if isinstance(mob, dict) and mob:
 			out["mstyle"] = mob
 
-		tab = block.get("tabletStyles") or {}
-		if tab and depth <= 1:
+		tab = block.get("tabletStyles")
+		if isinstance(tab, dict) and tab and depth <= 1:
 			out["tstyle"] = tab
 
-		if compact_slots := BlockCodec._compress_slots(block.get("componentSlots") or {}, depth):
-			out["slots"] = compact_slots
+		slots_raw = block.get("componentSlots")
+		if isinstance(slots_raw, dict):
+			if compact_slots := BlockCodec._compress_slots(slots_raw, depth):
+				out["slots"] = compact_slots
 
-		events = block.get("componentEvents") or {}
-		if events:
-			out["events"] = BlockCodec._compress_events(events)
+		events_raw = block.get("componentEvents")
+		if isinstance(events_raw, dict):
+			if compact_events := BlockCodec._compress_events(events_raw):
+				out["events"] = compact_events
 		if vis := block.get("visibilityCondition"):
 			out["visibility"] = vis
 
@@ -62,6 +67,8 @@ class BlockCodec:
 		compact shape as `c` (recurse), and the derived slotId/parentBlockId are dropped (the
 		client regenerates them). Empty slots are omitted."""
 		out = {}
+		if not isinstance(slots, dict):
+			return out
 		for name, slot in slots.items():
 			if not isinstance(slot, dict):
 				continue
@@ -91,6 +98,8 @@ class BlockCodec:
 		"""Compact componentEvents for the page context. A 'Run Script' handler collapses to
 		just its script string (the common case); other action shapes pass through verbatim."""
 		out = {}
+		if not isinstance(events, dict):
+			return out
 		for name, ev in events.items():
 			if isinstance(ev, dict) and ev.get("action") == "Run Script":
 				out[name] = ev.get("script") or ""

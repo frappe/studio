@@ -99,7 +99,7 @@ def analyze_page_revenue(page_id: str, page_context: str) -> dict:
 		root = raw_data[0] if isinstance(raw_data, list) and raw_data else raw_data
 		if isinstance(root, dict):
 			compressed_tree = BlockCodec.to_json(BlockCodec.compress(root))
-	except (json.JSONDecodeError, TypeError) as e:
+	except (json.JSONDecodeError, TypeError, AttributeError) as e:
 		logger.warning(f"Could not compress page_context JSON: {e}")
 		compressed_tree = page_context[:4000]
 
