@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "SignupBannerProps": {
+      "type": "object",
+      "properties": {
+        "isSidebarCollapsed": {
+          "type": "boolean",
+          "description": "Render the collapsed, icon-only form used by a collapsed sidebar."
+        },
+        "appName": {
+          "type": "string",
+          "description": "App name used in the default banner copy."
+        },
+        "redirectURL": {
+          "type": "string",
+          "description": "Signup page opened in a new tab when the button is clicked."
+        },
+        "afterSignup": {
+          "type": "object",
+          "description": "Run after the signup page is opened."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Props for `<SignupBanner>`."
+    }
+  }
+}

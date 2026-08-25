@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/TextEditorProps",
   "definitions": {
     "TextEditorProps": {
       "type": "object",
@@ -9,7 +8,8 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "Initial editor content (HTML/string). `null` renders an empty editor"
         },
         "placeholder": {
           "anyOf": [
@@ -19,7 +19,8 @@
             {
               "type": "object"
             }
-          ]
+          ],
+          "description": "Placeholder text or dynamic placeholder resolver"
         },
         "editorClass": {
           "anyOf": [
@@ -35,13 +36,16 @@
             {
               "type": "object"
             }
-          ]
+          ],
+          "description": "Custom classes applied to the editor root"
         },
         "editable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Toggles editability of the editor"
         },
         "autofocus": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Autofocus the editor on mount"
         },
         "bubbleMenu": {
           "anyOf": [
@@ -52,10 +56,12 @@
               "type": "array",
               "items": {}
             }
-          ]
+          ],
+          "description": "Enables bubble menu or provides custom bubble menu items"
         },
         "bubbleMenuOptions": {
-          "type": "object"
+          "type": "object",
+          "description": "Configuration options for the bubble menu"
         },
         "fixedMenu": {
           "anyOf": [
@@ -66,7 +72,8 @@
               "type": "array",
               "items": {}
             }
-          ]
+          ],
+          "description": "Enables fixed menu or provides custom fixed menu items"
         },
         "floatingMenu": {
           "anyOf": [
@@ -77,13 +84,17 @@
               "type": "array",
               "items": {}
             }
-          ]
+          ],
+          "description": "Enables floating menu or provides custom floating menu items"
         },
         "extensions": {
           "type": "array",
-          "items": {}
+          "items": {},
+          "description": "Custom TipTap extensions"
         },
-        "starterkitOptions": {},
+        "starterkitOptions": {
+          "description": "Options passed to TipTap StarterKit"
+        },
         "mentions": {
           "anyOf": [
             {
@@ -167,7 +178,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Mention extension configuration"
         },
         "tags": {
           "anyOf": [
@@ -178,15 +190,320 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Tag / hashtag configuration"
         },
         "uploadFunction": {
-          "type": "object"
+          "type": "object",
+          "description": "Async file upload handler (used for images, files, etc.)"
         },
         "uploadArgs": {
-          "type": "object"
+          "type": "object",
+          "description": "Extra arguments passed to the upload function"
         }
       },
+      "additionalProperties": false
+    },
+    "TextEditorEmits": {
+      "type": "object",
+      "properties": {
+        "change": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "content"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired whenever editor content changes"
+        },
+        "focus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bubbles": {
+                "type": "boolean"
+              },
+              "cancelBubble": {
+                "type": "boolean"
+              },
+              "cancelable": {
+                "type": "boolean"
+              },
+              "composed": {
+                "type": "boolean"
+              },
+              "currentTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "defaultPrevented": {
+                "type": "boolean"
+              },
+              "eventPhase": {
+                "type": "number"
+              },
+              "isTrusted": {
+                "type": "boolean"
+              },
+              "returnValue": {
+                "type": "boolean"
+              },
+              "srcElement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "timeStamp": {
+                "type": "number"
+              },
+              "type": {
+                "type": "string"
+              },
+              "NONE": {
+                "type": "number",
+                "const": 0
+              },
+              "CAPTURING_PHASE": {
+                "type": "number",
+                "const": 1
+              },
+              "AT_TARGET": {
+                "type": "number",
+                "const": 2
+              },
+              "BUBBLING_PHASE": {
+                "type": "number",
+                "const": 3
+              },
+              "detail": {
+                "type": "number"
+              },
+              "view": {
+                "type": "null"
+              },
+              "which": {
+                "type": "number"
+              },
+              "relatedTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "AT_TARGET",
+              "BUBBLING_PHASE",
+              "CAPTURING_PHASE",
+              "NONE",
+              "bubbles",
+              "cancelBubble",
+              "cancelable",
+              "composed",
+              "currentTarget",
+              "defaultPrevented",
+              "detail",
+              "eventPhase",
+              "isTrusted",
+              "relatedTarget",
+              "returnValue",
+              "srcElement",
+              "target",
+              "timeStamp",
+              "type",
+              "view",
+              "which"
+            ],
+            "additionalProperties": false,
+            "title": "event"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the editor gains focus"
+        },
+        "blur": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bubbles": {
+                "type": "boolean"
+              },
+              "cancelBubble": {
+                "type": "boolean"
+              },
+              "cancelable": {
+                "type": "boolean"
+              },
+              "composed": {
+                "type": "boolean"
+              },
+              "currentTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "defaultPrevented": {
+                "type": "boolean"
+              },
+              "eventPhase": {
+                "type": "number"
+              },
+              "isTrusted": {
+                "type": "boolean"
+              },
+              "returnValue": {
+                "type": "boolean"
+              },
+              "srcElement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "timeStamp": {
+                "type": "number"
+              },
+              "type": {
+                "type": "string"
+              },
+              "NONE": {
+                "type": "number",
+                "const": 0
+              },
+              "CAPTURING_PHASE": {
+                "type": "number",
+                "const": 1
+              },
+              "AT_TARGET": {
+                "type": "number",
+                "const": 2
+              },
+              "BUBBLING_PHASE": {
+                "type": "number",
+                "const": 3
+              },
+              "detail": {
+                "type": "number"
+              },
+              "view": {
+                "type": "null"
+              },
+              "which": {
+                "type": "number"
+              },
+              "relatedTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "AT_TARGET",
+              "BUBBLING_PHASE",
+              "CAPTURING_PHASE",
+              "NONE",
+              "bubbles",
+              "cancelBubble",
+              "cancelable",
+              "composed",
+              "currentTarget",
+              "defaultPrevented",
+              "detail",
+              "eventPhase",
+              "isTrusted",
+              "relatedTarget",
+              "returnValue",
+              "srcElement",
+              "target",
+              "timeStamp",
+              "type",
+              "view",
+              "which"
+            ],
+            "additionalProperties": false,
+            "title": "event"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the editor loses focus"
+        },
+        "transaction": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "title": "editor"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired on every editor transaction"
+        }
+      },
+      "required": [
+        "change",
+        "focus",
+        "blur",
+        "transaction"
+      ],
       "additionalProperties": false
     }
   }

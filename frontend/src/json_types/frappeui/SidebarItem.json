@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "SidebarItemProps": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Row label. Used as the accessible name and the default slot fallback."
+        },
+        "accessKey": {
+          "type": "string",
+          "description": "`accesskey` attribute for a keyboard shortcut."
+        },
+        "icon": {
+          "type": [
+            "string"
+          ],
+          "description": "Leading icon: a CSS class (e.g. `lucide-box`), plain text, or a component. Ignored when the `#prefix` slot is used."
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Trailing text. Ignored when the `#suffix` slot is used."
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            }
+          ],
+          "description": "Navigation target. When set the row's main area renders as a router link; otherwise it renders as a button. A click still invokes `onClick`."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Marks the row active (`data-state=\"active\"`). When omitted, active state is inferred by matching `to` against the current route."
+        },
+        "isActive": {
+          "type": "boolean",
+          "deprecated": "Use `active`. Alias kept for the config-object path."
+        },
+        "onClick": {
+          "type": "object",
+          "description": "Click handler. Bound from `@click` in composition and from `item.onClick` in the config-object path — both resolve to this prop."
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "__@RefSymbol@920448": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Type differentiator only. We need this to be in public d.ts but don't want it to show up in IDE autocomplete, so we use a private Symbol instead."
+                }
+              },
+              "required": [
+                "__@RefSymbol@920448"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "__@ShallowRefMarker@920441": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "__@RefSymbol@920448": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Type differentiator only. We need this to be in public d.ts but don't want it to show up in IDE autocomplete, so we use a private Symbol instead."
+                }
+              },
+              "required": [
+                "__@RefSymbol@920448"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "__@RefSymbol@920448": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Type differentiator only. We need this to be in public d.ts but don't want it to show up in IDE autocomplete, so we use a private Symbol instead."
+                },
+                "__@ComputedRefSymbol@920456": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "effect": {
+                  "type": "object",
+                  "properties": {
+                    "onTrack": {
+                      "type": "object"
+                    },
+                    "onTrigger": {
+                      "type": "object"
+                    },
+                    "fn": {
+                      "type": "object"
+                    },
+                    "effect": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "fn",
+                    "effect"
+                  ],
+                  "additionalProperties": false,
+                  "deprecated": "computed no longer uses effect"
+                },
+                "__@WritableComputedRefSymbol@920454": {
+                  "type": "boolean",
+                  "const": true
+                }
+              },
+              "required": [
+                "__@ComputedRefSymbol@920456",
+                "__@RefSymbol@920448",
+                "__@WritableComputedRefSymbol@920454",
+                "effect"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "__@RefSymbol@920448": {
+                  "type": "boolean",
+                  "const": true,
+                  "description": "Type differentiator only. We need this to be in public d.ts but don't want it to show up in IDE autocomplete, so we use a private Symbol instead."
+                },
+                "__@ComputedRefSymbol@920456": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "effect": {
+                  "type": "object",
+                  "properties": {
+                    "onTrack": {
+                      "type": "object"
+                    },
+                    "onTrigger": {
+                      "type": "object"
+                    },
+                    "fn": {
+                      "type": "object"
+                    },
+                    "effect": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "fn",
+                    "effect"
+                  ],
+                  "additionalProperties": false,
+                  "deprecated": "computed no longer uses effect"
+                },
+                "value": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "__@ComputedRefSymbol@920456",
+                "__@RefSymbol@920448",
+                "effect",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object"
+            }
+          ],
+          "deprecated": "Config-object visibility flag; filtered by the legacy adapter."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/TreeProps",
   "definitions": {
     "TreeProps": {
       "type": "object",
@@ -16,24 +15,32 @@
               "children": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/definitions/alias-1572818682-160-612-1572818682-0-4032"
+                  "$ref": "#/definitions/alias-1375191242-160-612-1375191242-0-40321454208823"
                 }
               },
               "expanded": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "Whether this node is expanded — the per-node source of truth. Expanded by default; set `false` to start it collapsed."
               }
             },
-            "additionalProperties": {}
-          }
+            "additionalProperties": {},
+            "description": "A tree node. Carries a display `label`, nested `children`, and a unique id under the field named by the `nodeKey` prop. Any extra fields are preserved and passed through to slots."
+          },
+          "description": "Forest roots to render. Each node may contain nested children to form the tree structure."
         },
         "nodeKey": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the field that uniquely identifies each node.",
+          "default": "key"
         },
         "draggable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Enable drag-and-drop. Nodes can be dragged onto one another to reparent, or between siblings to reorder.",
+          "default": false
         },
         "move": {
-          "type": "object"
+          "type": "object",
+          "description": "Gate a drop while dragging. Receives the live drag context and returns whether the drop is allowed — a rejected target shows the no-drop cursor and hides the drop indicator. Built-in guards (drop-on-self, drop-into-own- descendant) run first, so this only carries your domain rules."
         },
         "guides": {
           "type": "string",
@@ -41,10 +48,14 @@
             "connectors",
             "lines",
             "none"
-          ]
+          ],
+          "description": "Visual style of the indentation guides.",
+          "default": "connectors"
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disable all interaction — expand/collapse and drag.",
+          "default": false
         }
       },
       "required": [
@@ -52,7 +63,7 @@
       ],
       "additionalProperties": false
     },
-    "alias-1572818682-160-612-1572818682-0-4032": {
+    "alias-1375191242-160-612-1375191242-0-40321454208823": {
       "type": "object",
       "properties": {
         "label": {
@@ -61,14 +72,16 @@
         "children": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/alias-1572818682-160-612-1572818682-0-4032"
+            "$ref": "#/definitions/alias-1375191242-160-612-1375191242-0-40321454208823"
           }
         },
         "expanded": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether this node is expanded — the per-node source of truth. Expanded by default; set `false` to start it collapsed."
         }
       },
-      "additionalProperties": {}
+      "additionalProperties": {},
+      "description": "A tree node. Carries a display `label`, nested `children`, and a unique id under the field named by the `nodeKey` prop. Any extra fields are preserved and passed through to slots."
     }
   }
 }

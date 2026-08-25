@@ -3,13 +3,17 @@
 Every capability the agent has is a `Tool`. A tool declares its OpenAI-style
 function schema and a *side* that tells the loop how to handle a call to it:
 
-  - "client":   the operation is applied in the browser (block edits, scripts).
-                The loop batches these and emits them to the frontend.
+  - "client":   a block op. The loop applies it to the server-side WorkingTree
+                (the authoritative page state, persisted every round) and mirrors
+                the accepted op to the editor canvas, which only replays it.
   - "server":   the loop runs `handler(ctx, args)` immediately and feeds the
                 returned string back to the model as a tool result, then loops.
   - "terminal": the call ends the turn and hands control back to the user
                 (e.g. ask a clarifying question, propose a plan). The loop calls
-                `handler(ctx, args)` to emit the appropriate event and stops.
+                `handler(ctx, args)` to emit the appropriate event and stops —
+                unless the handler RETURNS a string: that's a refusal (e.g. an
+                invalid write proposal), fed back as the tool result so the
+                model can fix and retry within the turn.
 
 A tool may additionally produce a large *streamed artifact* (e.g. a full page
 of JSON). Such a tool sets `artifact` + `generator`: when the conversational
@@ -88,15 +92,19 @@ def _build_shared_registry() -> ToolRegistry:
 	from studio.ai.agent.tools import (
 		bindings,
 		blocks,
+		components,
 		conversation,
 		data,
 		generate,
 		interactivity,
 		introspect,
+		pages,
+		preview,
 		query,
 	)
 
 	registry = ToolRegistry()
+	registry.extend(components.TOOLS)
 	registry.extend(generate.TOOLS)
 	registry.extend(blocks.TOOLS)
 	registry.extend(query.TOOLS)
@@ -105,29 +113,40 @@ def _build_shared_registry() -> ToolRegistry:
 	registry.extend(data.TOOLS)
 	registry.extend(bindings.TOOLS)
 	registry.extend(interactivity.TOOLS)
+	registry.extend(pages.TOOLS)
+	registry.extend(preview.TOOLS)
 	return registry
 
 
 def build_custom_page_registry() -> ToolRegistry:
 	"""Non-exported (visual/DB) app: reactive state as Studio Page variables, page logic as a bare
-	interpreted script. No file surface — the app lives in the DB."""
-	from studio.ai.agent.tools import scripts, variables
+	interpreted script. No file surface — the app lives in the DB, so its schema surface is custom
+	DocTypes (confirm-gated proposals, tools/doctypes.py)."""
+	from studio.ai.agent.tools import doctypes, scripts, variables
 
 	registry = _build_shared_registry()
 	registry.extend(variables.TOOLS)
 	registry.extend(scripts.build_tools(is_standard=False))
+	registry.extend(doctypes.TOOLS)
 	return registry
 
 
 def build_standard_page_registry() -> ToolRegistry:
 	"""Standard (exported) app: a real TypeScript codebase. State/logic live in setup() modules,
 	stores and composables edited as files — so it gets the file tools and the module script form, and
-	NO variable-doctype tools (state is declared in code instead)."""
-	from studio.ai.agent.tools import files, scripts
+	NO variable-doctype tools (state is declared in code instead). On a developer bench it can also
+	author the app's Python package — reads free, writes confirm-gated (tools/backend.py) — and
+	propose DocTypes in the app's own modules (tools/doctypes.py)."""
+	import frappe
+
+	from studio.ai.agent.tools import backend, doctypes, files, scripts
 
 	registry = _build_shared_registry()
 	registry.extend(files.TOOLS)
 	registry.extend(scripts.build_tools(is_standard=True))
+	if frappe.conf.developer_mode:
+		registry.extend(backend.TOOLS)
+		registry.extend(doctypes.TOOLS)
 	return registry
 
 

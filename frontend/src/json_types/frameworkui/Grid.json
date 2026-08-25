@@ -24,26 +24,33 @@
                   "left",
                   "right",
                   "center"
-                ]
+                ],
+                "description": "Horizontal alignment for this column's cells *and* its header label, so the two always agree. Defaults to left. Consumers set `\"right\"` for numeric columns (e.g. `TableField` for Int/Float/Currency/Percent), matching how Frappe desk right-aligns numbers in the grid."
               },
               "width": {
-                "type": "number"
+                "type": "number",
+                "description": "Initial track width in px, e.g. set from layout/meta. Omit for a flexible column that shares leftover space (`1fr`). Drag-resizing the column's right edge overrides this at runtime."
               }
             },
             "required": [
               "fieldname"
             ],
-            "additionalProperties": false
-          }
+            "additionalProperties": false,
+            "description": "Minimal shape `Grid` needs to render a column's header and key its cells. Richer column objects (e.g. FormLayout's `FieldMeta`) satisfy this structurally, so callers pass their own type through `Grid`'s generic and get it back, fully typed, in the `#cell` slot."
+          },
+          "description": "Columns to render, in order."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disable structural actions (add/delete/reorder/select) and render read-only."
         },
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional heading shown above the grid."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the grid. Hidden while an error is shown."
         },
         "error": {
           "anyOf": [
@@ -73,16 +80,166 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Validation error shown below the grid: a message string, or an `Error` with `messages[]`."
             }
-          ]
+          ],
+          "description": "Validation error below the grid: a string, or an `Error` with `messages[]`."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Renders a `*` next to the label."
+        },
+        "newRow": {
+          "type": "object",
+          "description": "Seeds a newly added row. The grid sees only the columns, so whoever knows the whole child form supplies its docfield defaults."
         }
       },
       "required": [
         "columns"
+      ],
+      "additionalProperties": false,
+      "description": "Props for `<Grid>`. The rows array is a separate `v-model`."
+    },
+    "GridEmits": {
+      "type": "object",
+      "properties": {
+        "change": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "title": "rows"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "A row was added, deleted, reordered, or a cell committed (via the slot's `commit`). Carries the new rows array — the intentful \"the grid changed\" signal, distinct from the live `v-model` sync (the slot's `update`)."
+        },
+        "commit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "object"
+              },
+              "column": {
+                "type": "object",
+                "properties": {
+                  "fieldname": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "reqd": {
+                    "type": "boolean"
+                  },
+                  "align": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "right",
+                      "center"
+                    ],
+                    "description": "Horizontal alignment for this column's cells *and* its header label, so the two always agree. Defaults to left. Consumers set `\"right\"` for numeric columns (e.g. `TableField` for Int/Float/Currency/Percent), matching how Frappe desk right-aligns numbers in the grid."
+                  },
+                  "width": {
+                    "type": "number",
+                    "description": "Initial track width in px, e.g. set from layout/meta. Omit for a flexible column that shares leftover space (`1fr`). Drag-resizing the column's right edge overrides this at runtime."
+                  }
+                },
+                "required": [
+                  "fieldname"
+                ],
+                "additionalProperties": false,
+                "description": "Minimal shape `Grid` needs to render a column's header and key its cells. Richer column objects (e.g. FormLayout's `FieldMeta`) satisfy this structurally, so callers pass their own type through `Grid`'s generic and get it back, fully typed, in the `#cell` slot."
+              }
+            },
+            "required": [
+              "row",
+              "column"
+            ],
+            "additionalProperties": false,
+            "title": "payload"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "One cell was committed. Distinct from `change`, which says only that the rows array moved: this names the row and the column, so a consumer can dispatch a per-row event without diffing to work out what moved."
+        },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "row"
+            ],
+            "additionalProperties": false,
+            "title": "payload"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "A row was added, carrying the row so a consumer can address it."
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "required": [
+              "rows"
+            ],
+            "additionalProperties": false,
+            "title": "payload"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Rows were deleted, carrying them as they last were."
+        },
+        "edit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "object"
+              },
+              "index": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "row",
+              "index"
+            ],
+            "additionalProperties": false,
+            "title": "payload"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "The user clicked a row's edit action (last column). Carries the row and its index. `Grid` stays oblivious to *how* a row is edited — the consumer (e.g. `TableField`) opens a dialog and renders the row however it likes."
+        }
+      },
+      "required": [
+        "change",
+        "commit",
+        "add",
+        "remove",
+        "edit"
       ],
       "additionalProperties": false
     }

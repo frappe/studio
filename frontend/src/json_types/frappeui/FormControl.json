@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/FormControlProps",
   "definitions": {
     "FormControlProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label text displayed above the input"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional description or helper text shown below the input"
         },
         "error": {
           "anyOf": [
@@ -39,9 +40,11 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message shown below the input. Sets aria-invalid on the control."
         },
         "type": {
           "type": "string",
@@ -68,24 +71,28 @@
             "multiselect",
             "daterange",
             "datetime"
-          ]
+          ],
+          "description": "Type of input to render. FormControl is a thin dispatcher — it forwards `label`/`description`/`error`/`required`/`size`/`variant` plus all remaining attrs/listeners to the resolved child component. Type-specific props (e.g. `options` for select/combobox, `min`/`max`/`formatter` for date pickers, `:options` for multiselect) and the `v-model` value shape follow the underlying component — see that component's docs/types for the full surface. Slots are forwarded by name; only slot names declared on FormControl get IDE typing, others pass through at runtime."
         },
         "size": {
           "type": "string",
           "enum": [
             "sm",
             "md"
-          ]
+          ],
+          "description": "Size of the input"
         },
         "variant": {
           "type": "string",
           "enum": [
             "subtle",
             "outline"
-          ]
+          ],
+          "description": "Visual variant of the input"
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the input is required"
         }
       },
       "additionalProperties": false

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "MobileNavItemProps": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Label under the icon; also the accessible name."
+        },
+        "icon": {
+          "type": [
+            "string"
+          ],
+          "description": "Icon CSS class, e.g. `lucide-home`, or a component. Ignored when the default slot is used (for a custom glyph or an avatar)."
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            }
+          ],
+          "description": "Navigation target. Renders a router link. Tapping the item while it is already the current route scrolls the shell to the top instead of re-navigating."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Highlight this item. Independent of the current route so one tab can stay lit across a whole section (e.g. Home across community routes). Defaults to whether `to` resolves to the current route."
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

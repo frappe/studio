@@ -3,23 +3,8 @@
  "creation": "2025-05-24 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
-  "ai_section",
-  "ai_api_key"
- ],
- "fields": [
-  {
-   "fieldname": "ai_section",
-   "fieldtype": "Section Break",
-   "label": "AI Settings"
-  },
-  {
-   "description": "API key for the selected AI model provider",
-   "fieldname": "ai_api_key",
-   "fieldtype": "Password",
-   "label": "AI API Key"
-  }
- ],
+ "field_order": [],
+ "fields": [],
  "issingle": 1,
  "links": [],
  "modified": "2026-05-26 17:44:02.690418",

@@ -7,8 +7,9 @@
         "dev:frappe-ui": "cd frontend && yarn dev:frappe-ui",
         "build": "cd frontend && yarn build",
         "build-studio-app": "cd frontend && yarn build-studio-app",
-        "upgrade-frappeui-submodule": "cd frappe-ui && git fetch --prune --tags upstream && git checkout v$(node -p \"require('../frontend/package.json').dependencies['frappe-ui']\")",
-        "upgrade-frappeui": "cd frontend && yarn add frappe-ui@beta --exact && cd .. && yarn upgrade-frappeui-submodule"
+        "upgrade-frappeui-submodule": "cd frappe-ui && git fetch --prune --tags upstream && git checkout v$(node -p \"require('../frontend/package.json').dependencies['frappe-ui']\") && cd .. && yarn sync-frappeui-ai-knowledge",
+        "upgrade-frappeui": "cd frontend && yarn add frappe-ui@beta --exact && cd .. && yarn upgrade-frappeui-submodule",
+        "sync-frappeui-ai-knowledge": "node frontend/scripts/distill-family-templates.mjs && cd frontend && yarn extract-frappeui-types"
     },
     "version": "0.0.0"
 }

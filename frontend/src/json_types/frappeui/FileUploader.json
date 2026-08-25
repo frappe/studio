@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/FileUploaderProps",
   "definitions": {
     "FileUploaderProps": {
       "type": "object",
@@ -16,7 +15,8 @@
                 "type": "string"
               }
             }
-          ]
+          ],
+          "description": "Accepted file types passed to the native file input."
         },
         "uploadArgs": {
           "type": "object",
@@ -112,12 +112,42 @@
               "type": "object"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Additional upload options passed to Frappe's upload endpoint. `private` / `is_private` override the component's `isPrivate` default."
         },
         "validateFile": {
-          "type": "object"
+          "type": "object",
+          "description": "Optional validation hook. Return a message or Error to block upload."
         }
       },
+      "additionalProperties": false
+    },
+    "FileUploaderEmits": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "array",
+          "items": {
+            "title": "data"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "deprecated": "Kept for compatibility through v1.x."
+        },
+        "failure": {
+          "type": "array",
+          "items": {
+            "title": "error"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "deprecated": "Kept for compatibility through v1.x."
+        }
+      },
+      "required": [
+        "success",
+        "failure"
+      ],
       "additionalProperties": false
     }
   }

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "HelpCenterProps": {
+      "type": "object",
+      "properties": {
+        "docsLink": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Props for `<HelpCenter>` — internal to `<HelpModal>`."
+    }
+  }
+}

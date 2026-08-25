@@ -24,7 +24,8 @@
               "file_name",
               "is_private"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "What a committed upload yields to the consumer. `AttachField` keeps the first `file_url`; `AttachmentsList` keeps the whole array."
           }
         },
         "imageOnly": {
@@ -61,10 +62,12 @@
               ]
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Upload restrictions, in desk's shape (`max_file_size` in bytes, `allowed_file_types` as extensions/MIME globs). Enforced client-side by the uploader before any bytes leave the browser."
         },
         "transport": {
-          "type": "object"
+          "type": "object",
+          "description": "The single seam between the queue and a backend. Receives one file plus its args and a context carrying an `AbortSignal` (cancel) and an `onProgress` callback (bytes loaded / total). Resolves with at least the resulting `file_url`. Swap this out for non-Frappe backends; the default wraps frappe-ui's `useFileUpload` and ports desk's chunked loop for large files."
         }
       },
       "required": [

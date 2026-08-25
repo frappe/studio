@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/AvatarProps",
   "definitions": {
     "AvatarProps": {
       "type": "object",
       "properties": {
         "image": {
-          "type": "string"
+          "type": "string",
+          "description": "Image URL used for the avatar"
         },
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Fallback text shown when the image is missing"
         },
         "size": {
           "type": "string",
@@ -21,14 +22,16 @@
             "xl",
             "2xl",
             "3xl"
-          ]
+          ],
+          "description": "Controls the overall size of the avatar"
         },
         "shape": {
           "type": "string",
           "enum": [
             "circle",
             "square"
-          ]
+          ],
+          "description": "Defines the avatar shape"
         },
         "theme": {
           "type": "string",
@@ -39,7 +42,8 @@
             "amber",
             "red",
             "violet"
-          ]
+          ],
+          "description": "Visual color theme used for the fallback avatar"
         }
       },
       "additionalProperties": false

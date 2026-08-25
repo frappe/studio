@@ -47,9 +47,9 @@ def save_page(page) -> str | None:
 
 
 def dangling_binding_warning(ctx, name: str) -> str:
-	"""Scan the (turn-start) block tree for props still referencing `name` inside a
+	"""Scan the live working tree for props still referencing `name` inside a
 	`{{ }}` binding, so the model can fix dangling references in the same turn."""
-	root = ctx._page_root()
+	root = ctx.page_root()
 	if not root:
 		return ""
 	pattern = re.compile(r"\{\{[^}]*\b" + re.escape(name) + r"\b[^}]*\}\}")

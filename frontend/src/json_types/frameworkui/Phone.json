@@ -46,20 +46,24 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Visual size of the control."
         },
         "variant": {
           "type": "string",
           "enum": [
             "subtle",
             "outline"
-          ]
+          ],
+          "description": "Style variant of the control."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text for the number input."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the country picker and the number input."
         }
       },
       "additionalProperties": false
@@ -68,13 +72,16 @@
       "type": "object",
       "properties": {
         "label": {
-          "type": "object"
+          "type": "object",
+          "description": "Overrides the rendered label content. Receives `{ required }`."
         },
         "description": {
-          "type": "object"
+          "type": "object",
+          "description": "Overrides the rendered description content."
         },
         "suffix": {
-          "type": "object"
+          "type": "object",
+          "description": "Content rendered at the end of the control shell."
         }
       },
       "additionalProperties": false

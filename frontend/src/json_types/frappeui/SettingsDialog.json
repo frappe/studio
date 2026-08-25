@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/SettingsDialogProps",
   "definitions": {
     "SettingsDialogProps": {
       "type": "object",
@@ -19,15 +18,37 @@
             "5xl",
             "6xl",
             "7xl"
-          ]
+          ],
+          "description": "Max-width size of the dialog."
         },
         "shortcut": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Enable the Cmd/Ctrl+Shift+, shortcut that toggles the dialog."
         },
         "unmountOnHide": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Unmount a panel's content when its tab is inactive (reka-ui default: true). Set false to keep visited panels mounted (hidden) — preserves their state and scroll position across tab switches at the cost of memory."
         }
       },
+      "additionalProperties": false
+    },
+    "SettingsDialogEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the dialog is opened or closed."
+        }
+      },
+      "required": [
+        "update:modelValue"
+      ],
       "additionalProperties": false
     }
   }

@@ -683,7 +683,15 @@ const useCodeStore = defineStore("codeStore", () => {
 		eventArgs?: any[],
 	) {
 		try {
-			const context = { ...scriptContext.value, ...slotScope, ...componentContext, eventArgs }
+			const context = {
+				...scriptContext.value,
+				...slotScope,
+				...componentContext,
+				eventArgs,
+				// $event mirrors Vue's inline-handler idiom: the first emitted argument.
+				// handleEvent(...) remains the way to read all arguments by name.
+				$event: eventArgs?.[0],
+			}
 
 			const scriptToExecute = `
 				with (context) {

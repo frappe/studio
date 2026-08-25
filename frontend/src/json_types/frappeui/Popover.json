@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/PopoverProps",
   "definitions": {
     "PopoverProps": {
       "type": "object",
       "properties": {
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls visibility (v-model:open)."
         },
         "side": {
           "type": "string",
@@ -15,7 +15,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Side of the trigger to render the content on."
         },
         "align": {
           "type": "string",
@@ -23,46 +24,58 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Alignment of the content along the chosen side."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Distance in px between the trigger and the content."
         },
         "portalTo": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Where to portal the content."
         },
         "collisionPadding": {
-          "type": "number"
+          "type": "number",
+          "description": "Padding in px kept from the viewport edge during collision handling."
         },
         "dismissible": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the popover closes on outside interaction (click/focus)."
         },
         "matchTriggerWidth": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the content's min-width matches the trigger width."
         },
         "bare": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Render `#default` without the panel shell (no background, border, shadow, or rounding). The content brings its own surface. Mirrors Dialog's `bare`."
         },
         "arrow": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Render a small arrow pointing at the trigger. Styled to match the panel surface."
         },
         "show": {
-          "type": "boolean"
+          "type": "boolean",
+          "deprecated": "Use `open` / `v-model:open`."
         },
         "trigger": {
           "type": "string",
           "enum": [
             "click",
             "hover"
-          ]
+          ],
+          "deprecated": "Use `<HoverCard>` for hover behavior."
         },
         "hoverDelay": {
-          "type": "number"
+          "type": "number",
+          "deprecated": "Use `<HoverCard>` (`hoverDelay`, in seconds)."
         },
         "leaveDelay": {
-          "type": "number"
+          "type": "number",
+          "deprecated": "Use `<HoverCard>` (`leaveDelay`, in seconds)."
         },
         "placement": {
           "type": "string",
@@ -79,7 +92,9 @@
             "bottom",
             "right",
             "left"
-          ]
+          ],
+          "description": "Legacy placement union (deprecated — use `side` + `align`).",
+          "deprecated": "Use `side` + `align`."
         },
         "popoverClass": {
           "anyOf": [
@@ -102,7 +117,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "deprecated": "Use the `data-slot` CSS hooks (no-op)."
         },
         "transition": {
           "type": [
@@ -112,15 +128,22 @@
           "enum": [
             "default",
             null
-          ]
+          ],
+          "deprecated": "Motion is now built in (no-op)."
         },
         "hideOnBlur": {
-          "type": "boolean"
+          "type": "boolean",
+          "deprecated": "Use `dismissible`."
         },
         "matchTargetWidth": {
-          "type": "boolean"
+          "type": "boolean",
+          "deprecated": "Use `matchTriggerWidth`."
         }
       },
+      "additionalProperties": false
+    },
+    "PopoverEmits": {
+      "type": "object",
       "additionalProperties": false
     }
   }

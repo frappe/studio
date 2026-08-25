@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "HelpModalProps": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "type": "string",
+          "description": "App the onboarding status belongs to, e.g. `\"frappecrm\"`."
+        },
+        "title": {
+          "type": "string",
+          "description": "Product name shown in the \"Welcome to …\" heading."
+        },
+        "logo": {
+          "type": "string",
+          "description": "Logo component shown above the heading."
+        },
+        "afterSkip": {
+          "type": "object",
+          "description": "Run after a single step is skipped."
+        },
+        "afterSkipAll": {
+          "type": "object",
+          "description": "Run after every step is skipped."
+        },
+        "afterReset": {
+          "type": "object",
+          "description": "Run after a single step is reset."
+        },
+        "afterResetAll": {
+          "type": "object",
+          "description": "Run after every step is reset."
+        },
+        "docsLink": {
+          "type": "string",
+          "description": "Base URL articles open against."
+        }
+      },
+      "required": [
+        "logo"
+      ],
+      "additionalProperties": false,
+      "description": "Props for `<HelpModal>`."
+    }
+  }
+}

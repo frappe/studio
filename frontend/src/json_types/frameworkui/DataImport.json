@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "DataImportProps": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "doctype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "importName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "doctypeMap": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "listRoute": {
+                "type": "string"
+              },
+              "pageRoute": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "socket": {
+          "type": "object",
+          "properties": {
+            "on": {
+              "type": "object"
+            },
+            "off": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "on",
+            "off"
+          ],
+          "additionalProperties": false,
+          "description": "The app's realtime socket. Given one, the preview table refreshes itself while an import runs. Left out, the user reloads to see progress."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

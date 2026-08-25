@@ -25,11 +25,6 @@
 								onClick: () => (showAppDialog = true),
 							},
 							{
-								label: 'Studio Settings',
-								icon: 'sliders',
-								onClick: () => (store.showStudioSettingsDialog = true),
-							},
-							{
 								label: 'Delete App',
 								icon: 'lucide-trash-2',
 								theme: 'red',
@@ -151,7 +146,6 @@
 			:app="store.activeApp"
 			@update="(app: StudioApp) => store.setApp(app.name)"
 		/>
-		<StudioSettingsDialog v-model:showDialog="store.showStudioSettingsDialog" />
 	</div>
 </template>
 
@@ -165,7 +159,6 @@ import PageOptions from "@/components/PageOptions.vue"
 import StudioLogo from "@/components/Icons/StudioLogo.vue"
 import ExportAppDialog from "@/components/ExportAppDialog.vue"
 import PublishButton from "@/components/PublishButton.vue"
-import StudioSettingsDialog from "@/components/StudioSettingsDialog.vue"
 import AppDialog from "@/components/AppDialog.vue"
 
 import type { StudioMode } from "@/types"

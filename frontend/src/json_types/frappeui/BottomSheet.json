@@ -1,20 +1,58 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/BottomSheetProps",
   "definitions": {
     "BottomSheetProps": {
       "type": "object",
       "properties": {
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls whether the sheet is open (`v-model:open`)."
         },
         "title": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional centered title rendered in the drag-handle area."
         },
         "dismissible": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Allow outside-click, Escape, and swipe-down to close. Default `true`."
         }
       },
+      "additionalProperties": false
+    },
+    "BottomSheetSlots": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "description": "Sheet body, rendered in a scrollable region below the handle."
+        }
+      },
+      "additionalProperties": false
+    },
+    "BottomSheetEmits": {
+      "type": "object",
+      "properties": {
+        "update:open": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the open state changes via `v-model:open`."
+        },
+        "after-leave": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 0,
+          "description": "Fired after the close animation finishes."
+        }
+      },
+      "required": [
+        "update:open",
+        "after-leave"
+      ],
       "additionalProperties": false
     }
   }

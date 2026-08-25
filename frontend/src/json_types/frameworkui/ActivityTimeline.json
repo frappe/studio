@@ -13,10 +13,12 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "email"
+                    "const": "email",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
                   },
                   "timestamp": {
                     "type": "string"
@@ -42,7 +44,8 @@
                   "icon": {
                     "type": [
                       "string"
-                    ]
+                    ],
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {
                     "type": "object",
@@ -117,10 +120,12 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "comment"
+                    "const": "comment",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
                   },
                   "timestamp": {
                     "type": "string"
@@ -146,7 +151,8 @@
                   "icon": {
                     "type": [
                       "string"
-                    ]
+                    ],
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {
                     "type": "object",
@@ -177,10 +183,12 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "attachment_log"
+                    "const": "attachment_log",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
                   },
                   "timestamp": {
                     "type": "string"
@@ -206,7 +214,8 @@
                   "icon": {
                     "type": [
                       "string"
-                    ]
+                    ],
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {
                     "type": "object",
@@ -252,10 +261,12 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "log"
+                    "const": "log",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
                   },
                   "timestamp": {
                     "type": "string"
@@ -281,7 +292,8 @@
                   "icon": {
                     "type": [
                       "string"
-                    ]
+                    ],
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {
                     "type": "object",
@@ -298,20 +310,25 @@
                           "workflow",
                           "info",
                           "view",
-                          "created"
+                          "created",
+                          "edited",
+                          "shared",
+                          "milestone"
                         ]
                       },
                       "text": {
                         "type": "string"
                       },
                       "assignee": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "assignee on assignment logs; bolded alongside the actor (backend-supplied)"
                       },
                       "assignees": {
                         "type": "array",
                         "items": {
                           "type": "string"
-                        }
+                        },
+                        "description": "set when consecutive assignment logs fold into one row; all bolded"
                       }
                     },
                     "required": [
@@ -334,10 +351,12 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "version"
+                    "const": "version",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
                   },
                   "timestamp": {
                     "type": "string"
@@ -363,7 +382,8 @@
                   "icon": {
                     "type": [
                       "string"
-                    ]
+                    ],
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {
                     "anyOf": [
@@ -385,20 +405,24 @@
                                       "type": [
                                         "string",
                                         "null"
-                                      ]
+                                      ],
+                                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                                     },
                                     "timestamp": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "when this net change last happened; shown per-row inside a folded group"
                                     },
                                     "type": {
                                       "type": "string",
                                       "const": "diff"
                                     },
                                     "prefix": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
                                     },
                                     "from": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
                                     },
                                     "to": {
                                       "type": "string"
@@ -423,8 +447,10 @@
                                           "to",
                                           "timestamp"
                                         ],
-                                        "additionalProperties": false
-                                      }
+                                        "additionalProperties": false,
+                                        "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                                      },
+                                      "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
                                     }
                                   },
                                   "required": [
@@ -433,7 +459,8 @@
                                     "to",
                                     "type"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "A shown field change; the frontend lays out the values."
                                 },
                                 {
                                   "type": "object",
@@ -445,17 +472,20 @@
                                       "type": [
                                         "string",
                                         "null"
-                                      ]
+                                      ],
+                                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                                     },
                                     "timestamp": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "when this net change last happened; shown per-row inside a folded group"
                                     },
                                     "type": {
                                       "type": "string",
                                       "const": "phrase"
                                     },
                                     "text": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
                                     }
                                   },
                                   "required": [
@@ -463,10 +493,13 @@
                                     "text",
                                     "type"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "A value-less change described in words (long-text edits, clears, submit/cancel)."
                                 }
-                              ]
-                            }
+                              ],
+                              "description": "One change in a version; `type` picks the layout: diff (from→to) or phrase (value-less)."
+                            },
+                            "description": "set when a sequence folds into >1 change"
                           },
                           "name": {
                             "type": "string"
@@ -475,20 +508,24 @@
                             "type": [
                               "string",
                               "null"
-                            ]
+                            ],
+                            "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                           },
                           "timestamp": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "when this net change last happened; shown per-row inside a folded group"
                           },
                           "type": {
                             "type": "string",
                             "const": "diff"
                           },
                           "prefix": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
                           },
                           "from": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
                           },
                           "to": {
                             "type": "string"
@@ -513,8 +550,10 @@
                                 "to",
                                 "timestamp"
                               ],
-                              "additionalProperties": false
-                            }
+                              "additionalProperties": false,
+                              "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                            },
+                            "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
                           }
                         },
                         "required": [
@@ -542,20 +581,24 @@
                                       "type": [
                                         "string",
                                         "null"
-                                      ]
+                                      ],
+                                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                                     },
                                     "timestamp": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "when this net change last happened; shown per-row inside a folded group"
                                     },
                                     "type": {
                                       "type": "string",
                                       "const": "diff"
                                     },
                                     "prefix": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
                                     },
                                     "from": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
                                     },
                                     "to": {
                                       "type": "string"
@@ -580,8 +623,10 @@
                                           "to",
                                           "timestamp"
                                         ],
-                                        "additionalProperties": false
-                                      }
+                                        "additionalProperties": false,
+                                        "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                                      },
+                                      "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
                                     }
                                   },
                                   "required": [
@@ -590,7 +635,8 @@
                                     "to",
                                     "type"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "A shown field change; the frontend lays out the values."
                                 },
                                 {
                                   "type": "object",
@@ -602,17 +648,20 @@
                                       "type": [
                                         "string",
                                         "null"
-                                      ]
+                                      ],
+                                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                                     },
                                     "timestamp": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "when this net change last happened; shown per-row inside a folded group"
                                     },
                                     "type": {
                                       "type": "string",
                                       "const": "phrase"
                                     },
                                     "text": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
                                     }
                                   },
                                   "required": [
@@ -620,10 +669,13 @@
                                     "text",
                                     "type"
                                   ],
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "A value-less change described in words (long-text edits, clears, submit/cancel)."
                                 }
-                              ]
-                            }
+                              ],
+                              "description": "One change in a version; `type` picks the layout: diff (from→to) or phrase (value-less)."
+                            },
+                            "description": "set when a sequence folds into >1 change"
                           },
                           "name": {
                             "type": "string"
@@ -632,17 +684,20 @@
                             "type": [
                               "string",
                               "null"
-                            ]
+                            ],
+                            "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
                           },
                           "timestamp": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "when this net change last happened; shown per-row inside a folded group"
                           },
                           "type": {
                             "type": "string",
                             "const": "phrase"
                           },
                           "text": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
                           }
                         },
                         "required": [
@@ -666,10 +721,12 @@
                 "additionalProperties": false,
                 "properties": {
                   "key": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Omit for static lists; reorderable rows need a key for stable v-for/scroll."
                   },
                   "type": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "discriminant → picks the renderer/slot"
                   },
                   "timestamp": {
                     "type": "string"
@@ -693,20 +750,24 @@
                     "additionalProperties": false
                   },
                   "icon": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "lucide name or component; per-type default when absent"
                   },
                   "data": {}
                 },
                 "required": [
                   "data",
                   "type"
-                ]
+                ],
+                "description": "Consumer-defined activity; render via the `#item-{type}` slot."
               }
             ]
-          }
+          },
+          "description": "Rows in display order. Custom types render via the `#item-{type}` slot."
         },
         "loading": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "First-load spinner; only shown while there are no activities yet."
         },
         "paginate": {
           "type": "object",
@@ -720,6 +781,10 @@
             "fetchNextPage": {
               "type": "object"
             },
+            "isPagedRow": {
+              "type": "object",
+              "description": "Rows the next page extends, which is where an inline `load_more` row sits. Defaults to email rows."
+            },
             "loadMore": {
               "type": "object",
               "properties": {
@@ -729,18 +794,22 @@
                     "top",
                     "bottom",
                     "inline"
-                  ]
+                  ],
+                  "description": "Placement. \"inline\" injects a `load_more` row above the oldest paged row."
                 },
                 "label": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Button copy; default \"Load more\" / \"lucide-refresh-cw\"."
                 },
                 "icon": {
                   "type": [
                     "string"
-                  ]
+                  ],
+                  "description": "lucide-* string, FeatherIcon name, or a component — same as `Button`'s icon."
                 }
               },
-              "additionalProperties": false
+              "additionalProperties": false,
+              "description": "Load More affordance; omit for a default \"Load more\" button at the top."
             }
           },
           "required": [
@@ -748,7 +817,8 @@
             "isFetchingNextPage",
             "fetchNextPage"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Enables Load More; same object useActivityTimeline returns."
         }
       },
       "required": [

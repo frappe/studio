@@ -1,7 +1,7 @@
 """Tree helpers for the agent's selector tools.
 
-The server already holds the full page tree (the frontend ships it as
-`page_context`), so block selection and inspection are answered here without a
+The server holds the authoritative page tree (the turn's WorkingTree, loaded
+from the DB), so block selection and inspection are answered here without a
 frontend round-trip. These walk the native block dict (componentName /
 componentId / children / …) — the same shape `BlockCodec` operates on.
 """

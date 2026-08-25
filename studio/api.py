@@ -10,7 +10,7 @@ from frappe.model import display_fieldtypes, no_value_fields, std_fields, table_
 from frappe.utils import sbool
 
 from studio.constants import STANDARD_COMPONENT_NAMES
-from studio.utils import has_page_write_perm
+from studio.utils import ensure_developer_file_access, has_page_write_perm
 
 
 @frappe.whitelist()
@@ -329,10 +329,7 @@ def delete_studio_file(frappe_app: str, studio_app: str, file_path: str) -> None
 
 
 def _validate_studio_file_access() -> None:
-	if not frappe.conf.developer_mode:
-		frappe.throw(_("Editing Studio code files is only allowed in developer mode."))
-	if "System Manager" not in frappe.get_roles():
-		frappe.throw(_("You do not have permission to edit Studio code files."), frappe.PermissionError)
+	ensure_developer_file_access()
 
 
 def _studio_app_root(frappe_app: str, studio_app: str) -> str:

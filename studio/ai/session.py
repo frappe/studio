@@ -15,13 +15,19 @@ class AISession:
 	# --- factories --------------------------------------------------------
 
 	@classmethod
-	def get_or_create(cls, page_id: str, model: str | None = None, user: str | None = None):
+	def get_or_create(
+		cls, app_id: str, model: str | None = None, user: str | None = None, page_id: str | None = None
+	):
+		"""The app's most recently used session for this user, creating the first
+		if none exist. An app can hold several parallel sessions; `page_id` seeds a
+		new session's focus page."""
 		user = user or frappe.session.user
 
 		session_name = frappe.db.get_value(
 			cls.DOCTYPE,
-			{"page": page_id, "user": user},
+			{"app": app_id, "user": user},
 			"name",
+			order_by="last_interaction_on desc",
 		)
 		if session_name:
 			doc = frappe.get_doc(cls.DOCTYPE, str(session_name))
@@ -29,12 +35,18 @@ class AISession:
 				doc.selected_model = model
 				doc.save(ignore_permissions=True)
 			return cls(doc)
+		return cls.create(app_id, model, user, page_id)
 
+	@classmethod
+	def create(
+		cls, app_id: str, model: str | None = None, user: str | None = None, page_id: str | None = None
+	):
 		doc = frappe.get_doc(
 			{
 				"doctype": cls.DOCTYPE,
-				"page": page_id,
-				"user": user,
+				"app": app_id,
+				"page": page_id or "",
+				"user": user or frappe.session.user,
 				"selected_model": model or "",
 				"last_interaction_on": frappe.utils.now_datetime(),
 			}
@@ -43,21 +55,22 @@ class AISession:
 		return cls(doc)
 
 	@classmethod
-	def get(cls, session_id: str, page_id: str | None = None, user: str | None = None):
+	def get(cls, session_id: str, app_id: str | None = None, user: str | None = None):
 		user = user or frappe.session.user
 		if not frappe.db.exists(cls.DOCTYPE, session_id):
 			frappe.throw(_("AI session not found"))
 		doc = frappe.get_doc(cls.DOCTYPE, session_id)
 		if doc.user != user:
 			frappe.throw(_("You do not have access to this AI session"))
-		if page_id and doc.page != page_id:
-			frappe.throw(_("AI session does not belong to this page"))
+		if app_id and doc.app != app_id:
+			frappe.throw(_("AI session does not belong to this app"))
 		return cls(doc)
 
 	@classmethod
-	def try_append_message(cls, session_id: str | None, role: str, content: str, **kwargs):
+	def try_append_message(cls, session_id: str | None, role: str, content: str, **kwargs) -> str | None:
 		if session_id and frappe.db.exists(cls.DOCTYPE, session_id):
-			cls(frappe.get_doc(cls.DOCTYPE, session_id)).append_message(role, content, **kwargs)
+			return cls(frappe.get_doc(cls.DOCTYPE, session_id)).append_message(role, content, **kwargs)
+		return None
 
 	@classmethod
 	def build_context_messages_from_id(cls, session_id: str | None) -> list[dict]:
@@ -72,8 +85,27 @@ class AISession:
 		return self._doc.name
 
 	@property
+	def app(self):
+		return self._doc.app
+
+	@property
 	def page(self):
+		"""The session's current focus page — the page its turns target."""
 		return self._doc.page
+
+	def set_selected_model(self, model: str | None) -> None:
+		"""Remember the model the user last ran this chat with, so the picker doesn't
+		snap back to a stale choice when the session reloads after a turn."""
+		if model and self._doc.selected_model != model:
+			self._doc.selected_model = model
+			frappe.db.set_value(self.DOCTYPE, self._doc.name, "selected_model", model, update_modified=False)
+
+	def set_focus_page(self, page_id: str) -> None:
+		"""Record which page this session is working on, so a reloaded editor knows
+		where a running turn's edits are landing."""
+		if page_id and self._doc.page != page_id:
+			self._doc.page = page_id
+			frappe.db.set_value(self.DOCTYPE, self._doc.name, "page", page_id, update_modified=False)
 
 	@property
 	def selected_model(self):
@@ -201,7 +233,7 @@ class AISession:
 		task_type: str | None = None,
 		component_id: str | None = None,
 		metadata: dict | None = None,
-	):
+	) -> str:
 		metadata = metadata or {}
 		# Hoist status to its own column for cheap filtered queries; keep
 		# everything else in metadata_json.
@@ -211,7 +243,7 @@ class AISession:
 			status = (metadata.get("status") or "").strip()
 			meta_clean = {k: v for k, v in metadata.items() if k != "status"}
 
-		frappe.get_doc(
+		message = frappe.get_doc(
 			{
 				"doctype": self.MESSAGE_DOCTYPE,
 				"session": self._doc.name,
@@ -230,6 +262,18 @@ class AISession:
 		if task_type:
 			updates["last_task_type"] = task_type
 		frappe.db.set_value(self.DOCTYPE, self._doc.name, updates, update_modified=False)
+		return message.name
+
+	def expire_pending_actions(self) -> None:
+		"""A new turn supersedes any unanswered approval card. The persisted status is
+		what gates the card's buttons (not client state), so flip it here — an expired
+		proposal can then never be applied."""
+		for name in frappe.get_all(
+			self.MESSAGE_DOCTYPE,
+			filters={"session": self._doc.name, "status": "pending_action"},
+			pluck="name",
+		):
+			frappe.db.set_value(self.MESSAGE_DOCTYPE, name, "status", "action_expired", update_modified=False)
 
 	def update_last_assistant_metadata(self, extra_metadata: dict):
 		"""Merge extra_metadata into the most recent assistant message's
@@ -271,19 +315,3 @@ class AISession:
 		if not session_id or not frappe.db.exists(cls.DOCTYPE, session_id):
 			return False
 		return bool(frappe.db.get_value(cls.DOCTYPE, session_id, "is_running"))
-
-	# --- lifecycle --------------------------------------------------------
-
-	def clear(self):
-		"""Wipe all messages for this session and reset transient state."""
-		frappe.db.delete(self.MESSAGE_DOCTYPE, {"session": self._doc.name})
-		frappe.db.set_value(
-			self.DOCTYPE,
-			self._doc.name,
-			{
-				"is_running": 0,
-				"last_task_type": None,
-				"last_interaction_on": frappe.utils.now_datetime(),
-			},
-			update_modified=False,
-		)

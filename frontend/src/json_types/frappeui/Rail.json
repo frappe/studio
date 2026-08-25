@@ -6,12 +6,14 @@
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Tooltip text and the base of the item's accessible label."
         },
         "icon": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Icon CSS class, e.g. `lucide-search`, or a component. Rendered centered in the cell. Ignored when the default slot is used (for an image, avatar, or initials)."
         },
         "to": {
           "anyOf": [
@@ -21,27 +23,32 @@
             {
               "type": "object"
             }
-          ]
+          ],
+          "description": "Navigation target. When set, the item renders as a router link; otherwise it renders as a button. A `click` event fires in both cases."
         },
         "active": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the item as the current destination (indicator bar / active fill)."
         },
         "badge": {
-          "type": "number"
+          "type": "number",
+          "description": "Unread count. Drives the badge and folds into the accessible label."
         },
         "badgeStyle": {
           "type": "string",
           "enum": [
             "count",
             "dot"
-          ]
+          ],
+          "description": "How the badge renders: a count pill or a small dot."
         },
         "variant": {
           "type": "string",
           "enum": [
             "tile",
             "ghost"
-          ]
+          ],
+          "description": "Visual treatment.\n- `tile` (default): a filled cell with a left indicator bar when active —   for image/avatar items like communities or workspaces.\n- `ghost`: transparent until hovered, a raised highlight when active — for   icon shortcuts like Search or Notifications."
         }
       },
       "required": [

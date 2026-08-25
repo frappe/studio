@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/TimePickerProps",
   "definitions": {
     "TimePickerProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,24 +40,32 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "modelValue": {
-          "type": "string"
+          "type": "string",
+          "description": "Controlled value, canonical `HH:mm` (or `HH:mm:ss`)."
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "Uncontrolled initial value.",
+          "deprecated": "Use `modelValue` with `v-model` instead."
         },
         "interval": {
-          "type": "number"
+          "type": "number",
+          "description": "Minute interval between generated options."
         },
         "options": {
           "type": "array",
@@ -74,7 +83,8 @@
               "value"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Caller-provided option values; bypasses the generated grid."
         },
         "side": {
           "type": "string",
@@ -83,7 +93,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Preferred popover side."
         },
         "align": {
           "type": "string",
@@ -91,10 +102,12 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Alignment of the popover along the trigger edge."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Gap between trigger and popover in pixels."
         },
         "placement": {
           "type": "string",
@@ -107,17 +120,21 @@
             "right-end",
             "left-start",
             "left-end"
-          ]
+          ],
+          "description": "Combined side+align placement.",
+          "deprecated": "Use `side` and `align` instead."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text when no value is selected."
         },
         "variant": {
           "type": "string",
           "enum": [
             "outline",
             "subtle"
-          ]
+          ],
+          "description": "Visual style variant."
         },
         "size": {
           "type": "string",
@@ -126,52 +143,74 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Visual size of the trigger input. Forwarded to the underlying `TextInput`."
         },
         "typeable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the trigger input accepts typed input. When `false` the user can still open the popover and pick a time, but cannot type a time manually. Default: `true`."
         },
         "readonly": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Prevents manual typing while keeping the picker interactive.",
+          "deprecated": "Use `typeable: false` instead."
         },
         "allowCustom": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Allows users to type custom time values.",
+          "deprecated": "Use `typeable: false` instead."
         },
         "keepOpen": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Keeps the popover open after a time is selected."
         },
         "autoClose": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Closes the popover after a value is picked.",
+          "deprecated": "Use `keepOpen` (inverse semantics)."
         },
         "use12Hour": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Use 12-hour (am/pm) format for display.",
+          "deprecated": "Use `format` instead."
         },
         "format": {
-          "type": "string"
+          "type": "string",
+          "description": "Dayjs format string used for display. Default: `HH:mm`."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disable the time picker."
         },
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controlled popover open state. Use with `v-model:open` for two-way binding."
         },
         "openOnFocus": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input receives focus. Default: false."
         },
         "openOnClick": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input is clicked. Default: true."
         },
         "min": {
-          "type": "string"
+          "type": "string",
+          "description": "Minimum selectable time as `HH:mm[:ss]`."
         },
         "max": {
-          "type": "string"
+          "type": "string",
+          "description": "Maximum selectable time as `HH:mm[:ss]`."
         },
         "minTime": {
-          "type": "string"
+          "type": "string",
+          "description": "Minimum selectable time as `HH:mm[:ss]`.",
+          "deprecated": "Use `min` instead."
         },
         "maxTime": {
-          "type": "string"
+          "type": "string",
+          "description": "Maximum selectable time as `HH:mm[:ss]`.",
+          "deprecated": "Use `max` instead."
         },
         "scrollMode": {
           "type": "string",
@@ -179,9 +218,15 @@
             "center",
             "start",
             "nearest"
-          ]
+          ],
+          "description": "Scroll behavior when opening the list.",
+          "deprecated": "Scrolling is always centered now."
         }
       },
+      "additionalProperties": false
+    },
+    "TimePickerEmits": {
+      "type": "object",
       "additionalProperties": false
     }
   }

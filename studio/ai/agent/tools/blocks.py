@@ -1,5 +1,6 @@
-"""Block-editing tools. All are client-side: the loop batches the operations
-and the frontend applies them to the canvas block tree."""
+"""Block-editing tools. Applied server-side to the turn's WorkingTree (which
+persists the draft and assigns new-block ids), then mirrored to the editor
+canvas — see agent/tree.py and agent/loop.py."""
 
 from studio.ai.agent.registry import Tool
 
@@ -128,7 +129,7 @@ add_block = Tool(
 					"tstyle": {"type": "object", "description": "Tablet style overrides."},
 					"events": {
 						"type": "object",
-						"description": 'Event handlers: eventName → JS script, e.g. {"click":"counter.value++"}. Variables are refs (write with .value).',
+						"description": 'Event handlers: eventName → JS script, e.g. {"click":"counter.value++"}. Variables are refs (write with .value). `$event` = the event\'s first argument (as in Vue); use modifiers on the name for prevent/stop ("dragover.prevent", "keydown.enter").',
 					},
 					"visibility": {
 						"type": "string",
@@ -201,8 +202,8 @@ set_slot = Tool(
 		"Fill a NAMED slot of a block that ALREADY EXISTS on the page — the component-specific slots "
 		"a frappe-ui component exposes beyond its default slot (e.g. a card's header/footer, a custom "
 		"prefix/suffix). Replaces that slot's content with 'blocks' (a list of block definitions in the "
-		"add_block schema — they get their ids on the canvas, so bake any bindings/events into their "
-		"props). A slot only holds blocks: for a text label use a TextBlock. For default-slot content, "
+		"add_block schema — bake any bindings/events into their props at creation). A slot only holds "
+		"blocks: for a text label use a TextBlock. For default-slot content, "
 		"add children with add_block instead; for a block you are CREATING this turn, put named slots in "
 		"its add_block 'slots' field rather than calling this."
 	),

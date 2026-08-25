@@ -44,10 +44,12 @@
               ]
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Upload restrictions, in desk's shape (`max_file_size` in bytes, `allowed_file_types` as extensions/MIME globs). Enforced client-side by the uploader before any bytes leave the browser."
         },
         "transport": {
-          "type": "object"
+          "type": "object",
+          "description": "The single seam between the queue and a backend. Receives one file plus its args and a context carrying an `AbortSignal` (cancel) and an `onProgress` callback (bytes loaded / total). Resolves with at least the resulting `file_url`. Swap this out for non-Frappe backends; the default wraps frappe-ui's `useFileUpload` and ports desk's chunked loop for large files."
         },
         "progressMode": {
           "type": "string",
@@ -56,13 +58,15 @@
             "tray",
             "field",
             "toast"
-          ]
+          ],
+          "description": "Which view renders an upload's progress:  - `inline`  — per-row bar + footer summary (dialog default)  - `tray`    — minimized floating card that survives the dialog closing  - `field`   — surface spinner on the consuming field  - `toast`   — terminal state when the user left both dialog and tray"
         },
         "folder": {
           "type": "string"
         },
         "title": {
-          "type": "string"
+          "type": "string",
+          "description": "Accepted for API compatibility with the tabbed dialog; not rendered here."
         },
         "trayLabel": {
           "type": "string"

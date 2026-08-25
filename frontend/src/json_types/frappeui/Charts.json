@@ -27,7 +27,8 @@
           "enum": [
             "rtl",
             "ltr"
-          ]
+          ],
+          "description": "Forces layout direction; defaults to document.documentElement.dir"
         },
         "xAxis": {
           "type": "object",

@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/ToastProps",
   "definitions": {
     "ToastProps": {
       "type": "object",
       "properties": {
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls whether the toast is visible (required)"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "description": "Message content rendered inside the toast"
         },
         "type": {
           "type": "string",
@@ -18,35 +19,43 @@
             "success",
             "warning",
             "error"
-          ]
+          ],
+          "description": "Visual tone of the toast"
         },
         "duration": {
-          "type": "number"
+          "type": "number",
+          "description": "Auto-dismiss duration in milliseconds"
         },
         "icon": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional custom icon rendered before the message"
         },
         "closable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the close button is shown"
         },
         "action": {
           "type": "object",
           "properties": {
             "label": {
-              "type": "string"
+              "type": "string",
+              "description": "Label shown for the toast action"
             },
             "altText": {
-              "type": "string"
+              "type": "string",
+              "description": "Accessible text announced for the action control"
             },
             "onClick": {
-              "type": "object"
+              "type": "object",
+              "description": "Callback invoked when the action is triggered"
             }
           },
           "required": [
             "label",
             "onClick"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Optional action rendered on the right side of the toast"
         }
       },
       "required": [

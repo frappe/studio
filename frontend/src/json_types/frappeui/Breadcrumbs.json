@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/BreadcrumbsProps",
   "definitions": {
     "BreadcrumbsProps": {
       "type": "object",
@@ -11,7 +10,8 @@
             "type": "object",
             "properties": {
               "label": {
-                "type": "string"
+                "type": "string",
+                "description": "Text shown for the breadcrumb item"
               },
               "route": {
                 "anyOf": [
@@ -21,16 +21,22 @@
                   {
                     "type": "object"
                   }
-                ]
+                ],
+                "description": "Route location used when the item is a link"
               },
               "onClick": {
-                "type": "object"
+                "type": "object",
+                "description": "Click handler for non-router breadcrumb items"
               }
             },
             "required": [
               "label"
-            ]
-          }
+            ],
+            "additionalProperties": {
+              "description": "Allows passing additional custom fields"
+            }
+          },
+          "description": "Ordered list of breadcrumb items"
         }
       },
       "required": [

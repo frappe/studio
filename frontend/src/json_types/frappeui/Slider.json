@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/SliderProps",
   "definitions": {
     "SliderProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,36 +40,68 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "step": {
-          "type": "number"
+          "type": "number",
+          "description": "Step interval between slider values."
         },
         "max": {
-          "type": "number"
+          "type": "number",
+          "description": "Maximum allowed slider value."
         },
         "min": {
-          "type": "number"
+          "type": "number",
+          "description": "Minimum allowed slider value. Negative values enable bidirectional fill from zero."
         },
         "size": {
           "type": "string",
           "enum": [
             "sm",
             "md"
-          ]
+          ],
+          "description": "Visual size of the slider."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the slider."
         }
       },
+      "additionalProperties": false
+    },
+    "SliderEmits": {
+      "type": "object",
+      "properties": {
+        "value-commit": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Value model for the Slider component. Use one number for a single-value slider or two numbers for a range slider.",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired once when the user finishes dragging the slider."
+        }
+      },
+      "required": [
+        "value-commit"
+      ],
       "additionalProperties": false
     }
   }

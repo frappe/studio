@@ -1,0 +1,248 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "DateRangePickerProps": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
+        },
+        "description": {
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "stack": {
+                  "type": "string"
+                },
+                "messages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "message",
+                "name"
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
+            }
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
+        },
+        "id": {
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ],
+          "description": "Preferred popover side relative to the trigger."
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end"
+          ],
+          "description": "Alignment of the popover along the trigger edge."
+        },
+        "offset": {
+          "type": "number",
+          "description": "Gap between the trigger and popover content in pixels."
+        },
+        "placement": {
+          "type": "string",
+          "enum": [
+            "top-start",
+            "top-end",
+            "bottom-start",
+            "bottom-end",
+            "right-start",
+            "right-end",
+            "left-start",
+            "left-end"
+          ],
+          "description": "Preferred popover placement relative to the trigger.",
+          "deprecated": "Use `side` and `align` instead."
+        },
+        "format": {
+          "type": "string",
+          "description": "Display format used for the input text."
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ],
+          "description": "Size of the trigger input."
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "subtle",
+            "outline",
+            "ghost"
+          ],
+          "description": "Visual style variant passed through to the input."
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "Placeholder text shown when no value is selected."
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Controls popover open state (for controlled usage)."
+        },
+        "openOnFocus": {
+          "type": "boolean",
+          "description": "Opens the popover when the input receives focus. Default: false."
+        },
+        "openOnClick": {
+          "type": "boolean",
+          "description": "Opens the popover when the input is clicked. Default: true."
+        },
+        "typeable": {
+          "type": "boolean",
+          "description": "Whether the trigger input accepts typed input. When `false` the user can still open the popover and pick a date, but cannot type a date manually. Default: `true`."
+        },
+        "readonly": {
+          "type": "boolean",
+          "description": "Prevents manual typing while keeping the picker interactive.",
+          "deprecated": "Use `typeable: false` instead."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Disables the trigger input and calendar interactions."
+        },
+        "clearable": {
+          "type": "boolean",
+          "description": "Shows clear and quick-action controls when enabled."
+        },
+        "keepOpen": {
+          "type": "boolean",
+          "description": "Keeps the popover open after a date is selected. Default: false."
+        },
+        "autoClose": {
+          "type": "boolean",
+          "description": "Closes the popover after a value is picked.",
+          "deprecated": "Use `keepOpen` instead (inverse semantics: `autoClose: false` → `keepOpen: true`)."
+        },
+        "min": {
+          "type": "string",
+          "description": "Earliest selectable date. Accepts `YYYY-MM-DD` (or, for `DateTimePicker`, `YYYY-MM-DD HH:mm:ss` for second-level granularity)."
+        },
+        "max": {
+          "type": "string",
+          "description": "Latest selectable date. Accepts `YYYY-MM-DD` (or, for `DateTimePicker`, `YYYY-MM-DD HH:mm:ss` for second-level granularity)."
+        },
+        "isDateUnavailable": {
+          "type": "object",
+          "description": "Return true to prevent a date from being selected. Combined with `min`/`max`."
+        },
+        "allowCustom": {
+          "type": "boolean",
+          "description": "Allows users to type custom date text into the input.",
+          "deprecated": "Use `typeable: false` instead."
+        },
+        "inputClass": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "description": "Additional classes applied to the trigger input.",
+          "deprecated": "Apply `class` directly to the DatePicker component element to control width."
+        },
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Uncontrolled initial range value as `[from, to]` in `YYYY-MM-DD` format.",
+          "deprecated": "Use `modelValue` with `v-model` instead."
+        },
+        "modelValue": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Controlled range value as `[from, to]` in `YYYY-MM-DD` format, or `[]` for no selection."
+        },
+        "dualPane": {
+          "type": "boolean",
+          "description": "Render two calendar panels side by side (current month + next month)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "DateRangePickerSlots": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object"
+        },
+        "target": {
+          "type": "object",
+          "deprecated": "Use `#trigger` instead."
+        },
+        "prefix": {
+          "type": "object"
+        },
+        "suffix": {
+          "type": "object"
+        },
+        "actions": {
+          "type": "object",
+          "description": "Sidebar rendered to the left of the calendar. Use for range shortcuts (\"Last 7 days\", \"Last 12 months\") and other preset actions. When omitted, the popover shows the calendar only."
+        }
+      },
+      "additionalProperties": false
+    },
+    "DateRangePickerEmits": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  }
+}

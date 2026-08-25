@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/TabsProps",
   "definitions": {
     "TabsProps": {
       "type": "object",
       "properties": {
         "as": {
-          "type": "string"
+          "type": "string",
+          "description": "Element/component used to render the tab container."
         },
         "tabs": {
           "type": "array",
@@ -14,42 +14,71 @@
             "type": "object",
             "properties": {
               "label": {
-                "type": "string"
+                "type": "string",
+                "description": "Text shown for the tab."
               },
               "icon": {
                 "type": [
                   "string"
-                ]
+                ],
+                "description": "Optional icon shown with the label. Pass a `lucide-*` class string for the recommended class-based form, or a Vue component for custom icons."
               },
               "route": {
-                "type": "string"
+                "type": "string",
+                "description": "Optional route to navigate to when the tab is clicked."
               }
             },
             "required": [
               "label"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "List of tabs to render."
         },
         "vertical": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Renders tabs vertically instead of horizontally."
         },
         "modelValue": {
           "type": [
             "string",
             "number"
-          ]
+          ],
+          "description": "Currently selected tab value."
         },
         "dir": {
           "type": "string",
           "enum": [
             "rtl",
             "ltr"
-          ]
+          ],
+          "description": "Forces layout direction; defaults to `document.documentElement.dir`."
         }
       },
       "required": [
         "tabs"
+      ],
+      "additionalProperties": false
+    },
+    "TabsEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the selected tab changes."
+        }
+      },
+      "required": [
+        "update:modelValue"
       ],
       "additionalProperties": false
     }

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "SidebarLabelProps": {
+      "type": "object",
+      "properties": {
+        "divider": {
+          "type": "boolean",
+          "description": "When true, collapses to a horizontal divider while the sidebar is collapsed (matches the previous `SidebarSection` label behavior)."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -15,9 +15,12 @@ export interface DispatchContext {
 }
 
 /**
- * Applies the agent's client-side tool operations to the canvas block tree using
- * Studio's block API. Each op the backend emits in `ai_chat_tool_batch` maps to a
- * setter here. Reads the same field names the tools declare (see studio/ai/agent/tools).
+ * Mirrors the agent's block ops onto the canvas. The server already applied and
+ * persisted every op it emits (studio/ai/agent/tree.py is the authoritative applier;
+ * rejected ops are never emitted) — this class only replays the accepted ops on the
+ * in-memory block tree so the open editor updates live. It must never save.
+ * New blocks arrive pre-expanded with server-assigned ids (`block_json`/`blocks_json`),
+ * so canvas refs always match the persisted draft.
  */
 export class ToolDispatcher {
 	constructor(private readonly ctx: DispatchContext) {}
@@ -96,9 +99,9 @@ export class ToolDispatcher {
 	private addBlock(args: Record<string, any>) {
 		const parent = this.ctx.getCanvas()?.findBlock(args.parent_component_id)
 		if (!parent) return
-		const options = expandBlock(args.block || {})
-		// The server assigned the id (echoed in args.component_id) so client and server agree.
-		if (args.component_id) options.componentId = args.component_id
+		// block_json is the server-expanded tree with ids assigned at apply time — using it
+		// verbatim keeps every ref (children included) identical to the persisted draft.
+		const options = (args.block_json as BlockOptions) ?? expandBlock(args.block || {})
 		const sibling = args.after_component_id
 			? parent.children?.find((c) => c.componentId === args.after_component_id)
 			: null
@@ -130,16 +133,20 @@ export class ToolDispatcher {
 		newParent.addChild(options, typeof args.index === "number" ? args.index : null)
 	}
 
-	/** Fill a named slot of an existing block, replacing it with expanded child blocks
-	 * (their ids are assigned on the canvas). */
+	/** Fill a named slot of an existing block, replacing its content. Prefers the
+	 * server-expanded blocks (ids assigned at apply time) over re-expanding locally. */
 	private setSlot(args: Record<string, any>) {
 		const block = this.ctx.getCanvas()?.findBlock(args.component_id)
 		if (!block || !args.slot_name) return
-		if (Array.isArray(args.blocks)) {
-			if (!block.getSlot(args.slot_name)) block.addSlot(args.slot_name)
-			block.getSlot(args.slot_name).slotContent = []
-			for (const child of args.blocks) block.updateSlot(args.slot_name, expandBlock(child))
-		}
+		const content = Array.isArray(args.blocks_json)
+			? (args.blocks_json as BlockOptions[])
+			: Array.isArray(args.blocks)
+				? args.blocks.map(expandBlock)
+				: null
+		if (!content) return
+		if (!block.getSlot(args.slot_name)) block.addSlot(args.slot_name)
+		block.getSlot(args.slot_name).slotContent = []
+		for (const child of content) block.updateSlot(args.slot_name, child)
 	}
 
 	/** Remove a named slot (and its content) from an existing block. */

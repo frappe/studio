@@ -54,7 +54,6 @@ const useStudioStore = defineStore("store", () => {
 
 	// dialogs
 	const showSearchBlock = ref(false)
-	const showStudioSettingsDialog = ref(false)
 	const showPageOptions = ref(false)
 
 	// studio apps
@@ -261,6 +260,18 @@ const useStudioStore = defineStore("store", () => {
 	function syncPageModified(response: any) {
 		const modified = response?.docs?.[0]?.modified ?? response?.modified ?? response?.message
 		if (activePage.value && modified) activePage.value.modified = modified
+	}
+
+	/** The AI agent persisted this page's draft server-side: adopt its timestamp (so the
+	 * user's next manual save doesn't raise a stale-write conflict) and refresh the local
+	 * draft marker (drives the "Revert Changes" option). The canvas itself was already
+	 * updated by the mirrored ops — nothing is saved from here. */
+	function adoptServerSave(modified?: string) {
+		if (!activePage.value) return
+		if (modified) activePage.value.modified = modified
+		const canvasStore = useCanvasStore()
+		const root = canvasStore.activeCanvas?.getRootBlock() ?? pageBlocks.value?.[0]
+		if (root) activePage.value.draft_blocks = jsToJson([getBlockCopyWithoutParent(root)])
 	}
 
 	async function refreshActivePageModified() {
@@ -694,7 +705,6 @@ const useStudioStore = defineStore("store", () => {
 		componentContextMenu,
 		// dialogs
 		showSearchBlock,
-		showStudioSettingsDialog,
 		showPageOptions,
 		// studio app
 		activeApp,
@@ -726,6 +736,7 @@ const useStudioStore = defineStore("store", () => {
 		savePage,
 		updateActivePage,
 		syncPageModified,
+		adoptServerSave,
 		refreshActivePageModified,
 		reloadActivePageScript,
 		publishPage,

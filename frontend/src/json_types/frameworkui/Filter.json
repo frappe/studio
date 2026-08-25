@@ -5,13 +5,15 @@
       "type": "object",
       "properties": {
         "doctype": {
-          "type": "string"
+          "type": "string",
+          "description": "Doctype whose Meta drives the filterable fields and per-fieldtype operators."
         }
       },
       "required": [
         "doctype"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Props for `<Filter>`. The conditions are a separate `v-model` (`Filter[]`)."
     }
   }
 }

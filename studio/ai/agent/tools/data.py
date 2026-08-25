@@ -12,6 +12,8 @@ canvas; add the data source FIRST, then lay out and bind the blocks — that ord
 keeps the canvas block edits from racing this save.
 """
 
+import frappe
+
 from studio.ai.agent.registry import Tool
 from studio.ai.agent.tools.page import dangling_binding_warning, load_page, save_page, text_arg
 from studio.ai.block_codec import BlockCodec
@@ -79,10 +81,16 @@ def run_add_data_source(ctx, args: dict) -> str:
 	if _find_resource(page, name):
 		return f"FAILED: a data source named '{name}' already exists. Use update_data_source to change it."
 
-	page.append("resources", _build_row(name, source_type, args))
+	row = page.append("resources", _build_row(name, source_type, args))
 	if error := save_page(page):
 		return f"FAILED: {error}"
 	_reload(ctx, page)
+	if error := _dry_run_error(row):
+		return (
+			f"Added {source_type} data source '{name}', but the test fetch reports: {error} "
+			"The page will hit this same error — fix the source with update_data_source "
+			"before binding blocks to it."
+		)
 	return f"Added {source_type} data source '{name}'. Bind blocks to it with {{{{ {name}.data }}}}."
 
 
@@ -113,6 +121,11 @@ def run_update_data_source(ctx, args: dict) -> str:
 	if error := save_page(page):
 		return f"FAILED: {error}"
 	_reload(ctx, page)
+	if error := _dry_run_error(row):
+		return (
+			f"Updated data source '{name}' ({', '.join(changed)}), but the test fetch reports: {error} "
+			"The page will hit this same error — fix the source before relying on it."
+		)
 	return f"Updated data source '{name}' ({', '.join(changed)})."
 
 
@@ -179,6 +192,75 @@ def _apply_changes(row, args: dict) -> list[str]:
 
 
 # --- resource-specific helpers --------------------------------------------
+
+
+def _dry_run_error(row) -> str | None:
+	"""Execute the saved source once, server-side, so a broken definition surfaces
+	in THIS tool result instead of at render time. Read-only mirrors of the
+	runtime's frappe.client calls, as the same user; API Resources are skipped
+	(arbitrary URLs and methods — not safe to fire from the worker)."""
+	try:
+		if row.resource_type == "Document List":
+			fields = _parse_json_field(row.get("fields")) or ["name"]
+			frappe.get_list(
+				row.document_type,
+				fields=fields,
+				filters=_parse_json_field(row.get("filters")),
+				order_by=f"{row.sort_field} {row.get('sort_order') or 'desc'}"
+				if row.get("sort_field")
+				else None,
+				limit_page_length=1,
+			)
+			if unknown := _unknown_fields(row.document_type, fields):
+				return (
+					f"field(s) {unknown} don't exist on {row.document_type} — Frappe drops them "
+					"silently, so bindings to them will render blank. Use real fieldnames "
+					"(get_doctype_fields)."
+				)
+		elif row.resource_type == "Document":
+			_dry_run_document(row)
+	except Exception as error:
+		message = str(error).strip().splitlines()
+		return (message[0] if message else repr(error))[:300]
+	return None
+
+
+def _unknown_fields(doctype: str, fields: list) -> list[str]:
+	"""Requested fields the DocType doesn't have. Only plain fieldnames are judged —
+	'*', aliases, dotted child fetches and expressions pass through untouched."""
+	from frappe.model import default_fields
+
+	meta = frappe.get_meta(doctype)
+	return [
+		f
+		for f in fields
+		if isinstance(f, str)
+		and f.replace("_", "").isalnum()
+		and f not in default_fields
+		and not meta.get_field(f)
+	]
+
+
+def _dry_run_document(row) -> None:
+	if row.get("fetch_document_using_filters"):
+		if filters := _parse_json_field(row.get("filters")):
+			frappe.get_list(row.document_type, filters=filters, limit_page_length=1)
+		return
+	name = str(row.get("document_name") or "").strip()
+	if not name or "{{" in name:
+		return  # dynamic or unset name — resolvable only at render time
+	frappe.get_doc(row.document_type, name).check_permission("read")
+
+
+def _parse_json_field(value):
+	"""Child-row fields/filters arrive as JSON strings from the editor but as real
+	lists/dicts from tool args — accept both."""
+	if isinstance(value, str) and value.strip():
+		try:
+			return frappe.parse_json(value)
+		except Exception:
+			return None
+	return value if isinstance(value, list | dict) else None
 
 
 def _find_resource(page, name: str):

@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/ComboboxProps",
   "definitions": {
     "ComboboxProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,15 +40,19 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "options": {
           "type": "array",
@@ -84,10 +89,12 @@
                     "type": "string"
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "slotName": {
-                    "type": "string"
+                    "type": "string",
+                    "deprecated": "use `slot`"
                   },
                   "render": {
                     "anyOf": [
@@ -97,7 +104,8 @@
                       {
                         "type": "object"
                       }
-                    ]
+                    ],
+                    "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                   }
                 },
                 "required": [
@@ -133,10 +141,12 @@
                     "type": "string"
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "slotName": {
-                    "type": "string"
+                    "type": "string",
+                    "deprecated": "use `slot`"
                   },
                   "onClick": {
                     "type": "object"
@@ -155,7 +165,8 @@
                       {
                         "type": "object"
                       }
-                    ]
+                    ],
+                    "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                   }
                 },
                 "required": [
@@ -215,10 +226,12 @@
                               "type": "string"
                             },
                             "slots": {
-                              "type": "object"
+                              "type": "object",
+                              "description": "Per-item inline slot implementations for the row shell."
                             },
                             "slotName": {
-                              "type": "string"
+                              "type": "string",
+                              "deprecated": "use `slot`"
                             },
                             "render": {
                               "anyOf": [
@@ -228,7 +241,8 @@
                                 {
                                   "type": "object"
                                 }
-                              ]
+                              ],
+                              "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                             }
                           },
                           "required": [
@@ -264,10 +278,12 @@
                               "type": "string"
                             },
                             "slots": {
-                              "type": "object"
+                              "type": "object",
+                              "description": "Per-item inline slot implementations for the row shell."
                             },
                             "slotName": {
-                              "type": "string"
+                              "type": "string",
+                              "deprecated": "use `slot`"
                             },
                             "onClick": {
                               "type": "object"
@@ -286,7 +302,8 @@
                                 {
                                   "type": "object"
                                 }
-                              ]
+                              ],
+                              "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                             }
                           },
                           "required": [
@@ -307,14 +324,16 @@
                 "additionalProperties": false
               }
             ]
-          }
+          },
+          "description": "Options rendered in the popover."
         },
         "trigger": {
           "type": "string",
           "enum": [
             "input",
             "button"
-          ]
+          ],
+          "description": "Shape of the trigger.\n- `'input'` (default): user types directly into the trigger\n- `'button'`: render a button trigger; search input moves into the   popover header. Label + prefix auto-derive from the selected option."
         },
         "variant": {
           "type": "string",
@@ -322,7 +341,8 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Visual style of the combobox."
         },
         "size": {
           "type": "string",
@@ -331,22 +351,28 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size of the trigger and option rows."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text shown when no value is selected."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the combobox."
         },
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls the popover visibility."
         },
         "openOnFocus": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input receives focus."
         },
         "openOnClick": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input is clicked."
         },
         "side": {
           "type": "string",
@@ -355,7 +381,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Preferred popover side."
         },
         "align": {
           "type": "string",
@@ -363,24 +390,30 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Preferred popover alignment."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Gap between trigger and content."
         },
         "portalTo": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Teleport target for the popover content."
         },
         "allowCustomValue": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Free-form acceptance: the typed query is accepted as the model value when nothing matches, and external `modelValue` updates with unknown strings are preserved. The combobox also renders a built-in \"Create X\" row as a click affordance.\n\nFor richer create-new UX (custom label / icon / persistence callback), prefer a `type: 'custom'` option with `condition` instead — see the Create New story. The two are independent and can be combined."
         },
         "loading": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Replaces the results with a loading state."
         },
         "emptyText": {
-          "type": "string"
+          "type": "string",
+          "description": "Fallback empty-state copy."
         },
         "placement": {
           "type": "string",
@@ -388,9 +421,517 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "deprecated": "use `align` instead; `placement` is kept as a back-compat alias",
+          "description": "Alignment of the popover along the trigger edge."
         }
       },
+      "additionalProperties": false
+    },
+    "ComboboxSlots": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "description": "Fully custom trigger renderer."
+        },
+        "label": {
+          "type": "object",
+          "description": "Overrides the rendered label content. Receives `{ required }`."
+        },
+        "description": {
+          "type": "object",
+          "description": "Overrides the rendered description content."
+        },
+        "prefix": {
+          "type": "object",
+          "description": "Content rendered before the default input. Receives the same shape as the other control slots."
+        },
+        "suffix": {
+          "type": "object",
+          "description": "Content rendered after the input (input mode) or label (button mode). Providing this slot **replaces the default chevron** — render your own fallback (e.g. the chevron) when your slot content is conditional. Common use: an inline clear button. Use `@click.stop` and `@pointerdown.stop` so the press doesn't toggle the popover."
+        },
+        "item-prefix": {
+          "type": "object",
+          "description": "Shared content rendered before the standard row label."
+        },
+        "item-label": {
+          "type": "object",
+          "description": "Shared content rendered for the standard row label area."
+        },
+        "item-suffix": {
+          "type": "object",
+          "description": "Shared content rendered after the standard row label area."
+        },
+        "item": {
+          "type": "object",
+          "description": "Replaces the entire row."
+        },
+        "group-label": {
+          "type": "object",
+          "description": "Custom renderer for group labels."
+        },
+        "empty": {
+          "type": "object",
+          "description": "Fallback content rendered when there are no results."
+        },
+        "footer": {
+          "type": "object",
+          "description": "Content rendered after the list. Stays pinned below the scrollable options."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object"
+          },
+          {
+            "not": {}
+          }
+        ]
+      }
+    },
+    "ComboboxEmits": {
+      "type": "object",
+      "properties": {
+        "update:open": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the open state changes."
+        },
+        "update:query": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the query changes due to user input."
+        },
+        "update:selectedOption": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "option"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "slot": {
+                    "type": "string"
+                  },
+                  "slots": {
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
+                  },
+                  "slotName": {
+                    "type": "string",
+                    "deprecated": "use `slot`"
+                  },
+                  "render": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ],
+                    "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
+                  }
+                },
+                "required": [
+                  "label",
+                  "value"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "custom"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": [
+                      "string"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "slot": {
+                    "type": "string"
+                  },
+                  "slots": {
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
+                  },
+                  "slotName": {
+                    "type": "string",
+                    "deprecated": "use `slot`"
+                  },
+                  "onClick": {
+                    "type": "object"
+                  },
+                  "keepOpen": {
+                    "type": "boolean"
+                  },
+                  "condition": {
+                    "type": "object"
+                  },
+                  "render": {
+                    "anyOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ],
+                    "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
+                  }
+                },
+                "required": [
+                  "type",
+                  "key",
+                  "label",
+                  "onClick"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "option"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the resolved selected option changes."
+        },
+        "focus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bubbles": {
+                "type": "boolean"
+              },
+              "cancelBubble": {
+                "type": "boolean"
+              },
+              "cancelable": {
+                "type": "boolean"
+              },
+              "composed": {
+                "type": "boolean"
+              },
+              "currentTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "defaultPrevented": {
+                "type": "boolean"
+              },
+              "eventPhase": {
+                "type": "number"
+              },
+              "isTrusted": {
+                "type": "boolean"
+              },
+              "returnValue": {
+                "type": "boolean"
+              },
+              "srcElement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "timeStamp": {
+                "type": "number"
+              },
+              "type": {
+                "type": "string"
+              },
+              "NONE": {
+                "type": "number",
+                "const": 0
+              },
+              "CAPTURING_PHASE": {
+                "type": "number",
+                "const": 1
+              },
+              "AT_TARGET": {
+                "type": "number",
+                "const": 2
+              },
+              "BUBBLING_PHASE": {
+                "type": "number",
+                "const": 3
+              },
+              "detail": {
+                "type": "number"
+              },
+              "view": {
+                "type": "null"
+              },
+              "which": {
+                "type": "number"
+              },
+              "relatedTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "AT_TARGET",
+              "BUBBLING_PHASE",
+              "CAPTURING_PHASE",
+              "NONE",
+              "bubbles",
+              "cancelBubble",
+              "cancelable",
+              "composed",
+              "currentTarget",
+              "defaultPrevented",
+              "detail",
+              "eventPhase",
+              "isTrusted",
+              "relatedTarget",
+              "returnValue",
+              "srcElement",
+              "target",
+              "timeStamp",
+              "type",
+              "view",
+              "which"
+            ],
+            "additionalProperties": false,
+            "title": "event"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the input receives focus."
+        },
+        "blur": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bubbles": {
+                "type": "boolean"
+              },
+              "cancelBubble": {
+                "type": "boolean"
+              },
+              "cancelable": {
+                "type": "boolean"
+              },
+              "composed": {
+                "type": "boolean"
+              },
+              "currentTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "defaultPrevented": {
+                "type": "boolean"
+              },
+              "eventPhase": {
+                "type": "number"
+              },
+              "isTrusted": {
+                "type": "boolean"
+              },
+              "returnValue": {
+                "type": "boolean"
+              },
+              "srcElement": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "timeStamp": {
+                "type": "number"
+              },
+              "type": {
+                "type": "string"
+              },
+              "NONE": {
+                "type": "number",
+                "const": 0
+              },
+              "CAPTURING_PHASE": {
+                "type": "number",
+                "const": 1
+              },
+              "AT_TARGET": {
+                "type": "number",
+                "const": 2
+              },
+              "BUBBLING_PHASE": {
+                "type": "number",
+                "const": 3
+              },
+              "detail": {
+                "type": "number"
+              },
+              "view": {
+                "type": "null"
+              },
+              "which": {
+                "type": "number"
+              },
+              "relatedTarget": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "AT_TARGET",
+              "BUBBLING_PHASE",
+              "CAPTURING_PHASE",
+              "NONE",
+              "bubbles",
+              "cancelBubble",
+              "cancelable",
+              "composed",
+              "currentTarget",
+              "defaultPrevented",
+              "detail",
+              "eventPhase",
+              "isTrusted",
+              "relatedTarget",
+              "returnValue",
+              "srcElement",
+              "target",
+              "timeStamp",
+              "type",
+              "view",
+              "which"
+            ],
+            "additionalProperties": false,
+            "title": "event"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the input loses focus."
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "deprecated": "compatibility alias for `update:query`."
+        }
+      },
+      "required": [
+        "update:open",
+        "update:query",
+        "update:selectedOption",
+        "focus",
+        "blur",
+        "input"
+      ],
       "additionalProperties": false
     }
   }

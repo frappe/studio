@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "SidebarHeaderProps": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "logo": {
+          "type": [
+            "string"
+          ]
+        },
+        "showLogo": {
+          "type": "boolean",
+          "description": "Whether to render the leading logo/avatar box. Defaults to `true`. Set to `false` when workspace identity is already shown elsewhere (e.g. a left rail) to avoid a duplicate avatar; the title then sits flush-left. Best paired with a non-collapsing sidebar, since a collapsed header with no logo has nothing to show."
+        },
+        "menuItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": [
+                  "string"
+                ]
+              },
+              "onClick": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/DatePickerProps",
   "definitions": {
     "DatePickerProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,15 +40,19 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "side": {
           "type": "string",
@@ -56,7 +61,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Preferred popover side relative to the trigger."
         },
         "align": {
           "type": "string",
@@ -64,10 +70,12 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Alignment of the popover along the trigger edge."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Gap between the trigger and popover content in pixels."
         },
         "placement": {
           "type": "string",
@@ -80,10 +88,13 @@
             "right-end",
             "left-start",
             "left-end"
-          ]
+          ],
+          "description": "Preferred popover placement relative to the trigger.",
+          "deprecated": "Use `side` and `align` instead."
         },
         "format": {
-          "type": "string"
+          "type": "string",
+          "description": "Display format used for the input text."
         },
         "size": {
           "type": "string",
@@ -92,7 +103,8 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size of the trigger input."
         },
         "variant": {
           "type": "string",
@@ -100,49 +112,67 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Visual style variant passed through to the input."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text shown when no value is selected."
         },
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls popover open state (for controlled usage)."
         },
         "openOnFocus": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input receives focus. Default: false."
         },
         "openOnClick": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Opens the popover when the input is clicked. Default: true."
         },
         "typeable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the trigger input accepts typed input. When `false` the user can still open the popover and pick a date, but cannot type a date manually. Default: `true`."
         },
         "readonly": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Prevents manual typing while keeping the picker interactive.",
+          "deprecated": "Use `typeable: false` instead."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the trigger input and calendar interactions."
         },
         "clearable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Shows clear and quick-action controls when enabled."
         },
         "keepOpen": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Keeps the popover open after a date is selected. Default: false."
         },
         "autoClose": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Closes the popover after a value is picked.",
+          "deprecated": "Use `keepOpen` instead (inverse semantics: `autoClose: false` → `keepOpen: true`)."
         },
         "min": {
-          "type": "string"
+          "type": "string",
+          "description": "Earliest selectable date. Accepts `YYYY-MM-DD` (or, for `DateTimePicker`, `YYYY-MM-DD HH:mm:ss` for second-level granularity)."
         },
         "max": {
-          "type": "string"
+          "type": "string",
+          "description": "Latest selectable date. Accepts `YYYY-MM-DD` (or, for `DateTimePicker`, `YYYY-MM-DD HH:mm:ss` for second-level granularity)."
         },
         "isDateUnavailable": {
-          "type": "object"
+          "type": "object",
+          "description": "Return true to prevent a date from being selected. Combined with `min`/`max`."
         },
         "allowCustom": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Allows users to type custom date text into the input.",
+          "deprecated": "Use `typeable: false` instead."
         },
         "inputClass": {
           "anyOf": [
@@ -161,15 +191,51 @@
                 "type": "boolean"
               }
             }
-          ]
+          ],
+          "description": "Additional classes applied to the trigger input.",
+          "deprecated": "Apply `class` directly to the DatePicker component element to control width."
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "Uncontrolled initial value for the picker.",
+          "deprecated": "Use `modelValue` with `v-model` instead."
         },
         "modelValue": {
-          "type": "string"
+          "type": "string",
+          "description": "Controlled value for the picker."
         }
       },
+      "additionalProperties": false
+    },
+    "DatePickerSlots": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "description": "Custom trigger renderer for the picker."
+        },
+        "target": {
+          "type": "object",
+          "description": "Custom trigger renderer for the picker.",
+          "deprecated": "Use `#trigger` instead. `#target` remains as a back-compat alias through v1.x."
+        },
+        "prefix": {
+          "type": "object",
+          "description": "Content rendered before the trigger input value."
+        },
+        "suffix": {
+          "type": "object",
+          "description": "Content rendered after the trigger input value."
+        },
+        "actions": {
+          "type": "object",
+          "description": "Sidebar rendered to the left of the calendar. Use for date shortcuts (\"Today\", \"Tomorrow\", \"Last 7 days\") and other preset actions. When omitted, the popover shows the calendar only."
+        }
+      },
+      "additionalProperties": false
+    },
+    "DatePickerEmits": {
+      "type": "object",
       "additionalProperties": false
     }
   }

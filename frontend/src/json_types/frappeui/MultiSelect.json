@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/MultiSelectProps",
   "definitions": {
     "MultiSelectProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,21 +40,26 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "modelValue": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Array of selected option values."
         },
         "options": {
           "type": "array",
@@ -83,10 +89,12 @@
                     "type": "string"
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "slotName": {
-                    "type": "string"
+                    "type": "string",
+                    "deprecated": "use `slot`"
                   },
                   "render": {
                     "anyOf": [
@@ -96,7 +104,8 @@
                       {
                         "type": "object"
                       }
-                    ]
+                    ],
+                    "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                   }
                 },
                 "required": [
@@ -145,10 +154,12 @@
                           "type": "string"
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "slotName": {
-                          "type": "string"
+                          "type": "string",
+                          "deprecated": "use `slot`"
                         },
                         "render": {
                           "anyOf": [
@@ -158,7 +169,8 @@
                             {
                               "type": "object"
                             }
-                          ]
+                          ],
+                          "deprecated": "use `slots` — function form maps to `slots.item`, object form to `slots`"
                         }
                       },
                       "required": [
@@ -175,7 +187,8 @@
                 "additionalProperties": false
               }
             ]
-          }
+          },
+          "description": "Options rendered in the popover."
         },
         "variant": {
           "type": "string",
@@ -183,7 +196,8 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Visual style of the trigger."
         },
         "size": {
           "type": "string",
@@ -192,25 +206,32 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size of the trigger and option rows."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text shown when no value is selected."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the multi-select."
         },
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls the popover visibility."
         },
         "hideSearch": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Hides the in-popover search input."
         },
         "loading": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Replaces the results with a loading state."
         },
         "emptyText": {
-          "type": "string"
+          "type": "string",
+          "description": "Fallback empty-state copy."
         },
         "side": {
           "type": "string",
@@ -219,7 +240,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Preferred popover side."
         },
         "align": {
           "type": "string",
@@ -227,20 +249,139 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Preferred popover alignment."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Gap between trigger and content."
         },
         "portalTo": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Teleport target for the popover content."
         },
         "compareFn": {
-          "type": "object"
+          "type": "object",
+          "description": "Custom equality function used to resolve which options are currently selected for display and rendering. When omitted, the component uses strict equality on `option.value` against entries in `modelValue`."
         }
       },
+      "additionalProperties": false
+    },
+    "MultiSelectSlots": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "description": "Fully custom trigger renderer."
+        },
+        "prefix": {
+          "type": "object",
+          "description": "Content rendered before the trigger label. When provided, this slot owns the entire prefix area regardless of selection count — useful for aggregate visuals like stacked avatars. If omitted, the trigger auto-renders the selected option's `#item-prefix` / `icon` when exactly one is selected, and nothing otherwise."
+        },
+        "summary": {
+          "type": "object",
+          "description": "Overrides the trigger label region. Receives the default summary text as `summary` — use it as a fallback. Useful when you want to show comma-separated labels (or any other format) instead of the default `\"N selected\"` for multi-selection states."
+        },
+        "suffix": {
+          "type": "object",
+          "description": "Content rendered after the trigger label. Providing this slot\n**replaces the default chevron** — render your own fallback when your slot content is conditional. Use `@click.stop` and `@pointerdown.stop` so the press doesn't toggle the popover."
+        },
+        "label": {
+          "type": "object",
+          "description": "Overrides the rendered label content. Receives `{ required }`."
+        },
+        "description": {
+          "type": "object",
+          "description": "Overrides the rendered description content."
+        },
+        "item-prefix": {
+          "type": "object",
+          "description": "Shared content rendered before the standard row label."
+        },
+        "item-label": {
+          "type": "object",
+          "description": "Shared content rendered for the standard row label area."
+        },
+        "item-suffix": {
+          "type": "object",
+          "description": "Shared content rendered after the standard row label area."
+        },
+        "item": {
+          "type": "object",
+          "description": "Replaces the entire row."
+        },
+        "group-label": {
+          "type": "object",
+          "description": "Custom renderer for group labels."
+        },
+        "empty": {
+          "type": "object",
+          "description": "Fallback content rendered when there are no results."
+        },
+        "footer": {
+          "type": "object",
+          "description": "Replaces the default Clear All / Select All footer."
+        },
+        "option": {
+          "type": "object",
+          "deprecated": "compatibility alias for `#item-label`."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object"
+          },
+          {
+            "not": {}
+          }
+        ]
+      }
+    },
+    "MultiSelectEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the selection changes."
+        },
+        "update:open": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the open state changes."
+        },
+        "update:query": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the user types in the search input."
+        }
+      },
+      "required": [
+        "update:modelValue",
+        "update:open",
+        "update:query"
+      ],
       "additionalProperties": false
     }
   }

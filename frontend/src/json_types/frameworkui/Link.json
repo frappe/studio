@@ -71,12 +71,52 @@
       "type": "object",
       "properties": {
         "suffix": {
-          "type": "object"
+          "type": "object",
+          "description": "Content rendered in the input's suffix region. Scoped."
         },
         "item-create": {
-          "type": "object"
+          "type": "object",
+          "description": "Custom render for the \"Create New\" option; receives the typed query."
         }
       },
+      "additionalProperties": false
+    },
+    "LinkEmits": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "query"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "redirect": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "edit": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "create",
+        "redirect",
+        "edit"
+      ],
       "additionalProperties": false
     }
   }

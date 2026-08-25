@@ -5,13 +5,15 @@
       "type": "object",
       "properties": {
         "doctype": {
-          "type": "string"
+          "type": "string",
+          "description": "Doctype whose Meta drives the default surfaced quick-filter fields."
         }
       },
       "required": [
         "doctype"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Props for `<QuickFilter>`. It binds the same `Filter[]` `v-model:filters` the `Filter` control does, and (optionally) `v-model:fields` for the surfaced set."
     }
   }
 }

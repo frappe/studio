@@ -23,6 +23,7 @@ Both are server-side: the handler mutates the store of record, then either emits
 reload (DB path) or enqueues a build (file path).
 """
 
+import json
 import os
 import re
 
@@ -31,6 +32,7 @@ import frappe
 from studio.ai.agent.registry import Tool
 from studio.ai.agent.tools.page import load_page, save_page
 from studio.export import can_export, write_code_file
+from studio.utils import developer_file_access_denial
 
 
 def run_get_page_script(ctx, args: dict) -> str:
@@ -41,7 +43,7 @@ def run_get_page_script(ctx, args: dict) -> str:
 	if not source.strip():
 		return "This page has no script yet."
 	where = "code file (<page>.ts)" if can_export(page) else "the page's `script` field (DB)"
-	return f"Current page script (stored in {where}):\n{source}"
+	return f"Current page script (stored in {where}):\n{source}" + _source_fields_note(page)
 
 
 def run_set_page_script(ctx, args: dict) -> str:
@@ -58,14 +60,18 @@ def run_set_page_script(ctx, args: dict) -> str:
 				"`export default function setup(context) { … return { … } }`. Only what you return becomes "
 				"a binding."
 			)
-		return _write_file_script(ctx, page, source)
-	if _is_module_source(source):
+		result = _write_file_script(ctx, page, source)
+	elif _is_module_source(source):
 		return (
 			"FAILED: a custom (non-exported) page's script is a bare <script setup> body — remove "
 			"`export`/`import`/the `setup()` wrapper. Declare state at the top level (every top-level "
 			"const/function is auto-exposed to {{ }}); use ref/computed/route directly, not context.x."
 		)
-	return _write_db_script(ctx, page, source)
+	else:
+		result = _write_db_script(ctx, page, source)
+	if result.startswith("FAILED"):
+		return result
+	return result + _source_fields_note(page)
 
 
 # --- write paths ----------------------------------------------------------
@@ -78,20 +84,18 @@ def _write_db_script(ctx, page, source: str) -> str:
 	page.script = source
 	if error := save_page(page):
 		return f"FAILED: {error}"
-	ctx.emit("reload", script=True)
+	ctx.emit("reload", script=True, modified=page.modified)
 	return "Updated the page script. It runs live on the canvas now."
 
 
 def _write_file_script(ctx, page, source: str) -> str:
 	"""Standard page: the script is a code file. Only writable in developer mode by a
 	System Manager; the running app reflects it only after the app rebuilds."""
-	if not frappe.conf.developer_mode:
+	if reason := developer_file_access_denial():
 		return (
-			"FAILED: this is a standard page — its script lives in a code file editable only in "
-			"developer mode. Do this on a non-standard page, or ask a developer to enable it."
+			f"FAILED: this is a standard page — its script lives in a code file, but {reason}. "
+			"Do this on a non-standard page, or ask a developer."
 		)
-	if "System Manager" not in frappe.get_roles():
-		return "FAILED: writing a standard page's script requires the System Manager role."
 	# Feed write_code_file via the in-memory field; the DB `script` stays null (the .ts is
 	# the source of truth for a standard page), so we deliberately do NOT save the doc.
 	page.script = source
@@ -103,6 +107,58 @@ def _write_file_script(ctx, page, source: str) -> str:
 		"Wrote the page script to its code file and started an app rebuild. The change appears on the "
 		"canvas only after the build finishes — tell the user to wait for the rebuild to complete."
 	)
+
+
+# --- source grounding -----------------------------------------------------
+
+
+def _source_fields_note(page) -> str:
+	"""Live inventory of each data source's payload keys, appended to script tool results.
+	In-loop enforcement of the FIELD EXISTENCE rule: a field missing from this list is
+	undefined at runtime, however plausible its name."""
+	lines = []
+	for row in page.get("resources") or []:
+		if keys := _source_keys(row):
+			lines.append(f"  - {row.resource_name}: {keys}")
+	if not lines:
+		return ""
+	return (
+		"\n\nFields that ACTUALLY EXIST per data source (live-sampled, before transform):\n"
+		+ "\n".join(lines)
+		+ "\nAny field not listed is undefined at runtime. If the script references one, the feature "
+		"needs its backend half first — propose the schema/endpoint change now instead of leaving dead wiring."
+	)
+
+
+def _source_keys(row) -> str:
+	try:
+		if row.resource_type == "Document List":
+			declared = json.loads(row.fields) if row.fields else []
+			return _cap(dict.fromkeys(["name", *declared]))
+		if row.resource_type == "Document":
+			meta = frappe.get_meta(row.document_type)
+			return _cap(
+				f.fieldname for f in meta.fields if f.fieldtype not in frappe.model.display_fieldtypes
+			)
+		if row.resource_type == "API Resource" and (row.method or "GET") == "GET":
+			return _cap(_sample_api_keys(row))
+	except Exception:
+		return ""
+	return ""
+
+
+def _sample_api_keys(row) -> list[str]:
+	fn = frappe.get_attr(row.url)
+	frappe.is_whitelisted(fn)
+	params = json.loads(row.params) if row.params else {}
+	result = fn(**params)
+	sample = result[0] if isinstance(result, list) and result else result
+	return list(sample.keys()) if isinstance(sample, dict) else []
+
+
+def _cap(keys, limit: int = 25) -> str:
+	keys = list(keys)
+	return ", ".join(keys[:limit]) + (", …" if len(keys) > limit else "")
 
 
 def _read_script(page) -> str:

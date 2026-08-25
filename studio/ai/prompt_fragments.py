@@ -22,4 +22,4 @@ ON_ERROR_RULE = (
 	"(error). Same page context in scope. e.g. 'function onError(error) { loadFailed.value = true }'."
 )
 
-FILTER_FORMAT_RULE = 'Filters as a map, e.g. {"status":"Open"} or {"status":["!=","Closed"]}.'
+FILTER_FORMAT_RULE = 'Filters as a map, e.g. {"status":"Open"} or {"status":["!=","Closed"]}. Multiple values need the "in" operator: {"status":["in",["Completed","Cancelled"]]} — NEVER a bare list like ["Completed","Cancelled"] (Frappe reads a list as [operator, value] and the fetch crashes).'

@@ -13,10 +13,11 @@ class StudioAISession(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		app: DF.Link
 		is_running: DF.Check
 		last_interaction_on: DF.Datetime | None
 		last_task_type: DF.Data | None
-		page: DF.Link
+		page: DF.Link | None
 		selected_model: DF.Data | None
 		user: DF.Link
 	# end: auto-generated types

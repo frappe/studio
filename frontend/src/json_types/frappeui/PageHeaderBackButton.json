@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "PageHeaderBackButtonProps": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            }
+          ],
+          "description": "Where to navigate on tap. Omit to fall back to browser history."
+        },
+        "label": {
+          "type": "string",
+          "description": "Accessible label for the button."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

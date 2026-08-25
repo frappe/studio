@@ -12,13 +12,16 @@
             {
               "type": "object"
             }
-          ]
+          ],
+          "description": "Renders the row as a RouterLink. Without `to`, a row with a click listener renders as a button; otherwise a plain div."
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "description": "Row key — the `selection` key when `selectable` and the `v-model:active` key. Required whenever the list uses either."
         },
         "onClick": {
-          "type": "object"
+          "type": "object",
+          "description": "Fired when the row is activated, unless selection mode claims the click."
         }
       },
       "additionalProperties": false

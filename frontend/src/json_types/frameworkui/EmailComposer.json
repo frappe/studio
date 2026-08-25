@@ -11,7 +11,8 @@
           "type": "string"
         },
         "uploadFunction": {
-          "type": "object"
+          "type": "object",
+          "description": "Inline-image upload handler passed to the editor; returns the editor's file shape."
         },
         "headerFields": {
           "type": "array",
@@ -24,7 +25,8 @@
               "cc",
               "bcc"
             ]
-          }
+          },
+          "description": "Built-in header rows to render. Defaults to [\"to\", \"cc\", \"bcc\"]."
         },
         "senders": {
           "type": "array",
@@ -45,24 +47,208 @@
               "email"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Sender identities for the From row (shown when `headerFields` includes \"from\")."
         },
         "searchRecipients": {
-          "type": "object"
+          "type": "object",
+          "description": "Recipient lookup; omit for a plain creatable-email field."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "v-models: body (default), from, recipients, subject, quoted."
     },
     "EmailComposerSlots": {
       "type": "object",
       "properties": {
         "header": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the built-in header rows; an empty template renders no header."
         },
         "actions": {
-          "type": "object"
+          "type": "object",
+          "description": "Extra footer actions, beside the built-in attach button."
         }
       },
+      "additionalProperties": false
+    },
+    "EmailComposerEmits": {
+      "type": "object",
+      "properties": {
+        "submit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "file_name": {
+                      "type": "string"
+                    },
+                    "file_url": {
+                      "type": "string"
+                    },
+                    "file_type": {
+                      "type": "string"
+                    },
+                    "file_size": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "file_name",
+                    "file_url",
+                    "file_type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A file as returned by FileUploader's `success` event."
+                }
+              },
+              "from": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "recipients": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "image": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "cc": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "image": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "bcc": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "image": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "to",
+                  "cc",
+                  "bcc"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "attachments",
+              "body",
+              "from",
+              "recipients",
+              "subject"
+            ],
+            "additionalProperties": false,
+            "title": "payload"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fires with the built payload; the host performs the send, then `reset()`."
+        },
+        "remove-attachment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "file_name": {
+                "type": "string"
+              },
+              "file_url": {
+                "type": "string"
+              },
+              "file_type": {
+                "type": "string"
+              },
+              "file_size": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "file_name",
+              "file_url",
+              "file_type"
+            ],
+            "additionalProperties": false,
+            "description": "A file as returned by FileUploader's `success` event.",
+            "title": "file"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Only on explicit chip removal (so the host can delete server-side)."
+        }
+      },
+      "required": [
+        "submit",
+        "remove-attachment"
+      ],
       "additionalProperties": false
     }
   }

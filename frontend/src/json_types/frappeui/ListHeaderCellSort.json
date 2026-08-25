@@ -13,14 +13,16 @@
             "asc",
             "desc",
             null
-          ]
+          ],
+          "description": "Active sort direction for this column, `null`/omitted when inactive. The cell is controlled — sort state and toggle rules are app-owned: update whatever drives your ordering in the `click` handler."
         },
         "align": {
           "type": "string",
           "enum": [
             "start",
             "end"
-          ]
+          ],
+          "description": "Horizontal alignment of the header content. `'end'` right-aligns the cell (for numeric/right-aligned columns) *and* moves the sort glyph to the leading side, so the label stays flush with the column's right edge and lines up with the values below. Defaults to `'start'`."
         }
       },
       "additionalProperties": false

@@ -19,7 +19,8 @@
                 "type": "boolean"
               },
               "dependsOn": {
-                "type": "string"
+                "type": "string",
+                "description": "Conditional visibility; `resolveLayout` bakes it into `hidden`."
               },
               "sections": {
                 "type": "array",
@@ -48,7 +49,8 @@
                       "type": "boolean"
                     },
                     "dependsOn": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Conditional visibility; `resolveLayout` bakes it into `hidden`."
                     },
                     "columns": {
                       "type": "array",
@@ -74,11 +76,13 @@
                                   "type": "object",
                                   "properties": {
                                     "component": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "Structural swap for THIS node only (e.g. a themed Button)."
                                     },
                                     "props": {
                                       "type": "object",
-                                      "additionalProperties": {}
+                                      "additionalProperties": {},
+                                      "description": "Presentation props v-bound onto the control (variant / theme / size …)."
                                     },
                                     "on": {
                                       "type": "object",
@@ -94,10 +98,28 @@
                                             }
                                           }
                                         ]
-                                      }
+                                      },
+                                      "description": "Event listeners v-on'd onto the control (`click`, `change`, …). A value passed as a handler array fires every handler — `decorate` composition concats per-event handlers so styling + scripting both run (see `compose`). In a grid cell the row is injected as a trailing arg: `on.click(event, row)`."
                                     }
                                   },
-                                  "additionalProperties": false
+                                  "additionalProperties": false,
+                                  "description": "App-supplied presentation/behavior for one field's *layout node* — not part of the portable `FieldMeta`. Filled by the build step (inline on a static schema, or via `buildLayoutFromMeta`'s `decorate` hook); consumed by `FormLayoutField`, which v-binds `props` and v-on's `on` onto the resolved field component (or swaps the component entirely via `component`). Frappe meta never carries this."
+                                },
+                                "override": {
+                                  "type": "object",
+                                  "properties": {
+                                    "hidden": {
+                                      "type": "boolean"
+                                    },
+                                    "readOnly": {
+                                      "type": "boolean"
+                                    },
+                                    "reqd": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false,
+                                  "description": "The three field properties an app can override *per render*, applied by `resolveFieldConditionals` after it has resolved the `depends_on` family — so an override wins over a conditional expression, which no other override in this pipeline does (every other one is monotonic-restrictive).\n\nOnly these three need the carrier: `label`, `options`, `precision`, `placeholder`, `description` and `filters` are set once when the node is built and never recomputed, so an app applies those at build time instead.\n\nPlain data, deliberately: it keeps `FormLayout` an independent component that takes a schema and knows nothing about whoever wrote the override."
                                 },
                                 "fieldname": {
                                   "type": "string"
@@ -109,29 +131,40 @@
                                   "type": "string"
                                 },
                                 "options": {
-                                  "type": "string"
+                                  "type": "string",
+                                  "description": "Target doctype for `Link` fields, or child doctype for `Table` (Frappe `options`)."
                                 },
                                 "filters": {
                                   "type": "object",
-                                  "additionalProperties": {}
+                                  "additionalProperties": {},
+                                  "description": "Link search filters."
                                 },
                                 "childFields": {
                                   "type": "array",
                                   "items": {
-                                    "$ref": "#/definitions/alias-1952944880-1677-2006-1952944880-0-4216"
-                                  }
+                                    "$ref": "#/definitions/alias-1952944880-2580-2986-1952944880-0-57781532886688"
+                                  },
+                                  "description": "Child-table columns from the child's `in_list_view` fields. Used by `Table` (grid columns) and `Table MultiSelect` (its single `Link` field gives the target doctype + per-row value key). Typed `FieldNode[]` so grid columns carry a `ui` overlay too — back-compatible since `FieldNode extends FieldMeta`."
                                 },
                                 "childLayout": {
-                                  "$ref": "#/definitions/alias-1952944880-3588-3627-1952944880-0-4216"
+                                  "$ref": "#/definitions/alias-1952944880-5150-5189-1952944880-0-5778",
+                                  "description": "Full render-ready layout of the child doctype, for the `Table` row-edit dialog which shows every field (desk grid-row form), not just the `in_list_view` columns in `childFields`."
                                 },
                                 "reqd": {
-                                  "type": "boolean"
+                                  "type": "boolean",
+                                  "description": "Whether the field is mandatory."
+                                },
+                                "default": {
+                                  "type": "string",
+                                  "description": "Raw DocField default, carried verbatim; `newRowValues` resolves it."
                                 },
                                 "precision": {
-                                  "type": "number"
+                                  "type": "number",
+                                  "description": "Decimal places for numeric fields (Float/Currency/Percent); from meta."
                                 },
                                 "width": {
-                                  "type": "number"
+                                  "type": "number",
+                                  "description": "Initial grid-column width in px for a child-table column; omit for flexible."
                                 },
                                 "description": {
                                   "type": "string"
@@ -140,13 +173,24 @@
                                   "type": "string"
                                 },
                                 "hidden": {
-                                  "type": "boolean"
+                                  "type": "boolean",
+                                  "description": "Static visibility; `resolveLayout` may flip this from `dependsOn`."
+                                },
+                                "permlevel": {
+                                  "type": "number",
+                                  "description": "Field-level permission level, carried through from the DocField. Read for reporting only — on its own it does not mean the reader was denied."
+                                },
+                                "permDenied": {
+                                  "type": "boolean",
+                                  "description": "Whether the permlevel gate actually denied this reader. The denial is expressed as a static `hidden` / `readOnly`, indistinguishable from a meta-hidden or meta-read-only field, so this flag is what marks the permission floor `resolveLayout` will not let an override lift.\n\nOnly whoever applied the gate can set it — a `permlevel` alone is not a denial (a reader who has the level is left untouched), and a layout built without any gate has no floor to defend."
                                 },
                                 "readOnly": {
-                                  "type": "boolean"
+                                  "type": "boolean",
+                                  "description": "Static read-only; `resolveLayout` may flip this from `readOnlyDependsOn`."
                                 },
                                 "dependsOn": {
-                                  "type": "string"
+                                  "type": "string",
+                                  "description": "Raw Frappe conditional expressions, carried verbatim. Not evaluated here — `resolveLayout` bakes them into `hidden` / `reqd` / `readOnly` (Phase 4)."
                                 },
                                 "mandatoryDependsOn": {
                                   "type": "string"
@@ -158,7 +202,8 @@
                               "required": [
                                 "fieldname",
                                 "fieldtype"
-                              ]
+                              ],
+                              "description": "A field as it sits in the layout tree: its portable meta plus an optional, app-supplied UI overlay and an optional per-render property override. Extends `FieldMeta`, so every existing read (`f.hidden`, `f.fieldname`) and every `{ ...f }` spread keeps working and the extra keys ride along untouched."
                             }
                           }
                         },
@@ -180,15 +225,17 @@
               "sections"
             ],
             "additionalProperties": false
-          }
+          },
+          "description": "Tabs → sections → columns → fields describing the form to render."
         }
       },
       "required": [
         "layout"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Props for `<FormLayout>`. The rendered document is a separate `v-model:doc`."
     },
-    "alias-1952944880-1677-2006-1952944880-0-4216": {
+    "alias-1952944880-2580-2986-1952944880-0-57781532886688": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -196,11 +243,13 @@
           "type": "object",
           "properties": {
             "component": {
-              "type": "string"
+              "type": "string",
+              "description": "Structural swap for THIS node only (e.g. a themed Button)."
             },
             "props": {
               "type": "object",
-              "additionalProperties": {}
+              "additionalProperties": {},
+              "description": "Presentation props v-bound onto the control (variant / theme / size …)."
             },
             "on": {
               "type": "object",
@@ -216,10 +265,28 @@
                     }
                   }
                 ]
-              }
+              },
+              "description": "Event listeners v-on'd onto the control (`click`, `change`, …). A value passed as a handler array fires every handler — `decorate` composition concats per-event handlers so styling + scripting both run (see `compose`). In a grid cell the row is injected as a trailing arg: `on.click(event, row)`."
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "App-supplied presentation/behavior for one field's *layout node* — not part of the portable `FieldMeta`. Filled by the build step (inline on a static schema, or via `buildLayoutFromMeta`'s `decorate` hook); consumed by `FormLayoutField`, which v-binds `props` and v-on's `on` onto the resolved field component (or swaps the component entirely via `component`). Frappe meta never carries this."
+        },
+        "override": {
+          "type": "object",
+          "properties": {
+            "hidden": {
+              "type": "boolean"
+            },
+            "readOnly": {
+              "type": "boolean"
+            },
+            "reqd": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "The three field properties an app can override *per render*, applied by `resolveFieldConditionals` after it has resolved the `depends_on` family — so an override wins over a conditional expression, which no other override in this pipeline does (every other one is monotonic-restrictive).\n\nOnly these three need the carrier: `label`, `options`, `precision`, `placeholder`, `description` and `filters` are set once when the node is built and never recomputed, so an app applies those at build time instead.\n\nPlain data, deliberately: it keeps `FormLayout` an independent component that takes a schema and knows nothing about whoever wrote the override."
         },
         "fieldname": {
           "type": "string"
@@ -231,29 +298,40 @@
           "type": "string"
         },
         "options": {
-          "type": "string"
+          "type": "string",
+          "description": "Target doctype for `Link` fields, or child doctype for `Table` (Frappe `options`)."
         },
         "filters": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": {},
+          "description": "Link search filters."
         },
         "childFields": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/alias-1952944880-1677-2006-1952944880-0-4216"
-          }
+            "$ref": "#/definitions/alias-1952944880-2580-2986-1952944880-0-57781532886688"
+          },
+          "description": "Child-table columns from the child's `in_list_view` fields. Used by `Table` (grid columns) and `Table MultiSelect` (its single `Link` field gives the target doctype + per-row value key). Typed `FieldNode[]` so grid columns carry a `ui` overlay too — back-compatible since `FieldNode extends FieldMeta`."
         },
         "childLayout": {
-          "$ref": "#/definitions/alias-1952944880-3588-3627-1952944880-0-4216"
+          "$ref": "#/definitions/alias-1952944880-5150-5189-1952944880-0-5778",
+          "description": "Full render-ready layout of the child doctype, for the `Table` row-edit dialog which shows every field (desk grid-row form), not just the `in_list_view` columns in `childFields`."
         },
         "reqd": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the field is mandatory."
+        },
+        "default": {
+          "type": "string",
+          "description": "Raw DocField default, carried verbatim; `newRowValues` resolves it."
         },
         "precision": {
-          "type": "number"
+          "type": "number",
+          "description": "Decimal places for numeric fields (Float/Currency/Percent); from meta."
         },
         "width": {
-          "type": "number"
+          "type": "number",
+          "description": "Initial grid-column width in px for a child-table column; omit for flexible."
         },
         "description": {
           "type": "string"
@@ -262,13 +340,24 @@
           "type": "string"
         },
         "hidden": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Static visibility; `resolveLayout` may flip this from `dependsOn`."
+        },
+        "permlevel": {
+          "type": "number",
+          "description": "Field-level permission level, carried through from the DocField. Read for reporting only — on its own it does not mean the reader was denied."
+        },
+        "permDenied": {
+          "type": "boolean",
+          "description": "Whether the permlevel gate actually denied this reader. The denial is expressed as a static `hidden` / `readOnly`, indistinguishable from a meta-hidden or meta-read-only field, so this flag is what marks the permission floor `resolveLayout` will not let an override lift.\n\nOnly whoever applied the gate can set it — a `permlevel` alone is not a denial (a reader who has the level is left untouched), and a layout built without any gate has no floor to defend."
         },
         "readOnly": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Static read-only; `resolveLayout` may flip this from `readOnlyDependsOn`."
         },
         "dependsOn": {
-          "type": "string"
+          "type": "string",
+          "description": "Raw Frappe conditional expressions, carried verbatim. Not evaluated here — `resolveLayout` bakes them into `hidden` / `reqd` / `readOnly` (Phase 4)."
         },
         "mandatoryDependsOn": {
           "type": "string"
@@ -280,9 +369,10 @@
       "required": [
         "fieldname",
         "fieldtype"
-      ]
+      ],
+      "description": "A field as it sits in the layout tree: its portable meta plus an optional, app-supplied UI overlay and an optional per-render property override. Extends `FieldMeta`, so every existing read (`f.hidden`, `f.fieldname`) and every `{ ...f }` spread keeps working and the extra keys ride along untouched."
     },
-    "alias-1952944880-3588-3627-1952944880-0-4216": {
+    "alias-1952944880-5150-5189-1952944880-0-5778": {
       "type": "array",
       "items": {
         "type": "object",
@@ -297,7 +387,8 @@
             "type": "boolean"
           },
           "dependsOn": {
-            "type": "string"
+            "type": "string",
+            "description": "Conditional visibility; `resolveLayout` bakes it into `hidden`."
           },
           "sections": {
             "type": "array",
@@ -326,7 +417,8 @@
                   "type": "boolean"
                 },
                 "dependsOn": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Conditional visibility; `resolveLayout` bakes it into `hidden`."
                 },
                 "columns": {
                   "type": "array",
@@ -352,11 +444,13 @@
                               "type": "object",
                               "properties": {
                                 "component": {
-                                  "type": "string"
+                                  "type": "string",
+                                  "description": "Structural swap for THIS node only (e.g. a themed Button)."
                                 },
                                 "props": {
                                   "type": "object",
-                                  "additionalProperties": {}
+                                  "additionalProperties": {},
+                                  "description": "Presentation props v-bound onto the control (variant / theme / size …)."
                                 },
                                 "on": {
                                   "type": "object",
@@ -372,10 +466,28 @@
                                         }
                                       }
                                     ]
-                                  }
+                                  },
+                                  "description": "Event listeners v-on'd onto the control (`click`, `change`, …). A value passed as a handler array fires every handler — `decorate` composition concats per-event handlers so styling + scripting both run (see `compose`). In a grid cell the row is injected as a trailing arg: `on.click(event, row)`."
                                 }
                               },
-                              "additionalProperties": false
+                              "additionalProperties": false,
+                              "description": "App-supplied presentation/behavior for one field's *layout node* — not part of the portable `FieldMeta`. Filled by the build step (inline on a static schema, or via `buildLayoutFromMeta`'s `decorate` hook); consumed by `FormLayoutField`, which v-binds `props` and v-on's `on` onto the resolved field component (or swaps the component entirely via `component`). Frappe meta never carries this."
+                            },
+                            "override": {
+                              "type": "object",
+                              "properties": {
+                                "hidden": {
+                                  "type": "boolean"
+                                },
+                                "readOnly": {
+                                  "type": "boolean"
+                                },
+                                "reqd": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "The three field properties an app can override *per render*, applied by `resolveFieldConditionals` after it has resolved the `depends_on` family — so an override wins over a conditional expression, which no other override in this pipeline does (every other one is monotonic-restrictive).\n\nOnly these three need the carrier: `label`, `options`, `precision`, `placeholder`, `description` and `filters` are set once when the node is built and never recomputed, so an app applies those at build time instead.\n\nPlain data, deliberately: it keeps `FormLayout` an independent component that takes a schema and knows nothing about whoever wrote the override."
                             },
                             "fieldname": {
                               "type": "string"
@@ -387,29 +499,40 @@
                               "type": "string"
                             },
                             "options": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "Target doctype for `Link` fields, or child doctype for `Table` (Frappe `options`)."
                             },
                             "filters": {
                               "type": "object",
-                              "additionalProperties": {}
+                              "additionalProperties": {},
+                              "description": "Link search filters."
                             },
                             "childFields": {
                               "type": "array",
                               "items": {
-                                "$ref": "#/definitions/alias-1952944880-1677-2006-1952944880-0-4216"
-                              }
+                                "$ref": "#/definitions/alias-1952944880-2580-2986-1952944880-0-57781532886688"
+                              },
+                              "description": "Child-table columns from the child's `in_list_view` fields. Used by `Table` (grid columns) and `Table MultiSelect` (its single `Link` field gives the target doctype + per-row value key). Typed `FieldNode[]` so grid columns carry a `ui` overlay too — back-compatible since `FieldNode extends FieldMeta`."
                             },
                             "childLayout": {
-                              "$ref": "#/definitions/alias-1952944880-3588-3627-1952944880-0-4216"
+                              "$ref": "#/definitions/alias-1952944880-5150-5189-1952944880-0-5778",
+                              "description": "Full render-ready layout of the child doctype, for the `Table` row-edit dialog which shows every field (desk grid-row form), not just the `in_list_view` columns in `childFields`."
                             },
                             "reqd": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Whether the field is mandatory."
+                            },
+                            "default": {
+                              "type": "string",
+                              "description": "Raw DocField default, carried verbatim; `newRowValues` resolves it."
                             },
                             "precision": {
-                              "type": "number"
+                              "type": "number",
+                              "description": "Decimal places for numeric fields (Float/Currency/Percent); from meta."
                             },
                             "width": {
-                              "type": "number"
+                              "type": "number",
+                              "description": "Initial grid-column width in px for a child-table column; omit for flexible."
                             },
                             "description": {
                               "type": "string"
@@ -418,13 +541,24 @@
                               "type": "string"
                             },
                             "hidden": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Static visibility; `resolveLayout` may flip this from `dependsOn`."
+                            },
+                            "permlevel": {
+                              "type": "number",
+                              "description": "Field-level permission level, carried through from the DocField. Read for reporting only — on its own it does not mean the reader was denied."
+                            },
+                            "permDenied": {
+                              "type": "boolean",
+                              "description": "Whether the permlevel gate actually denied this reader. The denial is expressed as a static `hidden` / `readOnly`, indistinguishable from a meta-hidden or meta-read-only field, so this flag is what marks the permission floor `resolveLayout` will not let an override lift.\n\nOnly whoever applied the gate can set it — a `permlevel` alone is not a denial (a reader who has the level is left untouched), and a layout built without any gate has no floor to defend."
                             },
                             "readOnly": {
-                              "type": "boolean"
+                              "type": "boolean",
+                              "description": "Static read-only; `resolveLayout` may flip this from `readOnlyDependsOn`."
                             },
                             "dependsOn": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "Raw Frappe conditional expressions, carried verbatim. Not evaluated here — `resolveLayout` bakes them into `hidden` / `reqd` / `readOnly` (Phase 4)."
                             },
                             "mandatoryDependsOn": {
                               "type": "string"
@@ -436,7 +570,8 @@
                           "required": [
                             "fieldname",
                             "fieldtype"
-                          ]
+                          ],
+                          "description": "A field as it sits in the layout tree: its portable meta plus an optional, app-supplied UI overlay and an optional per-render property override. Extends `FieldMeta`, so every existing read (`f.hidden`, `f.fieldname`) and every `{ ...f }` spread keeps working and the extra keys ride along untouched."
                         }
                       }
                     },

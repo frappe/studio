@@ -13,19 +13,24 @@
                 "type": "string"
               },
               "title": {
-                "type": "string"
+                "type": "string",
+                "description": "canonical headline shown in the panel — HTML, sanitized by the backend at write time"
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "description": "canonical body shown under the title — HTML, sanitized by the backend at write time"
               },
               "subject": {
-                "type": "string"
+                "type": "string",
+                "description": "email representation of the title; used as the title fallback"
               },
               "type": {
-                "type": "string"
+                "type": "string",
+                "description": "opaque category tag — used only for filtering, never for presentation"
               },
               "app": {
-                "type": "string"
+                "type": "string",
+                "description": "app that produced this notification — used to scope the panel to a single app"
               },
               "read": {
                 "type": [
@@ -37,12 +42,20 @@
                 "type": "string"
               },
               "from_user_image": {
-                "type": "string"
+                "type": "string",
+                "description": "sender's photo for the default avatar. Resolved client-side today (see useNotifications); a candidate to become a server virtual field so the feed query carries it directly."
               },
               "document_type": {
                 "type": "string"
               },
               "document_name": {
+                "type": "string"
+              },
+              "source_doctype": {
+                "type": "string",
+                "description": "record the notification came from, when that is not the document itself (e.g. a Comment)"
+              },
+              "source_name": {
                 "type": "string"
               },
               "link": {
@@ -101,13 +114,15 @@
                   {
                     "type": "object"
                   }
-                ]
+                ],
+                "description": "badge next to the label: the server unread count, or a count derived from fetched rows"
               }
             },
             "required": [
               "label"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "A tab is a label + a filter. The filter is overloaded by type:   - object   → server-side filter merged into the feed query (affects counts + pagination)   - function → client-side predicate applied to already-fetched rows `value` is the stable key (used for the dynamic `#tab-<value>` slot); defaults to the label."
           }
         },
         "title": {
@@ -118,25 +133,31 @@
         "notifications",
         "hasNextPage"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Panel props are *data* only — spread the controller's data members via `v-bind=\"controller\"`. Actions are surfaced as **events** (`mark-as-read`, `mark-all-as-read`, `load-more`, `tab-change`), not function props; the active tab is two-way via `v-model:activeTab`."
     },
     "NotificationPanelSlots": {
       "type": "object",
       "properties": {
         "header": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the panel header (title, tabs, mark-all-read)."
         },
         "default": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the whole tab body."
         },
         "item": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces a single notification row."
         },
         "error": {
-          "type": "object"
+          "type": "object",
+          "description": "Shown in place of the list when loading fails."
         },
         "empty": {
-          "type": "object"
+          "type": "object",
+          "description": "Shown when there are no notifications."
         }
       },
       "additionalProperties": false

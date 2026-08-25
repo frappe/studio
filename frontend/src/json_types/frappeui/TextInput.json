@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/TextInputProps",
   "definitions": {
     "TextInputProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,15 +40,19 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "type": {
           "type": "string",
@@ -66,7 +71,8 @@
             "url",
             "week",
             "range"
-          ]
+          ],
+          "description": "HTML input type (text, email, number, password, etc.)."
         },
         "size": {
           "type": "string",
@@ -75,7 +81,8 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Visual size of the input."
         },
         "variant": {
           "type": "string",
@@ -83,24 +90,48 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Style variant of the input."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text shown when the input is empty."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the input when true."
         },
         "modelValue": {
           "type": [
             "string",
             "number"
-          ]
+          ],
+          "description": "Bound value of the input."
         },
         "debounce": {
-          "type": "number"
+          "type": "number",
+          "description": "Debounce delay (in ms) before emitting value updates."
         }
       },
+      "additionalProperties": false
+    },
+    "TextInputEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the input value changes."
+        }
+      },
+      "required": [
+        "update:modelValue"
+      ],
       "additionalProperties": false
     }
   }

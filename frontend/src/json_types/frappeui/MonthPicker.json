@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/MonthPickerProps",
   "definitions": {
     "MonthPickerProps": {
       "type": "object",
       "properties": {
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text shown when no value is selected"
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the month picker"
         }
       },
       "additionalProperties": false

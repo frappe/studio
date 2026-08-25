@@ -1,0 +1,384 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "VersionItemProps": {
+      "type": "object",
+      "properties": {
+        "activity": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "version",
+              "description": "discriminant → picks the renderer/slot"
+            },
+            "key": {
+              "type": "string",
+              "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "author": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "fullname": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "icon": {
+              "type": [
+                "string"
+              ],
+              "description": "lucide name or component; per-type default when absent"
+            },
+            "data": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "group": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "fieldname": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "description": "when this net change last happened; shown per-row inside a folded group"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "diff"
+                              },
+                              "prefix": {
+                                "type": "string",
+                                "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
+                              },
+                              "from": {
+                                "type": "string",
+                                "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
+                              },
+                              "to": {
+                                "type": "string"
+                              },
+                              "history": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "timestamp": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to",
+                                    "timestamp"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                                },
+                                "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "prefix",
+                              "to",
+                              "type"
+                            ],
+                            "additionalProperties": false,
+                            "description": "A shown field change; the frontend lays out the values."
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "fieldname": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "description": "when this net change last happened; shown per-row inside a folded group"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "phrase"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "text",
+                              "type"
+                            ],
+                            "additionalProperties": false,
+                            "description": "A value-less change described in words (long-text edits, clears, submit/cancel)."
+                          }
+                        ],
+                        "description": "One change in a version; `type` picks the layout: diff (from→to) or phrase (value-less)."
+                      },
+                      "description": "set when a sequence folds into >1 change"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "fieldname": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "description": "when this net change last happened; shown per-row inside a folded group"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "diff"
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
+                    },
+                    "from": {
+                      "type": "string",
+                      "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
+                    },
+                    "to": {
+                      "type": "string"
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "from",
+                          "to",
+                          "timestamp"
+                        ],
+                        "additionalProperties": false,
+                        "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                      },
+                      "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "prefix",
+                    "to",
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "group": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "fieldname": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "description": "when this net change last happened; shown per-row inside a folded group"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "diff"
+                              },
+                              "prefix": {
+                                "type": "string",
+                                "description": "translated lead phrase, e.g. \"changed Status\" / \"set Priority to\""
+                              },
+                              "from": {
+                                "type": "string",
+                                "description": "old value (frontend-truncated); absent ⇒ set-from-blank, no arrow"
+                              },
+                              "to": {
+                                "type": "string"
+                              },
+                              "history": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string"
+                                    },
+                                    "to": {
+                                      "type": "string"
+                                    },
+                                    "timestamp": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to",
+                                    "timestamp"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "One field change: old → new value (empty `from` ⇒ set-from-blank)."
+                                },
+                                "description": "every field change across merged saves; absent/length-1 ⇒ no chevron"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "prefix",
+                              "to",
+                              "type"
+                            ],
+                            "additionalProperties": false,
+                            "description": "A shown field change; the frontend lays out the values."
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "fieldname": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "description": "when this net change last happened; shown per-row inside a folded group"
+                              },
+                              "type": {
+                                "type": "string",
+                                "const": "phrase"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "text",
+                              "type"
+                            ],
+                            "additionalProperties": false,
+                            "description": "A value-less change described in words (long-text edits, clears, submit/cancel)."
+                          }
+                        ],
+                        "description": "One change in a version; `type` picks the layout: diff (from→to) or phrase (value-less)."
+                      },
+                      "description": "set when a sequence folds into >1 change"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "fieldname": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "field changes carry it (enables same-field collapse); doc-level rows don't"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "description": "when this net change last happened; shown per-row inside a folded group"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "phrase"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "full translated line, e.g. \"updated Description\" / \"submitted this document\""
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "text",
+                    "type"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "key",
+            "data"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "activity"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

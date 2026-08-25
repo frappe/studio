@@ -5,25 +5,30 @@
       "type": "object",
       "properties": {
         "doctype": {
-          "type": "string"
+          "type": "string",
+          "description": "Doctype whose Meta drives the shell's fields/columns."
         }
       },
       "required": [
         "doctype"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Props for `<ListViewShell>`."
     },
     "ListViewShellSlots": {
       "type": "object",
       "properties": {
         "toolbar": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the toolbar region (controls, actions)."
         },
         "table": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the table/body region."
         },
         "footer": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the footer region (pagination, counts)."
         }
       },
       "additionalProperties": false

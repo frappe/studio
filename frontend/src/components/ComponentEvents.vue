@@ -444,9 +444,9 @@ function getScriptDescription(eventName: string): string {
 		const componentSlug = props.block.componentName.toLowerCase()
 		docsLink = `https://ui.frappe.io/docs/components/${componentSlug}#emit-events`
 	}
-	let docs = `Define a ${getCodeBlock(
+	let docs = `Use ${getCodeBlock("$event")} for the event's first argument (as in Vue), or define a ${getCodeBlock(
 		"handleEvent",
-	)} function to access event arguments with named parameters:<br><br>`
+	)} function to access all event arguments with named parameters:<br><br>`
 
 	if (docsLink) {
 		docs += `

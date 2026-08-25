@@ -1,7 +1,8 @@
 """Selector tools: find and inspect blocks by structural filters.
 
-`query_blocks` is server-side — it walks the turn-start page tree the frontend
-shipped and returns the matching blocks' ids (+ component and full text). This
+`query_blocks` is server-side — it walks the turn's LIVE working tree (edits
+already applied this turn included) and returns the matching blocks' ids
+(+ component and full text). This
 grounds bulk edits: instead of scanning the page context and hoping it catches
 every block, the model asks for the exact set ("all text", "all Button") and gets
 it deterministically, then applies one `update_blocks` call. Text is returned in
@@ -14,7 +15,7 @@ from studio.ai.block_codec import BlockCodec
 
 
 def run_query_blocks(ctx, args: dict) -> str:
-	root = ctx._page_root()
+	root = ctx.page_root()
 	if root is None:
 		return "The page is empty — nothing to select."
 
@@ -43,7 +44,7 @@ def run_query_blocks(ctx, args: dict) -> str:
 
 	if not matches:
 		return "No blocks matched. Loosen the filters or check the page outline."
-	header = f"{len(matches)} block(s) matched (page as it was at the start of this turn):\n"
+	header = f"{len(matches)} block(s) matched (live page tree, edits this turn included):\n"
 	return header + BlockCodec.to_json(matches)
 
 
@@ -57,7 +58,7 @@ query_blocks = Tool(
 		"affects MANY blocks — translate the page, restyle every Button, rewrite all headings "
 		"— so you act on the complete, exact set instead of guessing from the outline. Filters "
 		"AND together. Then apply the change with ONE update_blocks call. Results reflect the "
-		"page at the start of this turn (edits you make mid-turn are not re-queried)."
+		"live page tree, including edits already applied this turn."
 	),
 	parameters={
 		"type": "object",
@@ -84,7 +85,7 @@ query_blocks = Tool(
 
 
 def run_read_block(ctx, args: dict) -> str:
-	root = ctx._page_root()
+	root = ctx.page_root()
 	if root is None:
 		return "The page is empty."
 	component_id = args.get("component_id")
@@ -92,7 +93,7 @@ def run_read_block(ctx, args: dict) -> str:
 	if block is None:
 		return f"No block found with id {component_id}."
 	detail = BlockCodec.to_json(BlockCodec.compress(block))
-	return f"Block {component_id} (full props/styles/children, as of the start of this turn):\n{detail}"
+	return f"Block {component_id} (full props/styles/children, live tree):\n{detail}"
 
 
 read_block = Tool(
@@ -102,7 +103,7 @@ read_block = Tool(
 	description=(
 		"Return a block's FULL detail — its props, styles, and child subtree — by id. Use this "
 		"before editing a block whose current props/styles you need to see, or to match the "
-		"styling of an existing section. Reflects the page at the start of this turn."
+		"styling of an existing section. Reflects the live page tree, edits this turn included."
 	),
 	parameters={
 		"type": "object",

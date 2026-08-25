@@ -148,6 +148,9 @@ class StudioApp(WebsiteGenerator):
 		for page in self.pages:
 			frappe.delete_doc("Studio Page", page, force=True)
 
+		for session in frappe.get_all("Studio AI Session", filters={"app": self.name}, pluck="name"):
+			frappe.delete_doc("Studio AI Session", session, force=True, ignore_permissions=True)
+
 		if can_export(self):
 			self.delete_app_folder()
 

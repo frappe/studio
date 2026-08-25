@@ -5,16 +5,19 @@
       "type": "object",
       "properties": {
         "doctype": {
-          "type": "string"
+          "type": "string",
+          "description": "Doctype whose Meta drives the sortable field options."
         },
         "hideLabel": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Hide the \"Sort\" label/prefix."
         }
       },
       "required": [
         "doctype"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Props for `<SortBy>`. The ordering rules are a separate `v-model` (`Sort[]`)."
     }
   }
 }

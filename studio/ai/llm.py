@@ -84,16 +84,86 @@ TASK_PARAMS = {
 def patch_messages_for_provider(model: str, messages: list[dict]) -> None:
 	"""Anthropic via OpenRouter reads cache_control from INSIDE a content block, not
 	from the message level (a message-level marker is silently ignored → full input
-	price every turn). For any Claude message that carries a cache_control marker with
-	plain string content, wrap it in a text block and move the marker inside. Mutates
-	in place. Callers set the markers (system prompt + page context); each becomes a
-	cache breakpoint, well within Anthropic's limit of four."""
-	if "claude-" in model:
-		for m in messages:
-			if isinstance(m.get("content"), str) and "cache_control" in m:
-				m["content"] = [
-					{"type": "text", "text": m["content"], "cache_control": m.pop("cache_control")}
-				]
+	price every turn). Relocate each marker set by the agent loop into the message's
+	last content block for Claude models; strip markers entirely for other providers
+	(their caching is implicit). Mutates in place."""
+	claude = "claude-" in model
+	for m in messages:
+		marker = m.pop("cache_control", None)
+		if not marker or not claude:
+			continue
+		content = m.get("content")
+		if isinstance(content, str) or content is None:
+			m["content"] = [{"type": "text", "text": content or "", "cache_control": marker}]
+		elif isinstance(content, list) and content:
+			content[-1] = {**content[-1], "cache_control": marker}
+
+
+def provider_kwargs(model: str) -> dict:
+	"""Pin Claude calls to the Anthropic route on OpenRouter: a fallback provider
+	would silently drop the cache breakpoints and re-bill the whole prefix at full
+	input price on every round."""
+	if model.startswith("openrouter/") and "claude-" in model:
+		return {"extra_body": {"provider": {"order": ["anthropic"], "allow_fallbacks": False}}}
+	return {}
+
+
+def patch_params_for_provider(model: str, params: dict) -> dict:
+	"""Moonshot's Kimi rejects every temperature but 1, so coerce it instead of
+	failing the whole turn over a tuning knob."""
+	if "kimi" in model and params.get("temperature") not in (None, 1):
+		return {**params, "temperature": 1}
+	return params
+
+
+# --- provider routing --------------------------------------------------------
+
+
+def provider_overrides(info: dict) -> dict:
+	"""The api_base configured on the model's Studio AI Provider, if any."""
+	return {"api_base": info["api_base"]} if info.get("api_base") else {}
+
+
+def route(model: str, api_key: str | None) -> tuple[str, dict, str | None]:
+	"""Rewrite a registry model name into the call litellm should make.
+
+	The name is `<route prefix>/<model id>`; the provider says which litellm
+	provider to hand it to and where. OpenRouter maps to itself; any
+	OpenAI-compatible gateway (Ollama, vLLM, a private proxy) maps to
+	`openai/<id>` against the provider's api_base. Unknown models pass through
+	untouched, so a hand-typed name still reaches litellm.
+	"""
+	info = ModelRegistry.find(model)
+	if not info:
+		return model, {}, api_key
+	prefix = info.get("route_prefix") or ""
+	model_id = model[len(prefix) + 1 :] if prefix and model.startswith(f"{prefix}/") else model
+	litellm_provider = info.get("litellm_provider") or prefix
+	overrides = provider_overrides(info)
+	return f"{litellm_provider}/{model_id}", overrides, provider_api_key(info) or api_key
+
+
+def codex_route(model: str) -> tuple[str, str] | None:
+	"""(provider row, remote model id) when this model rides the ChatGPT Codex
+	backend. That backend is OAuth plus Responses SSE, which litellm cannot
+	speak, so complete()/complete_with_tools() hand these to studio.ai.codex."""
+	info = ModelRegistry.find(model)
+	if not info or (info.get("litellm_provider") or "").lower() != "codex":
+		return None
+	prefix = info.get("route_prefix") or ""
+	model_id = model[len(prefix) + 1 :] if prefix and model.startswith(f"{prefix}/") else model
+	return info["provider"], model_id
+
+
+def provider_api_key(info: dict) -> str | None:
+	"""The key stored on the model's provider, when it has one."""
+	provider = info.get("provider")
+	if not provider:
+		return None
+	try:
+		return frappe.get_cached_doc("Studio AI Provider", provider).resolved_key()
+	except Exception:
+		return None
 
 
 def _log_content(content) -> str:
@@ -114,25 +184,34 @@ def _log_content(content) -> str:
 
 def complete(model: str, messages: list, params: dict, *, stream: bool, api_key: str | None = None):
 	"""Plain completion. Returns the response iterator when streaming, else the
-	text content. litellm handles fallback + retry."""
+	text content. Transient failures are retried by litellm (and, for streaming
+	rounds, by the agent loop's own retry layer — litellm can't fall back mid-stream)."""
+	if target := codex_route(model):
+		from studio.ai import codex
+
+		return codex.complete(target[1], messages, params, provider=target[0], stream=stream)
+	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
+	params = patch_params_for_provider(model, params)
 	logger.info(
-		f"LLM | model={model} stream={stream} fallbacks={ModelRegistry.get_fallbacks(model)} params={params}\n"
+		f"LLM | model={model} stream={stream} params={params}\n"
 		+ "\n".join(f"[{m['role']}] {_log_content(m['content'])}" for m in messages)
 	)
 	resp = litellm.completion(
 		model=model,
 		messages=messages,
 		stream=stream,
-		api_key=api_key or get_api_key(),
-		# Fallbacks are disabled during streaming: litellm's mid-stream fallback
-		# attempts __next__ on async generators returned by OpenRouter, causing
-		# MidStreamFallbackError. Fallbacks only work safely for non-streaming calls.
-		fallbacks=[] if stream else ModelRegistry.get_fallbacks(model),
+		api_key=api_key,
 		num_retries=1,
+		# Read timeout (max stall between bytes, not total duration): a wedged
+		# provider connection otherwise blocks the worker forever — the loop only
+		# checks cancellation between chunks, so a silent stall is uncancellable.
+		timeout=120,
 		# Emit a final usage chunk while streaming so the loop can tally tokens per
 		# turn (dropped automatically for providers that don't support it).
 		**({"stream_options": {"include_usage": True}} if stream else {}),
+		**provider_kwargs(model),
+		**overrides,
 		**params,
 	)
 	if not stream:
@@ -151,9 +230,14 @@ def complete_with_tools(
 	api_key: str | None = None,
 	stream: bool = False,
 ):
-	"""Tool-calling completion. Returns the raw response (iterator when
-	streaming). litellm handles fallback + retry."""
+	"""Tool-calling completion. Returns the raw response (iterator when streaming)."""
+	if target := codex_route(model):
+		from studio.ai import codex
+
+		return codex.complete(target[1], messages, params, provider=target[0], tools=tools, stream=stream)
+	model, overrides, api_key = route(model, api_key)
 	patch_messages_for_provider(model, messages)
+	params = patch_params_for_provider(model, params)
 	logger.info(
 		f"LLM tools | model={model} stream={stream} tools={[t['function']['name'] for t in tools]}\n"
 		+ "\n".join(f"[{m['role']}] {_log_content(m['content'])}" for m in messages)
@@ -163,17 +247,11 @@ def complete_with_tools(
 		messages=messages,
 		tools=tools,
 		stream=stream,
-		api_key=api_key or get_api_key(),
-		# Fallbacks disabled during streaming — see comment in complete().
-		fallbacks=[] if stream else ModelRegistry.get_fallbacks(model),
+		api_key=api_key,
 		num_retries=1,
-		# Final usage chunk while streaming — see complete().
+		timeout=120,
 		**({"stream_options": {"include_usage": True}} if stream else {}),
+		**provider_kwargs(model),
+		**overrides,
 		**params,
 	)
-
-
-def get_api_key() -> str | None:
-	"""OpenRouter key, read from Studio Settings."""
-	settings = frappe.get_single("Studio Settings")
-	return settings.get_password("ai_api_key", raise_exception=False)

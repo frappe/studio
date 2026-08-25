@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/DurationProps",
   "definitions": {
     "DurationProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,39 +40,47 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "modelValue": {
           "type": [
             "number",
             "null"
-          ]
+          ],
+          "description": "The duration value in seconds (two-way via `v-model`)."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder shown when the input is empty. Defaults to `1h 30m 45s`."
         },
         "format": {
           "anyOf": [
-            {
-              "type": "string"
-            },
             {
               "type": "string",
               "enum": [
                 "short",
                 "long",
                 "colon"
-              ]
+              ],
+              "description": "Named display presets (smart zero-omission; `long` also pluralizes):   short — \"1h 30m 45s\"   long  — \"1 hour 30 minutes 45 seconds\"   colon — \"1:30:45\""
+            },
+            {
+              "type": "string"
             }
-          ]
+          ],
+          "description": "How the saved value is rendered when not focused: a named preset (`short` | `long` | `colon`) or a token template (e.g. `h'h' m'm' s's'`, `hh:mm:ss`). Defaults to `short`."
         },
         "size": {
           "type": "string",
@@ -80,7 +89,8 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Visual size of the input. Forwarded to the underlying `TextInput`."
         },
         "variant": {
           "type": "string",
@@ -88,12 +98,36 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Style variant of the input. Forwarded to the underlying `TextInput`."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Disables the input when true."
         }
       },
+      "additionalProperties": false
+    },
+    "DurationEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the model value changes."
+        }
+      },
+      "required": [
+        "update:modelValue"
+      ],
       "additionalProperties": false
     }
   }

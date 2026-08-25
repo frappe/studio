@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/SelectProps",
   "definitions": {
     "SelectProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,15 +40,19 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "size": {
           "type": "string",
@@ -56,7 +61,8 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size of the select input."
         },
         "variant": {
           "type": "string",
@@ -64,13 +70,16 @@
             "subtle",
             "outline",
             "ghost"
-          ]
+          ],
+          "description": "Visual style of the select input."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder text displayed when no option is selected."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "If true, disables the select input."
         },
         "modelValue": {
           "anyOf": [
@@ -83,10 +92,12 @@
             {
               "type": "object"
             }
-          ]
+          ],
+          "description": "The currently selected value."
         },
         "open": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Controls the visibility of the select menu."
         },
         "options": {
           "type": "array",
@@ -135,12 +146,117 @@
                 ]
               }
             ]
-          }
+          },
+          "description": "Options to display in the dropdown."
         },
         "emptyText": {
-          "type": "string"
+          "type": "string",
+          "description": "Fallback empty-state copy rendered when no options are available."
         }
       },
+      "additionalProperties": false
+    },
+    "SelectSlots": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "description": "Fully custom trigger renderer."
+        },
+        "label": {
+          "type": "object",
+          "description": "Overrides the rendered label content. Receives `{ required }`."
+        },
+        "description": {
+          "type": "object",
+          "description": "Overrides the rendered description content."
+        },
+        "prefix": {
+          "type": "object",
+          "description": "Content rendered before the trigger value. Receives the same shape as `#trigger` and `#suffix` (`SelectSlotProps`)."
+        },
+        "suffix": {
+          "type": "object",
+          "description": "Content rendered after the trigger value. Providing this slot\n**replaces the default chevron** — render your own fallback when your slot content is conditional."
+        },
+        "option": {
+          "type": "object",
+          "description": "Shared renderer for option labels.",
+          "deprecated": "use `#item-label` for per-row label customization. `#option` remains as a back-compat alias through v1.x."
+        },
+        "item-prefix": {
+          "type": "object",
+          "description": "Content rendered before the standard option label."
+        },
+        "item-label": {
+          "type": "object",
+          "description": "Content rendered for the standard option label area."
+        },
+        "item-suffix": {
+          "type": "object",
+          "description": "Content rendered after the standard option label."
+        },
+        "empty": {
+          "type": "object",
+          "description": "Fallback content rendered when no options are available."
+        },
+        "footer": {
+          "type": "object",
+          "description": "Content rendered below the option list. Stays pinned below the scrollable options."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object"
+          },
+          {
+            "not": {}
+          }
+        ]
+      }
+    },
+    "SelectEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "object"
+              },
+              {
+                "not": {}
+              }
+            ],
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the selected value changes."
+        },
+        "update:open": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the open state changes."
+        }
+      },
+      "required": [
+        "update:modelValue",
+        "update:open"
+      ],
       "additionalProperties": false
     }
   }

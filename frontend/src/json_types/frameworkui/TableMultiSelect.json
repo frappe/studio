@@ -14,11 +14,13 @@
           "type": "boolean"
         },
         "doctype": {
-          "type": "string"
+          "type": "string",
+          "description": "Doctype the links point at — the picker searches its records."
         },
         "filters": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": {},
+          "description": "Link search filters, forwarded to `search_link`."
         },
         "placeholder": {
           "type": "string"
@@ -27,11 +29,31 @@
           "type": "boolean"
         },
         "creatable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Show a \"Create '{query}'\" action in the footer when the user has typed a query. The control does **not** create anything itself — it emits `create` and the host wires the behaviour (open quick-entry, insert, …), exactly like `Link`'s `creatable` + `@create`."
         }
       },
       "required": [
         "doctype"
+      ],
+      "additionalProperties": false
+    },
+    "TableMultiSelectEmits": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "query"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the footer \"Create\" action is clicked, with the typed query."
+        }
+      },
+      "required": [
+        "create"
       ],
       "additionalProperties": false
     }

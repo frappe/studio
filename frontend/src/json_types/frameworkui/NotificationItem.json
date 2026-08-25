@@ -11,19 +11,24 @@
               "type": "string"
             },
             "title": {
-              "type": "string"
+              "type": "string",
+              "description": "canonical headline shown in the panel — HTML, sanitized by the backend at write time"
             },
             "description": {
-              "type": "string"
+              "type": "string",
+              "description": "canonical body shown under the title — HTML, sanitized by the backend at write time"
             },
             "subject": {
-              "type": "string"
+              "type": "string",
+              "description": "email representation of the title; used as the title fallback"
             },
             "type": {
-              "type": "string"
+              "type": "string",
+              "description": "opaque category tag — used only for filtering, never for presentation"
             },
             "app": {
-              "type": "string"
+              "type": "string",
+              "description": "app that produced this notification — used to scope the panel to a single app"
             },
             "read": {
               "type": [
@@ -35,12 +40,20 @@
               "type": "string"
             },
             "from_user_image": {
-              "type": "string"
+              "type": "string",
+              "description": "sender's photo for the default avatar. Resolved client-side today (see useNotifications); a candidate to become a server virtual field so the feed query carries it directly."
             },
             "document_type": {
               "type": "string"
             },
             "document_name": {
+              "type": "string"
+            },
+            "source_doctype": {
+              "type": "string",
+              "description": "record the notification came from, when that is not the document itself (e.g. a Comment)"
+            },
+            "source_name": {
               "type": "string"
             },
             "link": {
@@ -70,16 +83,20 @@
       "type": "object",
       "properties": {
         "prefix": {
-          "type": "object"
+          "type": "object",
+          "description": "Leading region (defaults to the sender avatar)."
         },
         "default": {
-          "type": "object"
+          "type": "object",
+          "description": "Main content (defaults to the title)."
         },
         "description": {
-          "type": "object"
+          "type": "object",
+          "description": "Secondary line under the title."
         },
         "suffix": {
-          "type": "object"
+          "type": "object",
+          "description": "Trailing region (defaults to the timestamp / unread dot)."
         }
       },
       "additionalProperties": false

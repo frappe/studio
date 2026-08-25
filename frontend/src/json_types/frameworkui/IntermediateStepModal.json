@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "IntermediateStepModalProps": {
+      "type": "object",
+      "properties": {
+        "currentStep": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Dialog title."
+            },
+            "message": {
+              "type": "string",
+              "description": "Body copy."
+            },
+            "videoURL": {
+              "type": "string",
+              "description": "MP4 shown under the message."
+            },
+            "buttonLabel": {
+              "type": "string",
+              "description": "Label of the single action button."
+            },
+            "onClick": {
+              "type": "object",
+              "description": "Run when the action button is clicked."
+            }
+          },
+          "additionalProperties": false,
+          "description": "The step being shown."
+        },
+        "dialogOptions": {
+          "type": "object",
+          "description": "Passed straight to `Dialog`'s `options`; overrides the derived options."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Props for `<IntermediateStepModal>`."
+    },
+    "IntermediateStepModalSlots": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "description": "Replaces the message + video body."
+        },
+        "body-header": {
+          "type": "object",
+          "description": "Extra content above the body."
+        },
+        "actions": {
+          "type": "object",
+          "description": "Replaces the dialog's action row."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Slots for `<IntermediateStepModal>`."
+    }
+  }
+}

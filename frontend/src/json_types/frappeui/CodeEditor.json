@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/CodeEditorProps",
   "definitions": {
     "CodeEditorProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,24 +40,26 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "modelValue": {
-          "type": "string"
+          "type": "string",
+          "description": "The editor's text content (controlled, two-way via `v-model`)."
         },
         "language": {
           "anyOf": [
-            {
-              "type": "string"
-            },
             {
               "type": "string",
               "enum": [
@@ -71,22 +74,30 @@
                 "yaml",
                 "xml",
                 "plain"
-              ]
+              ],
+              "description": "A language key understood by `loadLanguage`."
+            },
+            {
+              "type": "string"
             }
-          ]
+          ],
+          "description": "CodeMirror language key; falls through to plain text when unset/unknown. Typed as `CodeLanguage | (string & {})` so the known keys autocomplete while an arbitrary string still type-checks."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "If true, the editor is disabled: greyed out and not editable."
         },
         "placeholder": {
-          "type": "string"
+          "type": "string",
+          "description": "Placeholder shown when the editor is empty."
         },
         "variant": {
           "type": "string",
           "enum": [
             "subtle",
             "outline"
-          ]
+          ],
+          "description": "Surface style; derived from the shared `InputVariant` union so the code field can't drift from the TextInput/Textarea fields it sits next to. `subtle` is the filled default, `outline` is a bordered-on-white box. `ghost` (borderless) is excluded — a borderless code surface reads as plain text and loses the affordance that it's an editable field. Defaults to `subtle`."
         },
         "size": {
           "type": "string",
@@ -95,11 +106,53 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size token, mirroring frappe-ui inputs. Scales the editor's font size and minimum height (`sm | md | lg | xl`). Defaults to `md`."
         }
       },
       "required": [
         "modelValue"
+      ],
+      "additionalProperties": false
+    },
+    "CodeEditorEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Live document text on every change — mirrors the textarea field contract."
+        },
+        "change": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Commit (blur). The field wrapper normalizes (e.g. JSON pretty-print) here."
+        },
+        "overflow": {
+          "type": "array",
+          "items": {
+            "type": "boolean",
+            "title": "overflowing"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Whether the content currently overflows the height cap (only transitions are emitted). The cap is set in CSS via the `--cm-max-height` custom property on the root (there's no `maxHeight` prop — styling lives in CSS per P10); this emit reports the crossing because a consumer can't measure it from CSS."
+        }
+      },
+      "required": [
+        "update:modelValue",
+        "change",
+        "overflow"
       ],
       "additionalProperties": false
     }

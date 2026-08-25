@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/RatingProps",
   "definitions": {
     "RatingProps": {
       "type": "object",
       "properties": {
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above (or beside, for binary controls) the input."
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the input. Hidden when `error` is set."
         },
         "error": {
           "anyOf": [
@@ -39,42 +40,55 @@
               "required": [
                 "message",
                 "name"
-              ]
+              ],
+              "description": "Library-level extension of the standard `Error` type. Frappe's whitelisted methods may return an error with multiple messages on `messages?: string[]`. This is the shape input components render in their error region."
             }
-          ]
+          ],
+          "description": "Error message rendered below the input. When set, the control receives `aria-invalid=\"true\"` and `data-state=\"invalid\"`. May be either a string or an `Error` object whose `messages?: string[]` is rendered as stacked lines (with `Error.message` as the fallback)."
         },
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Marks the field as required. Renders an asterisk next to the label and forwards `required` / `aria-required` to the underlying control."
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "HTML id of the underlying control. Auto-generated via `useId()` if omitted."
         },
         "modelValue": {
-          "type": "number"
+          "type": "number",
+          "description": "The current rating value (controlled). In star units, `0..max`, in increments of `step`."
         },
         "max": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of stars to render. Defaults to 5."
         },
         "step": {
           "type": "number",
           "enum": [
             1,
             0.5
-          ]
+          ],
+          "description": "Granularity of the rating value. `1` for whole stars, `0.5` for half stars. Defaults to `1`."
         },
         "rating_from": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of stars to render.",
+          "deprecated": "Use `max` instead."
         },
         "disabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "If true, disables interaction."
         },
         "readonly": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "If true, disables interaction.",
+          "deprecated": "Use `disabled` instead."
         },
         "icon": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Icon to render for each star. Accepts a Vue component (e.g. an auto-imported lucide icon: `import Heart from '~icons/lucide/heart'`). The component receives `fill=\"currentColor\"` so closed-path SVGs render filled. Defaults to a filled lucide-star."
         },
         "size": {
           "type": "string",
@@ -83,9 +97,29 @@
             "md",
             "lg",
             "xl"
-          ]
+          ],
+          "description": "Size of the rating component."
         }
       },
+      "additionalProperties": false
+    },
+    "RatingEmits": {
+      "type": "object",
+      "properties": {
+        "update:modelValue": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "title": "value"
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "Fired when the rating value changes."
+        }
+      },
+      "required": [
+        "update:modelValue"
+      ],
       "additionalProperties": false
     }
   }

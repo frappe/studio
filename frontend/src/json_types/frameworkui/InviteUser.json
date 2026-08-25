@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "InviteUserProps": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false,
+            "description": "A selectable role in the form's role picker. `value` is the Frappe Role name."
+          },
+          "description": "Roles for the picker (controller data)."
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string",
+                "description": "Avatar image URL (the User's `user_image`), if any."
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false,
+            "description": "A user suggested in the email field. `value` is the user's email (their `User` name)."
+          },
+          "description": "User suggestions for the email field (controller data)."
+        },
+        "usersLoading": {
+          "type": "boolean"
+        },
+        "inviting": {
+          "type": "boolean"
+        },
+        "error": {
+          "description": "Latest controller error; surfaced inline under the email field."
+        },
+        "showResultToasts": {
+          "type": "boolean",
+          "description": "Show the standard result toasts on success (set false to handle via `@invited`)."
+        },
+        "emailProps": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Props forwarded onto the email field (`MultiEmailInput`). The lightweight way to relabel/localize or restyle the field without overriding the `#email` slot — e.g. `{ label: __('Invite by email'), size: 'lg' }`. Precedence: the panel's English defaults < your props < the controlled wiring (`model-value`, `options`, `error`, query/invalid handlers), so you can set copy and presentation but can't break the data binding. For full control of the rendered field, use the `#email` slot instead."
+        },
+        "rolesProps": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Props forwarded onto the roles field (`MultiSelect`); same precedence rules as  {@link  emailProps } . For full control, use the `#roles` slot. The submit button's text is `Button`'s slot content (not a prop), so retitle it via the `#submit` slot."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Props for the `InviteUser` panel. Spread the controller's data via `v-bind=\"controller\"`. The panel renders standard frappe-ui fields with English defaults; there are no flat copy props. For light customization (relabel, localize, restyle) forward props onto a field with  {@link  emailProps }  /  {@link  rolesProps } ; to replace a field's rendering wholesale, use its per-field slot (`#email` / `#roles` / `#submit`). Errors are field-scoped (the `error` below surfaces under the email field), so there is no form-level error prop either."
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "OnboardingStepsProps": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "logo": {
+          "type": "string"
+        },
+        "afterSkip": {
+          "type": "object",
+          "description": "Called after a step's state changes on the server."
+        },
+        "afterSkipAll": {
+          "type": "object",
+          "description": "Called after every step's state changes at once."
+        },
+        "afterReset": {
+          "type": "object",
+          "description": "Called after a step's state changes on the server."
+        },
+        "afterResetAll": {
+          "type": "object",
+          "description": "Called after every step's state changes at once."
+        }
+      },
+      "required": [
+        "logo"
+      ],
+      "additionalProperties": false,
+      "description": "Props for `<OnboardingSteps>` — internal to `<HelpModal>`."
+    }
+  }
+}

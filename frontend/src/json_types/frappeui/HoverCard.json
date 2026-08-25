@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/HoverCardProps",
   "definitions": {
     "HoverCardProps": {
       "type": "object",
@@ -12,7 +11,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Side of the trigger the card is placed on."
         },
         "align": {
           "type": "string",
@@ -20,25 +20,32 @@
             "start",
             "center",
             "end"
-          ]
+          ],
+          "description": "Alignment of the card relative to the trigger."
         },
         "offset": {
-          "type": "number"
+          "type": "number",
+          "description": "Distance in pixels between the card and the trigger."
         },
         "portalTo": {
-          "type": "string"
+          "type": "string",
+          "description": "Where the card is teleported to in the DOM."
         },
         "collisionPadding": {
-          "type": "number"
+          "type": "number",
+          "description": "Padding (in pixels) kept between the card and the viewport edges when repositioning to avoid collisions."
         },
         "hoverDelay": {
-          "type": "number"
+          "type": "number",
+          "description": "Delay (in seconds) from when the pointer enters the trigger until the card opens. Matches the Tooltip convention of using seconds."
         },
         "leaveDelay": {
-          "type": "number"
+          "type": "number",
+          "description": "Delay (in seconds) from when the pointer leaves the trigger or card until the card closes."
         },
         "arrow": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Render a small arrow pointing at the trigger. Styled to match the panel surface."
         }
       },
       "additionalProperties": false

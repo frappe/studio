@@ -9,10 +9,12 @@
           "properties": {
             "type": {
               "type": "string",
-              "const": "comment"
+              "const": "comment",
+              "description": "discriminant → picks the renderer/slot"
             },
             "key": {
-              "type": "string"
+              "type": "string",
+              "description": "v-for key + scroll target; prefix by type (e.g. `sla_breach:1`)"
             },
             "timestamp": {
               "type": "string"
@@ -38,7 +40,8 @@
             "icon": {
               "type": [
                 "string"
-              ]
+              ],
+              "description": "lucide name or component; per-type default when absent"
             },
             "data": {
               "type": "object",
@@ -77,13 +80,16 @@
       "type": "object",
       "properties": {
         "header": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the row header (author, timestamp)."
         },
         "actions": {
-          "type": "object"
+          "type": "object",
+          "description": "Trailing actions in the header."
         },
         "footer": {
-          "type": "object"
+          "type": "object",
+          "description": "Replaces the row footer."
         }
       },
       "additionalProperties": false

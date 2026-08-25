@@ -18,3 +18,6 @@ studio.studio.doctype.studio_page.patches.migrate_event_actions_to_script
 studio.studio.doctype.studio_ai_session.patches.migrate_ai_session_messages_to_doctype
 studio.studio.doctype.studio_page.patches.migrate_slot_content_to_blocks
 studio.studio.doctype.studio_page.patches.fold_raw_styles_into_base_styles
+studio.studio.doctype.studio_ai_provider.patches.seed_providers_and_models
+studio.studio.doctype.studio_ai_provider.patches.move_ai_key_to_provider
+studio.studio.doctype.studio_ai_session.patches.rekey_ai_sessions_to_app

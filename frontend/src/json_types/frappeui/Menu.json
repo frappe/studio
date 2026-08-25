@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/MenuProps",
   "definitions": {
     "MenuProps": {
       "type": "object",
@@ -22,35 +21,44 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the action item."
                         },
                         "route": {
                           "anyOf": [
@@ -60,10 +68,12 @@
                             {
                               "type": "object"
                             }
-                          ]
+                          ],
+                          "description": "Router destination to navigate to when the item is clicked."
                         },
                         "onClick": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Click handler invoked when the action item is selected."
                         }
                       },
                       "required": [
@@ -77,45 +87,57 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the switch item."
                         },
                         "switch": {
                           "type": "boolean",
-                          "const": true
+                          "const": true,
+                          "description": "Renders the item with a switch control."
                         },
                         "switchValue": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Current boolean value for the switch item."
                         },
                         "onClick": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Change handler invoked with the next switch value."
                         }
                       },
                       "required": [
@@ -130,48 +152,58 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the submenu trigger."
                         },
                         "submenu": {
                           "type": "array",
                           "items": {
                             "anyOf": [
                               {
-                                "$ref": "#/definitions/alias-188344743-3584-3698-188344743-0-5750"
+                                "$ref": "#/definitions/alias-385972183-3584-3698-385972183-0-5750"
                               },
                               {
-                                "$ref": "#/definitions/interface-188344743-2907-3584-188344743-0-5750"
+                                "$ref": "#/definitions/interface-385972183-2907-3584-385972183-0-5750"
                               }
                             ]
-                          }
+                          },
+                          "description": "Nested menu items rendered in the submenu."
                         }
                       },
                       "required": [
@@ -186,36 +218,48 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
-                        "component": {},
+                        "component": {
+                          "description": "Custom component rendered in place of the standard menu row.",
+                          "deprecated": "use `slots.item` for the full-row escape hatch instead"
+                        },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Optional label used by custom renderers."
                         }
                       },
                       "required": [
@@ -223,16 +267,19 @@
                       ]
                     }
                   ]
-                }
+                },
+                "description": "Items rendered inside the group. Optional in the type so the deprecated `items` alias still typechecks; provide one of `options` or `items`."
               },
               "key": {
                 "type": [
                   "string",
                   "number"
-                ]
+                ],
+                "description": "Stable key for the group wrapper."
               },
               "group": {
-                "type": "string"
+                "type": "string",
+                "description": "Label rendered above the grouped items."
               },
               "items": {
                 "type": "array",
@@ -245,35 +292,44 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the action item."
                         },
                         "route": {
                           "anyOf": [
@@ -283,10 +339,12 @@
                             {
                               "type": "object"
                             }
-                          ]
+                          ],
+                          "description": "Router destination to navigate to when the item is clicked."
                         },
                         "onClick": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Click handler invoked when the action item is selected."
                         }
                       },
                       "required": [
@@ -300,45 +358,57 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the switch item."
                         },
                         "switch": {
                           "type": "boolean",
-                          "const": true
+                          "const": true,
+                          "description": "Renders the item with a switch control."
                         },
                         "switchValue": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Current boolean value for the switch item."
                         },
                         "onClick": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Change handler invoked with the next switch value."
                         }
                       },
                       "required": [
@@ -353,48 +423,58 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Primary label shown for the submenu trigger."
                         },
                         "submenu": {
                           "type": "array",
                           "items": {
                             "anyOf": [
                               {
-                                "$ref": "#/definitions/alias-188344743-3584-3698-188344743-0-5750"
+                                "$ref": "#/definitions/alias-385972183-3584-3698-385972183-0-5750"
                               },
                               {
-                                "$ref": "#/definitions/interface-188344743-2907-3584-188344743-0-5750"
+                                "$ref": "#/definitions/interface-385972183-2907-3584-385972183-0-5750"
                               }
                             ]
-                          }
+                          },
+                          "description": "Nested menu items rendered in the submenu."
                         }
                       },
                       "required": [
@@ -409,36 +489,48 @@
                           "type": [
                             "string",
                             "null"
-                          ]
+                          ],
+                          "description": "Leading icon shown for the item row."
                         },
                         "description": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Secondary text shown below the label."
                         },
                         "selected": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Marks the item as currently selected."
                         },
                         "disabled": {
-                          "type": "boolean"
+                          "type": "boolean",
+                          "description": "Disables interaction for the item."
                         },
                         "theme": {
                           "type": "string",
                           "enum": [
                             "gray",
                             "red"
-                          ]
+                          ],
+                          "description": "Visual theme applied to the item row."
                         },
                         "slot": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                         },
                         "slots": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Per-item inline slot implementations for the row shell."
                         },
                         "condition": {
-                          "type": "object"
+                          "type": "object",
+                          "description": "Condition used to omit an item from the final menu."
                         },
-                        "component": {},
+                        "component": {
+                          "description": "Custom component rendered in place of the standard menu row.",
+                          "deprecated": "use `slots.item` for the full-row escape hatch instead"
+                        },
                         "label": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Optional label used by custom renderers."
                         }
                       },
                       "required": [
@@ -446,27 +538,33 @@
                       ]
                     }
                   ]
-                }
+                },
+                "deprecated": "use `options`. Accepted only as a back-compat alias for\nDropdown's previous `{ group, items }` shape."
               },
               "hideLabel": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "Hides the group heading while preserving grouping."
               },
               "theme": {
                 "type": "string",
                 "enum": [
                   "gray",
                   "red"
-                ]
+                ],
+                "description": "Theme inherited by items in the group."
               }
             },
             "required": [
               "group",
               "options"
-            ]
-          }
+            ],
+            "description": "Group object after normalization. `options` is guaranteed to be present (the deprecated `items` alias has been resolved into it)."
+          },
+          "description": "Normalized groups of menu options to render."
         },
         "close": {
-          "type": "object"
+          "type": "object",
+          "description": "Closes the menu."
         },
         "slotFns": {
           "type": "object",
@@ -479,12 +577,14 @@
                 "not": {}
               }
             ]
-          }
+          },
+          "description": "Dynamic `item-*` slot implementations resolved by name."
         },
         "portalTo": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Portal target for submenu content."
         },
         "primitives": {
           "type": "object",
@@ -504,7 +604,8 @@
             "SubContent",
             "SubTrigger"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Reka-ui primitives supplied by the wrapping menu component."
         }
       },
       "required": [
@@ -513,7 +614,7 @@
       ],
       "additionalProperties": false
     },
-    "alias-188344743-3584-3698-188344743-0-5750": {
+    "alias-385972183-3584-3698-385972183-0-5750": {
       "anyOf": [
         {
           "type": "object",
@@ -522,35 +623,44 @@
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "Leading icon shown for the item row."
             },
             "description": {
-              "type": "string"
+              "type": "string",
+              "description": "Secondary text shown below the label."
             },
             "selected": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Marks the item as currently selected."
             },
             "disabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Disables interaction for the item."
             },
             "theme": {
               "type": "string",
               "enum": [
                 "gray",
                 "red"
-              ]
+              ],
+              "description": "Visual theme applied to the item row."
             },
             "slot": {
-              "type": "string"
+              "type": "string",
+              "description": "Named slot suffix used to resolve `item-*` slots dynamically."
             },
             "slots": {
-              "type": "object"
+              "type": "object",
+              "description": "Per-item inline slot implementations for the row shell."
             },
             "condition": {
-              "type": "object"
+              "type": "object",
+              "description": "Condition used to omit an item from the final menu."
             },
             "label": {
-              "type": "string"
+              "type": "string",
+              "description": "Primary label shown for the action item."
             },
             "route": {
               "anyOf": [
@@ -560,10 +670,12 @@
                 {
                   "type": "object"
                 }
-              ]
+              ],
+              "description": "Router destination to navigate to when the item is clicked."
             },
             "onClick": {
-              "type": "object"
+              "type": "object",
+              "description": "Click handler invoked when the action item is selected."
             }
           },
           "required": [
@@ -577,45 +689,57 @@
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "Leading icon shown for the item row."
             },
             "description": {
-              "type": "string"
+              "type": "string",
+              "description": "Secondary text shown below the label."
             },
             "selected": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Marks the item as currently selected."
             },
             "disabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Disables interaction for the item."
             },
             "theme": {
               "type": "string",
               "enum": [
                 "gray",
                 "red"
-              ]
+              ],
+              "description": "Visual theme applied to the item row."
             },
             "slot": {
-              "type": "string"
+              "type": "string",
+              "description": "Named slot suffix used to resolve `item-*` slots dynamically."
             },
             "slots": {
-              "type": "object"
+              "type": "object",
+              "description": "Per-item inline slot implementations for the row shell."
             },
             "condition": {
-              "type": "object"
+              "type": "object",
+              "description": "Condition used to omit an item from the final menu."
             },
             "label": {
-              "type": "string"
+              "type": "string",
+              "description": "Primary label shown for the switch item."
             },
             "switch": {
               "type": "boolean",
-              "const": true
+              "const": true,
+              "description": "Renders the item with a switch control."
             },
             "switchValue": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Current boolean value for the switch item."
             },
             "onClick": {
-              "type": "object"
+              "type": "object",
+              "description": "Change handler invoked with the next switch value."
             }
           },
           "required": [
@@ -630,48 +754,58 @@
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "Leading icon shown for the item row."
             },
             "description": {
-              "type": "string"
+              "type": "string",
+              "description": "Secondary text shown below the label."
             },
             "selected": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Marks the item as currently selected."
             },
             "disabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Disables interaction for the item."
             },
             "theme": {
               "type": "string",
               "enum": [
                 "gray",
                 "red"
-              ]
+              ],
+              "description": "Visual theme applied to the item row."
             },
             "slot": {
-              "type": "string"
+              "type": "string",
+              "description": "Named slot suffix used to resolve `item-*` slots dynamically."
             },
             "slots": {
-              "type": "object"
+              "type": "object",
+              "description": "Per-item inline slot implementations for the row shell."
             },
             "condition": {
-              "type": "object"
+              "type": "object",
+              "description": "Condition used to omit an item from the final menu."
             },
             "label": {
-              "type": "string"
+              "type": "string",
+              "description": "Primary label shown for the submenu trigger."
             },
             "submenu": {
               "type": "array",
               "items": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/alias-188344743-3584-3698-188344743-0-5750"
+                    "$ref": "#/definitions/alias-385972183-3584-3698-385972183-0-5750"
                   },
                   {
-                    "$ref": "#/definitions/interface-188344743-2907-3584-188344743-0-5750"
+                    "$ref": "#/definitions/interface-385972183-2907-3584-385972183-0-5750"
                   }
                 ]
-              }
+              },
+              "description": "Nested menu items rendered in the submenu."
             }
           },
           "required": [
@@ -686,36 +820,48 @@
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "description": "Leading icon shown for the item row."
             },
             "description": {
-              "type": "string"
+              "type": "string",
+              "description": "Secondary text shown below the label."
             },
             "selected": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Marks the item as currently selected."
             },
             "disabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "Disables interaction for the item."
             },
             "theme": {
               "type": "string",
               "enum": [
                 "gray",
                 "red"
-              ]
+              ],
+              "description": "Visual theme applied to the item row."
             },
             "slot": {
-              "type": "string"
+              "type": "string",
+              "description": "Named slot suffix used to resolve `item-*` slots dynamically."
             },
             "slots": {
-              "type": "object"
+              "type": "object",
+              "description": "Per-item inline slot implementations for the row shell."
             },
             "condition": {
-              "type": "object"
+              "type": "object",
+              "description": "Condition used to omit an item from the final menu."
             },
-            "component": {},
+            "component": {
+              "description": "Custom component rendered in place of the standard menu row.",
+              "deprecated": "use `slots.item` for the full-row escape hatch instead"
+            },
             "label": {
-              "type": "string"
+              "type": "string",
+              "description": "Optional label used by custom renderers."
             }
           },
           "required": [
@@ -724,17 +870,19 @@
         }
       ]
     },
-    "interface-188344743-2907-3584-188344743-0-5750": {
+    "interface-385972183-2907-3584-385972183-0-5750": {
       "type": "object",
       "properties": {
         "key": {
           "type": [
             "string",
             "number"
-          ]
+          ],
+          "description": "Stable key for the group wrapper."
         },
         "group": {
-          "type": "string"
+          "type": "string",
+          "description": "Label rendered above the grouped items."
         },
         "options": {
           "type": "array",
@@ -747,35 +895,44 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the action item."
                   },
                   "route": {
                     "anyOf": [
@@ -785,10 +942,12 @@
                       {
                         "type": "object"
                       }
-                    ]
+                    ],
+                    "description": "Router destination to navigate to when the item is clicked."
                   },
                   "onClick": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Click handler invoked when the action item is selected."
                   }
                 },
                 "required": [
@@ -802,45 +961,57 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the switch item."
                   },
                   "switch": {
                     "type": "boolean",
-                    "const": true
+                    "const": true,
+                    "description": "Renders the item with a switch control."
                   },
                   "switchValue": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Current boolean value for the switch item."
                   },
                   "onClick": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Change handler invoked with the next switch value."
                   }
                 },
                 "required": [
@@ -855,48 +1026,58 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the submenu trigger."
                   },
                   "submenu": {
                     "type": "array",
                     "items": {
                       "anyOf": [
                         {
-                          "$ref": "#/definitions/alias-188344743-3584-3698-188344743-0-5750"
+                          "$ref": "#/definitions/alias-385972183-3584-3698-385972183-0-5750"
                         },
                         {
-                          "$ref": "#/definitions/interface-188344743-2907-3584-188344743-0-5750"
+                          "$ref": "#/definitions/interface-385972183-2907-3584-385972183-0-5750"
                         }
                       ]
-                    }
+                    },
+                    "description": "Nested menu items rendered in the submenu."
                   }
                 },
                 "required": [
@@ -911,36 +1092,48 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
-                  "component": {},
+                  "component": {
+                    "description": "Custom component rendered in place of the standard menu row.",
+                    "deprecated": "use `slots.item` for the full-row escape hatch instead"
+                  },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Optional label used by custom renderers."
                   }
                 },
                 "required": [
@@ -948,7 +1141,8 @@
                 ]
               }
             ]
-          }
+          },
+          "description": "Items rendered inside the group. Optional in the type so the deprecated `items` alias still typechecks; provide one of `options` or `items`."
         },
         "items": {
           "type": "array",
@@ -961,35 +1155,44 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the action item."
                   },
                   "route": {
                     "anyOf": [
@@ -999,10 +1202,12 @@
                       {
                         "type": "object"
                       }
-                    ]
+                    ],
+                    "description": "Router destination to navigate to when the item is clicked."
                   },
                   "onClick": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Click handler invoked when the action item is selected."
                   }
                 },
                 "required": [
@@ -1016,45 +1221,57 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the switch item."
                   },
                   "switch": {
                     "type": "boolean",
-                    "const": true
+                    "const": true,
+                    "description": "Renders the item with a switch control."
                   },
                   "switchValue": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Current boolean value for the switch item."
                   },
                   "onClick": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Change handler invoked with the next switch value."
                   }
                 },
                 "required": [
@@ -1069,48 +1286,58 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Primary label shown for the submenu trigger."
                   },
                   "submenu": {
                     "type": "array",
                     "items": {
                       "anyOf": [
                         {
-                          "$ref": "#/definitions/alias-188344743-3584-3698-188344743-0-5750"
+                          "$ref": "#/definitions/alias-385972183-3584-3698-385972183-0-5750"
                         },
                         {
-                          "$ref": "#/definitions/interface-188344743-2907-3584-188344743-0-5750"
+                          "$ref": "#/definitions/interface-385972183-2907-3584-385972183-0-5750"
                         }
                       ]
-                    }
+                    },
+                    "description": "Nested menu items rendered in the submenu."
                   }
                 },
                 "required": [
@@ -1125,36 +1352,48 @@
                     "type": [
                       "string",
                       "null"
-                    ]
+                    ],
+                    "description": "Leading icon shown for the item row."
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Secondary text shown below the label."
                   },
                   "selected": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Marks the item as currently selected."
                   },
                   "disabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Disables interaction for the item."
                   },
                   "theme": {
                     "type": "string",
                     "enum": [
                       "gray",
                       "red"
-                    ]
+                    ],
+                    "description": "Visual theme applied to the item row."
                   },
                   "slot": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Named slot suffix used to resolve `item-*` slots dynamically."
                   },
                   "slots": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Per-item inline slot implementations for the row shell."
                   },
                   "condition": {
-                    "type": "object"
+                    "type": "object",
+                    "description": "Condition used to omit an item from the final menu."
                   },
-                  "component": {},
+                  "component": {
+                    "description": "Custom component rendered in place of the standard menu row.",
+                    "deprecated": "use `slots.item` for the full-row escape hatch instead"
+                  },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Optional label used by custom renderers."
                   }
                 },
                 "required": [
@@ -1162,23 +1401,73 @@
                 ]
               }
             ]
-          }
+          },
+          "deprecated": "use `options`. Accepted only as a back-compat alias for\nDropdown's previous `{ group, items }` shape."
         },
         "hideLabel": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Hides the group heading while preserving grouping."
         },
         "theme": {
           "type": "string",
           "enum": [
             "gray",
             "red"
-          ]
+          ],
+          "description": "Theme inherited by items in the group."
         }
       },
       "required": [
         "group"
       ],
       "additionalProperties": false
+    },
+    "MenuSlots": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "description": "Alternate trigger renderer."
+        },
+        "trigger": {
+          "type": "object",
+          "description": "Explicit trigger slot renderer."
+        },
+        "item": {
+          "type": "object",
+          "description": "Replaces the entire item row."
+        },
+        "item-prefix": {
+          "type": "object",
+          "description": "Content rendered before the standard item label."
+        },
+        "item-label": {
+          "type": "object",
+          "description": "Content rendered for the standard item label area."
+        },
+        "item-suffix": {
+          "type": "object",
+          "description": "Content rendered after the standard item label."
+        },
+        "group-label": {
+          "type": "object",
+          "description": "Custom renderer for group labels."
+        },
+        "empty": {
+          "type": "object",
+          "description": "Fallback content rendered when no items are available."
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object"
+          },
+          {
+            "not": {}
+          }
+        ]
+      }
     }
   }
 }

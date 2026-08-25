@@ -87,6 +87,17 @@ export class FunctionTypeParser implements SubNodeParser {
 	}
 }
 
+export class ThisTypeParser implements SubNodeParser {
+	supportsNode(node: ts.Node): boolean {
+		return node.kind === ts.SyntaxKind.ThisType
+	}
+
+	createType(node: ts.Node, context: Context, reference?: ReferenceType): BaseType {
+		// `this` inside method/function prop signatures — opaque, like function types
+		return new ObjectType("this-object", [], [], true)
+	}
+}
+
 export class SlotsParser implements SubNodeParser {
 	supportsNode(node: ts.Node): boolean {
 		if (ts.isTypeReferenceNode(node)) {

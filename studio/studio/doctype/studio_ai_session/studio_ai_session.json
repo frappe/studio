@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "app",
   "page",
   "user",
   "selected_model",
@@ -14,12 +15,18 @@
  ],
  "fields": [
   {
-   "fieldname": "page",
+   "fieldname": "app",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Page",
-   "options": "Studio Page",
+   "label": "App",
+   "options": "Studio App",
    "reqd": 1
+  },
+  {
+   "fieldname": "page",
+   "fieldtype": "Link",
+   "label": "Focus Page",
+   "options": "Studio Page"
   },
   {
    "fieldname": "user",
@@ -87,5 +94,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "page"
+ "title_field": "app"
 }

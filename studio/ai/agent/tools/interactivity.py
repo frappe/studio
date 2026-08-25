@@ -9,6 +9,8 @@ handler / condition into the block instead (add_block/generate_page 'events' and
 An event handler runs as a 'Run Script' action: arbitrary JS evaluated with the page's
 script context in scope — variables (as refs: read/write via `.value`, e.g.
 `counter.value++`), data sources, page-script bindings, and `route`/`router`.
+The runtime exposes `$event` (the first event argument, as in Vue) and calls a
+`handleEvent(...eventArgs)` function if the script defines one (codeStore.executeUserScript).
 """
 
 from studio.ai.agent.registry import Tool
@@ -21,7 +23,10 @@ set_event_handler = Tool(
 		"you're adding this turn, put it in the block's 'events' field in add_block instead). The "
 		"script runs with the page context in scope: variables are refs — read/write with `.value` "
 		"(e.g. to increment a counter variable: `counter.value++`); data sources are available as "
-		"<source>.data. Example: on a button, event='click', script='counter.value++'."
+		"<source>.data. Example: on a button, event='click', script='counter.value++'. "
+		"`$event` is the event's first argument (as in Vue); define `function handleEvent(...args) "
+		"{ … }` to name multiple arguments. Prefer event modifiers over manual calls: "
+		"event='dragover.prevent' instead of preventDefault."
 	),
 	parameters={
 		"type": "object",

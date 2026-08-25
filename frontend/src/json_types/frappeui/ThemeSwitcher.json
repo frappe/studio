@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/ThemeSwitcherProps",
   "definitions": {
     "ThemeSwitcherProps": {
       "type": "object",
@@ -11,21 +10,28 @@
             "light",
             "dark",
             "system"
-          ]
+          ],
+          "description": "Selected theme. Falls back to the shared `useTheme` state when unbound."
         },
         "label": {
-          "type": "string"
+          "type": "string",
+          "description": "Heading rendered above the options.",
+          "default": "Theme"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Helper text rendered below the heading.",
+          "default": "Switch between light, dark, or system theme"
         },
         "logo": {
           "type": [
             "string"
-          ]
+          ],
+          "description": "Brand logo shown inside each preview. A string is treated as an image source; a component value is rendered with `<component :is>`."
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Brand name shown inside each preview."
         },
         "themeLabels": {
           "type": "object",
@@ -40,7 +46,13 @@
               "type": "string"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "description": "Overrides the per-option labels. For richer per-item content, use the `#item-label` slot, which takes precedence over this prop.",
+          "default": {
+            "light": "Light",
+            "dark": "Dark",
+            "system": "System"
+          }
         }
       },
       "additionalProperties": false

@@ -5,7 +5,8 @@
       "type": "object",
       "properties": {
         "title": {
-          "type": "string"
+          "type": "string",
+          "description": "Title shown centered in the header. Overridden by the default slot."
         }
       },
       "additionalProperties": false

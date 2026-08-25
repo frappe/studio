@@ -1,5 +1,6 @@
 import json
 import re
+import secrets
 
 import frappe
 from frappe import _
@@ -142,6 +143,33 @@ class BlockCodec:
 				ev.setdefault("action", "Run Script")
 				out[name] = ev
 		return out
+
+	@staticmethod
+	def ensure_ids(block: dict) -> dict:
+		"""Assign a componentId to every block in an expanded tree that lacks one (children and
+		slot content included), matching the canvas format `<componentName>-<9 alnum chars>`. The
+		server is the id authority: ids are stamped here at apply time and shipped to the canvas,
+		so draft and canvas always agree on refs. Also defaults `originalElement` on layout
+		blocks — a container without it renders nothing (blank canvas)."""
+		if not isinstance(block, dict):
+			return block
+		name = block.get("componentName") or "container"
+		if not block.get("componentId"):
+			block["componentId"] = f"{name}-{BlockCodec.generate_id()}"
+		if name in ("container", "div") and not block.get("originalElement"):
+			block["originalElement"] = "body" if block["componentId"] == "root" else "div"
+		for child in block.get("children") or []:
+			BlockCodec.ensure_ids(child)
+		for slot in (block.get("componentSlots") or {}).values():
+			if isinstance(slot, dict):
+				for child in slot.get("slotContent") or []:
+					BlockCodec.ensure_ids(child)
+		return block
+
+	@staticmethod
+	def generate_id() -> str:
+		alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+		return "".join(secrets.choice(alphabet) for _ in range(9))
 
 	@staticmethod
 	def parse_blocks(content: str) -> dict:

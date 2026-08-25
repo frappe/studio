@@ -1,13 +1,14 @@
 import fs from "fs"
 import path from "path"
 import { CompletedConfig, createFormatter, createParser, createProgram, SchemaGenerator } from "ts-json-schema-generator"
-import { SVGElementParser, VueComponentParser, RouteLocationParser, HTMLElementParser, FunctionTypeParser, SlotsParser } from "./customParser.js"
+import { SVGElementParser, VueComponentParser, RouteLocationParser, HTMLElementParser, FunctionTypeParser, SlotsParser, ThisTypeParser } from "./customParser.js"
 
 interface TypeFile {
 	filePath: string
 	componentName: string
-	// perComponent: whether the source also exports `<componentName>Slots`
+	// whether the source also exports `<componentName>Slots` / `<componentName>Emits`
 	hasSlots?: boolean
+	hasEmits?: boolean
 }
 
 // `expected`: components found in source (so their JSON is current and should be
@@ -42,7 +43,9 @@ function tsToJSON(
 		skipTypeCheck: true,
 		expose: "none", // only include explicitly requested types
 		topRef: true, // add top-level $ref
-		jsDoc: "none", // include JSDoc annotations
+		// carry JSDoc through: prop descriptions + @default land in the schemas, so the
+		// props panel and the AI read the same words the component author wrote
+		jsDoc: "extended",
 		additionalProperties: false,
 	} as CompletedConfig
 
@@ -51,31 +54,28 @@ function tsToJSON(
 	}
 
 	const written: string[] = []
-	for (const { filePath, componentName, hasSlots } of typeFiles) {
+	for (const { filePath, componentName, hasSlots, hasEmits } of typeFiles) {
 		config["path"] = filePath
 
-		if (perComponent) {
-			if (generateComponentSchema(config, componentName, Boolean(hasSlots), outputDirPath)) {
-				written.push(componentName)
-			}
+		if (generateComponentSchema(config, componentName, Boolean(hasSlots), Boolean(hasEmits), outputDirPath)) {
+			written.push(componentName)
 			continue
 		}
+		if (perComponent) continue
 
-		config["type"] = `${componentName}Props`
+		// Barrel type files with no `<Component>Props` (e.g. Charts) fall back to
+		// exporting every type they declare.
+		console.warn(`Failed to generate schema for ${componentName}Props, trying wildcard type`)
 		try {
-			generateSchema(config, componentName, outputDirPath)
+			try {
+				generateSchema({ ...config, type: "*" } as CompletedConfig, componentName, outputDirPath)
+			} catch {
+				generateSchema({ ...config, type: "*", jsDoc: "basic" } as CompletedConfig, componentName, outputDirPath)
+			}
 			console.log(`Generated types for ${componentName} saved to ${componentName}.json`)
 			written.push(componentName)
 		} catch (error) {
-			console.warn(`Failed to generate schema for ${componentName}Props, trying wildcard type`)
-			config["type"] = "*"
-			try {
-				generateSchema(config, componentName, outputDirPath)
-				console.log(`Generated types for ${componentName} saved to ${componentName}.json`)
-				written.push(componentName)
-			} catch (error) {
-				console.error(`Failed to generate schema for ${componentName}:`, error)
-			}
+			console.error(`Failed to generate schema for ${componentName}:`, error)
 		}
 	}
 
@@ -100,7 +100,7 @@ function findTypeFiles(dir: string, folderScan: boolean, skipFolders: string[] |
 					// skip a shared `types.ts` sitting directly in the components root
 					// (it is not a component, e.g. @framework/ui's cross-component types)
 					const componentName = path.basename(path.dirname(fullPath))
-					typeFiles.push({ filePath: fullPath, componentName })
+					typeFiles.push(typeFileEntry(fullPath, componentName))
 				}
 			}
 		}
@@ -112,11 +112,21 @@ function findTypeFiles(dir: string, folderScan: boolean, skipFolders: string[] |
 		for (const file of files) {
 			const filePath = path.join(dir, file)
 			const componentName = path.basename(file, ".ts")
-			typeFiles.push({ filePath, componentName })
+			typeFiles.push(typeFileEntry(filePath, componentName))
 		}
 	}
 
 	return typeFiles
+}
+
+function typeFileEntry(filePath: string, componentName: string): TypeFile {
+	const source = fs.readFileSync(filePath, "utf-8")
+	return {
+		filePath,
+		componentName,
+		hasSlots: exportsType(source, `${componentName}Slots`),
+		hasEmits: exportsType(source, `${componentName}Emits`),
+	}
 }
 
 // perComponent (@framework/ui): a folder can host several components (Notifications,
@@ -147,6 +157,7 @@ function findComponentTypeFiles(
 				filePath: typesFile.path,
 				componentName,
 				hasSlots: exportsType(typesFile.source, `${componentName}Slots`),
+				hasEmits: exportsType(typesFile.source, `${componentName}Emits`),
 			})
 		}
 
@@ -192,31 +203,35 @@ function generateSchema(config: CompletedConfig, componentName: string, outputDi
 	writeSchema(schema, componentName, outputDirPath)
 }
 
-// Emit one `<Component>.json` holding both `<Component>Props` and (when present)
-// `<Component>Slots` under `definitions`, so the consumer can read either.
+// Emit one `<Component>.json` holding `<Component>Props` and (when present)
+// `<Component>Slots` / `<Component>Emits` under `definitions`, so the consumer
+// can read any of them.
 function generateComponentSchema(
 	config: CompletedConfig,
 	componentName: string,
 	hasSlots: boolean,
+	hasEmits: boolean,
 	outputDirPath: string,
 ): boolean {
 	const definitions: Record<string, any> = {}
 	try {
-		config["type"] = `${componentName}Props`
-		Object.assign(definitions, buildSchema(config).definitions)
+		Object.assign(definitions, buildDefinitions(config, `${componentName}Props`))
 	} catch (error) {
 		console.error(`Failed to generate Props schema for ${componentName}: ${errorMessage(error)}`)
 		return false
 	}
 
-	if (hasSlots) {
+	for (const [flag, kind] of [
+		[hasSlots, "Slots"],
+		[hasEmits, "Emits"],
+	] as const) {
+		if (!flag) continue
 		try {
-			config["type"] = `${componentName}Slots`
-			Object.assign(definitions, buildSchema(config).definitions)
+			Object.assign(definitions, buildDefinitions(config, `${componentName}${kind}`))
 		} catch (error) {
 			// e.g. a generic `<Component>Slots<T>` can't be resolved by bare name — the
-			// component keeps its Props schema and its slots are read from the template.
-			console.warn(`Skipped Slots schema for ${componentName}: ${errorMessage(error)}`)
+			// component keeps its Props schema and loses only this section.
+			console.warn(`Skipped ${kind} schema for ${componentName}: ${errorMessage(error)}`)
 		}
 	}
 
@@ -229,6 +244,20 @@ function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error)
 }
 
+// Some upstream JSDoc breaks the "extended" annotations parser (it evaluates tag
+// bodies as TS expressions — inline casts or `this` types throw). Those types
+// fall back to "basic": descriptions survive, only tag extras (@default) are lost.
+function buildDefinitions(config: CompletedConfig, typeName: string): Record<string, any> {
+	try {
+		return buildSchema({ ...config, type: typeName }).definitions ?? {}
+	} catch (error) {
+		const basic = { ...config, type: typeName, jsDoc: "basic" } as CompletedConfig
+		const definitions = buildSchema(basic).definitions ?? {}
+		console.warn(`${typeName}: extended JSDoc failed (${errorMessage(error)}) — kept descriptions only`)
+		return definitions
+	}
+}
+
 function buildSchema(config: CompletedConfig) {
 	const program = createProgram(config)
 	const parser = createParser(program, config, (prs) => {
@@ -238,6 +267,7 @@ function buildSchema(config: CompletedConfig) {
 		prs.addNodeParser(new HTMLElementParser())
 		prs.addNodeParser(new FunctionTypeParser())
 		prs.addNodeParser(new SlotsParser())
+		prs.addNodeParser(new ThisTypeParser())
 	})
 	const formatter = createFormatter(config)
 	const generator = new SchemaGenerator(program, parser, formatter, config)

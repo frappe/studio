@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "CodePreviewProps": {
+      "type": "object",
+      "properties": {
+        "modelValue": {
+          "type": "string",
+          "description": "The source text to render as sanitized preview output."
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "json",
+                "html",
+                "javascript",
+                "python",
+                "sql",
+                "markdown",
+                "css",
+                "scss",
+                "yaml",
+                "xml",
+                "plain"
+              ],
+              "description": "A language key understood by `loadLanguage`."
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Only `markdown` / `html` render a preview; anything else renders nothing."
+        }
+      },
+      "required": [
+        "modelValue"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

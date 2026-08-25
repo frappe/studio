@@ -51,26 +51,42 @@ def generate_page_json(ctx, args: dict) -> list[dict]:
 
 	ctx.emit("progress", message="Building the page…")
 
+	# The stream is also snapshotted to Redis as it grows: an editor that (re)loads
+	# mid-build pulls it via api.get_active_build and replays the preview. Everything
+	# else about a running turn is already durable (messages + draft in the DB).
+	page_title = frappe.db.get_value("Studio Page", ctx.page_id, "page_title") or ""
 	content = ""
+	buffered_at = 0
 	finish_reason = None
 	stream = llm.complete(ctx.model, messages, llm.TASK_PARAMS["complex"], stream=True, api_key=ctx.api_key)
-	for chunk in stream:
-		if ctx.is_cancelled():
-			try:
-				stream.close()
-			except Exception:
-				pass
-			from studio.ai.agent.loop import CancelledError
+	try:
+		for chunk in stream:
+			if ctx.is_cancelled():
+				try:
+					stream.close()
+				except Exception:
+					pass
+				from studio.ai.agent.loop import CancelledError
 
-			raise CancelledError
-		if not chunk.choices:
-			continue
-		if fr := chunk.choices[0].finish_reason:
-			finish_reason = fr
-		delta = chunk.choices[0].delta.content
-		if delta:
-			content += delta
-			ctx.emit("stream", chunk=delta, kind="page_json")
+				raise CancelledError
+			if not chunk.choices:
+				continue
+			if fr := chunk.choices[0].finish_reason:
+				finish_reason = fr
+			delta = chunk.choices[0].delta.content
+			if delta:
+				# offset = position of this chunk in the artifact. The client resets its
+				# preview buffer at 0 (a multi-page turn streams several generations) and
+				# refills from the Redis snapshot when a chunk doesn't append cleanly.
+				ctx.emit("stream", chunk=delta, kind="page_json", offset=len(content))
+				content += delta
+				if len(content) - buffered_at >= 512:
+					buffered_at = len(content)
+					save_stream_buffer(ctx, content, page_title)
+	finally:
+		# The buffer only serves mid-build (re)loads; once streaming ends, the
+		# authoritative parsed op — or the turn's next generation — supersedes it.
+		clear_stream_buffer(ctx.session_id)
 
 	if finish_reason == "length":
 		logger.warning("generate_page hit max_tokens — the page may be truncated")
@@ -81,6 +97,25 @@ def generate_page_json(ctx, args: dict) -> list[dict]:
 		return []
 
 	return [{"tool_name": "generate_page", "args": {"block": block}}]
+
+
+def stream_buffer_key(session_id: str) -> str:
+	return f"studio_ai_build_stream:{session_id}"
+
+
+def save_stream_buffer(ctx, content: str, page_title: str) -> None:
+	"""Snapshot the in-flight generation stream (every ~512 chars) so an editor that
+	loads or refreshes mid-build can replay the preview instead of a stale draft."""
+	frappe.cache.set_value(
+		stream_buffer_key(ctx.session_id),
+		frappe.as_json({"content": content, "page_id": ctx.page_id, "page_title": page_title}),
+		expires_in_sec=600,  # matches the job timeout — a dead run's buffer expires with it
+	)
+
+
+def clear_stream_buffer(session_id: str | None) -> None:
+	if session_id:
+		frappe.cache.delete_value(stream_buffer_key(session_id))
 
 
 def _build_message(ctx, brief: str) -> dict:

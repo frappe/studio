@@ -1,0 +1,596 @@
+{
+	"list": {
+		"name": "List",
+		"label": "List",
+		"props": {
+			"columns": [
+				"minmax(0, 1fr)",
+				"7rem",
+				"8rem",
+				"3rem"
+			],
+			"rowHeight": 56
+		},
+		"style": {
+			"width": "100%"
+		},
+		"c": [
+			{
+				"name": "ListHeader",
+				"c": [
+					{
+						"name": "ListHeaderCell",
+						"c": [
+							{
+								"name": "TextBlock",
+								"props": {
+									"text": "Member",
+									"tag": "span"
+								}
+							}
+						]
+					},
+					{
+						"name": "ListHeaderCell",
+						"c": [
+							{
+								"name": "TextBlock",
+								"props": {
+									"text": "Role",
+									"tag": "span"
+								}
+							}
+						]
+					},
+					{
+						"name": "ListHeaderCell",
+						"style": {
+							"justifyContent": "flex-end"
+						},
+						"c": [
+							{
+								"name": "TextBlock",
+								"props": {
+									"text": "Member since",
+									"tag": "span"
+								}
+							}
+						]
+					},
+					{
+						"name": "ListHeaderCell"
+					}
+				]
+			},
+			{
+				"name": "ListRows",
+				"props": {
+					"items": [
+						{
+							"name": "Rosa Diaz",
+							"email": "rosa@example.com",
+							"role": "Admin",
+							"since": "2021-06"
+						},
+						{
+							"name": "Jake Peralta",
+							"email": "jake@example.com",
+							"role": "Member",
+							"since": "2022-01"
+						},
+						{
+							"name": "Amy Santiago",
+							"email": "amy@example.com",
+							"role": "Admin",
+							"since": "2020-11"
+						},
+						{
+							"name": "Terry Jeffords",
+							"email": "terry@example.com",
+							"role": "Member",
+							"since": "2023-03"
+						},
+						{
+							"name": "Raymond Holt",
+							"email": "holt@example.com",
+							"role": "Guest",
+							"since": "2024-08"
+						}
+					]
+				},
+				"slots": {
+					"default": [
+						{
+							"name": "ListRow",
+							"props": {
+								"value": "{{ value }}"
+							},
+							"c": [
+								{
+									"name": "ListCell",
+									"c": [
+										{
+											"name": "Avatar",
+											"props": {
+												"label": "{{ item.name }}",
+												"size": "xl",
+												"shape": "circle"
+											}
+										},
+										{
+											"name": "container",
+											"originalElement": "div",
+											"style": {
+												"display": "flex",
+												"flexDirection": "column",
+												"marginLeft": "12px",
+												"minWidth": "0px"
+											},
+											"c": [
+												{
+													"name": "TextBlock",
+													"props": {
+														"text": "{{ item.name }}",
+														"tag": "span",
+														"fontSize": "text-base"
+													},
+													"style": {
+														"color": "var(--ink-gray-8)"
+													},
+													"classes": [
+														"truncate"
+													]
+												},
+												{
+													"name": "TextBlock",
+													"props": {
+														"text": "{{ item.email }}",
+														"tag": "span",
+														"fontSize": "text-sm"
+													},
+													"style": {
+														"marginTop": "2px",
+														"color": "var(--ink-gray-5)"
+													},
+													"classes": [
+														"truncate"
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "ListCell",
+									"c": [
+										{
+											"name": "TextBlock",
+											"props": {
+												"text": "{{ item.role }}",
+												"tag": "span"
+											},
+											"style": {
+												"color": "var(--ink-gray-7)"
+											}
+										}
+									]
+								},
+								{
+									"name": "ListCell",
+									"style": {
+										"justifyContent": "flex-end"
+									},
+									"c": [
+										{
+											"name": "TextBlock",
+											"props": {
+												"text": "{{ item.since }}",
+												"tag": "span"
+											},
+											"style": {
+												"color": "var(--ink-gray-6)"
+											}
+										}
+									]
+								},
+								{
+									"name": "ListCell",
+									"style": {
+										"justifyContent": "flex-end"
+									},
+									"c": [
+										{
+											"name": "Button",
+											"props": {
+												"variant": "ghost",
+												"icon": "lucide-trash-2",
+												"label": "Remove member"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	},
+	"list-row": {
+		"name": "ListRow",
+		"c": [
+			{
+				"name": "ListCell",
+				"c": [
+					{
+						"name": "TextBlock",
+						"props": {
+							"text": "—",
+							"tag": "span"
+						}
+					}
+				]
+			},
+			{
+				"name": "ListCell",
+				"c": [
+					{
+						"name": "TextBlock",
+						"props": {
+							"text": "—",
+							"tag": "span"
+						}
+					}
+				]
+			}
+		]
+	},
+	"list-rows": {
+		"name": "ListRows",
+		"props": {
+			"items": [
+				{
+					"name": "1",
+					"title": "First item",
+					"status": "Open"
+				},
+				{
+					"name": "2",
+					"title": "Second item",
+					"status": "Done"
+				},
+				{
+					"name": "3",
+					"title": "Third item",
+					"status": "Open"
+				}
+			]
+		},
+		"slots": {
+			"default": [
+				{
+					"name": "ListRow",
+					"props": {
+						"value": "{{ value }}"
+					},
+					"c": [
+						{
+							"name": "ListCell",
+							"c": [
+								{
+									"name": "TextBlock",
+									"props": {
+										"text": "{{ item.title }}",
+										"tag": "span"
+									}
+								}
+							]
+						},
+						{
+							"name": "ListCell",
+							"c": [
+								{
+									"name": "TextBlock",
+									"props": {
+										"text": "{{ item.status }}",
+										"tag": "span"
+									}
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	},
+	"list-header": {
+		"name": "ListHeader",
+		"c": [
+			{
+				"name": "ListHeaderCell",
+				"c": [
+					{
+						"name": "TextBlock",
+						"props": {
+							"text": "Column 1",
+							"tag": "span"
+						}
+					}
+				]
+			},
+			{
+				"name": "ListHeaderCell",
+				"c": [
+					{
+						"name": "TextBlock",
+						"props": {
+							"text": "Column 2",
+							"tag": "span"
+						}
+					}
+				]
+			}
+		]
+	},
+	"list-cell": {
+		"name": "ListCell",
+		"c": [
+			{
+				"name": "TextBlock",
+				"props": {
+					"text": "Cell",
+					"tag": "span"
+				}
+			}
+		]
+	},
+	"list-header-cell": {
+		"name": "ListHeaderCell",
+		"c": [
+			{
+				"name": "TextBlock",
+				"props": {
+					"text": "Label",
+					"tag": "span"
+				}
+			}
+		]
+	},
+	"list-header-cell-sort": {
+		"name": "ListHeaderCellSort",
+		"c": [
+			{
+				"name": "TextBlock",
+				"props": {
+					"text": "Label",
+					"tag": "span"
+				}
+			}
+		]
+	},
+	"settings-dialog": {
+		"name": "SettingsDialog",
+		"label": "Settings Dialog",
+		"props": {
+			"modelValue": false,
+			"shortcut": false,
+			"unmountOnHide": false,
+			"tab": "profile"
+		},
+		"c": [
+			{
+				"name": "SettingsSidebar",
+				"c": [
+					{
+						"name": "SettingsNavGroup",
+						"props": {
+							"label": "User settings"
+						},
+						"c": [
+							{
+								"name": "SettingsNavItem",
+								"label": "ProfileNavItem",
+								"props": {
+									"value": "profile"
+								},
+								"c": [
+									{
+										"name": "TextBlock",
+										"props": {
+											"text": "Profile",
+											"tag": "span"
+										}
+									}
+								]
+							},
+							{
+								"name": "SettingsNavItem",
+								"label": "NotificationsNavItem",
+								"props": {
+									"value": "notifications"
+								},
+								"c": [
+									{
+										"name": "TextBlock",
+										"props": {
+											"text": "Notifications",
+											"tag": "span"
+										}
+									}
+								]
+							}
+						]
+					}
+				]
+			},
+			{
+				"name": "SettingsContent",
+				"c": [
+					{
+						"name": "SettingsPanel",
+						"label": "ProfilePanel",
+						"props": {
+							"value": "profile"
+						},
+						"c": [
+							{
+								"name": "SettingsHeader",
+								"props": {
+									"title": "Profile",
+									"description": "How you appear across the app."
+								}
+							},
+							{
+								"name": "SettingsBody",
+								"c": [
+									{
+										"name": "SettingsRow",
+										"props": {
+											"title": "Full name",
+											"description": "Your display name."
+										},
+										"c": [
+											{
+												"name": "TextInput",
+												"props": {
+													"modelValue": "Alex Rivera"
+												}
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"name": "SettingsPanel",
+						"label": "NotificationsPanel",
+						"props": {
+							"value": "notifications"
+						},
+						"c": [
+							{
+								"name": "SettingsHeader",
+								"props": {
+									"title": "Notifications"
+								}
+							},
+							{
+								"name": "SettingsBody",
+								"c": [
+									{
+										"name": "SettingsRow",
+										"props": {
+											"title": "Enable email digests",
+											"description": "Send a summary of missed activity."
+										},
+										"c": [
+											{
+												"name": "Switch",
+												"props": {
+													"modelValue": true
+												}
+											}
+										]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"sidebar": {
+		"name": "Sidebar",
+		"label": "Sidebar",
+		"c": [
+			{
+				"name": "SidebarHeader",
+				"props": {
+					"title": "Frappe",
+					"subtitle": "Jane Doe",
+					"menuItems": [
+						{
+							"label": "Log out",
+							"icon": "lucide-log-out",
+							"onClick": "() => {}"
+						}
+					]
+				}
+			},
+			{
+				"name": "container",
+				"originalElement": "div",
+				"style": {
+					"display": "flex",
+					"flexDirection": "column",
+					"flex": "1",
+					"minHeight": "0px",
+					"overflowY": "auto",
+					"padding": "4px 8px"
+				},
+				"c": [
+					{
+						"name": "SidebarLabel",
+						"c": [
+							{
+								"name": "TextBlock",
+								"props": {
+									"text": "Menu",
+									"tag": "span"
+								}
+							}
+						]
+					},
+					{
+						"name": "SidebarItem",
+						"props": {
+							"label": "Home",
+							"icon": "lucide-house"
+						}
+					},
+					{
+						"name": "SidebarItem",
+						"props": {
+							"label": "Profile",
+							"icon": "lucide-user-pen"
+						}
+					},
+					{
+						"name": "SidebarItem",
+						"props": {
+							"label": "Settings",
+							"icon": "lucide-settings"
+						}
+					}
+				]
+			},
+			{
+				"name": "container",
+				"originalElement": "div",
+				"style": {
+					"marginTop": "auto",
+					"padding": "0px 8px 8px"
+				},
+				"c": [
+					{
+						"name": "SidebarCollapseToggle"
+					}
+				]
+			}
+		]
+	},
+	"sidebar-label": {
+		"name": "SidebarLabel",
+		"c": [
+			{
+				"name": "TextBlock",
+				"props": {
+					"text": "Label",
+					"tag": "span"
+				}
+			}
+		]
+	}
+}
