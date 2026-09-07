@@ -16,8 +16,7 @@ const useAppStore = defineStore("appStore", () => {
 
 	async function initializePage(page: StudioPage) {
 		activePage.value = page
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
-		await codeStore.setPageResources(page, false, page.resources)
+		await codeStore.initializePage(page, Boolean(page.is_standard), false, page.resources)
 	}
 
 	return {

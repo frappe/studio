@@ -201,8 +201,7 @@ const useStudioStore = defineStore("store", () => {
 		}
 		activePage.value = page
 		loadRouteVariables(page)
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
-		await codeStore.setPageResources(page, true)
+		await codeStore.initializePage(page, Boolean(page.is_standard), true)
 
 		const blocks = JSON.parse(page.draft_blocks || page.blocks || "[]")
 		if (blocks.length === 0) {
@@ -629,8 +628,7 @@ const useStudioStore = defineStore("store", () => {
 	const resetState = useDebounceFn(async () => {
 		const page = activePage.value
 		if (!page) return
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
-		await codeStore.setPageResources(page, true)
+		await codeStore.initializePage(page, Boolean(page.is_standard), true)
 	}, 300)
 
 	const codeStore = useCodeStore()

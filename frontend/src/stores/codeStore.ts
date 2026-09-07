@@ -59,6 +59,32 @@ const useCodeStore = defineStore("codeStore", () => {
 
 	// RESOURCES
 	let pendingResources: Record<string, any> | null = null
+	async function initializePage(
+		page: StudioPage,
+		isStandardPage: boolean = false,
+		setResourceConfig: boolean = false,
+		preloadedResources?: Resource[],
+	) {
+		stopResourceWatchers()
+		const pageResources = reactive({}) as Record<string, any>
+		pendingResources = pageResources
+
+		const resourceRows = await getPageResourceRows(page, preloadedResources)
+		if (pendingResources !== pageResources) return
+
+		// Expose every resource name before setup() runs. Page scripts receive stable proxies,
+		// while resource construction waits until their state bindings are available.
+		for (const resource of resourceRows) {
+			pageResources[resource.resource_name] = undefined
+		}
+		resources.value = pageResources
+
+		await setPageScript(page, isStandardPage)
+		if (pendingResources !== pageResources) return
+
+		await populatePageResources(resourceRows, pageResources, setResourceConfig)
+	}
+
 	async function setPageResources(
 		page: StudioPage,
 		setResourceConfig: boolean = false,
@@ -69,14 +95,25 @@ const useCodeStore = defineStore("codeStore", () => {
 		const pageResources = reactive({}) as Record<string, any>
 		pendingResources = pageResources
 
-		let resourceRows = preloadedResources
-		if (!resourceRows) {
-			studioPageResources.filters = { parent: page.name }
-			await studioPageResources.reload()
-			if (pendingResources !== pageResources) return
-			resourceRows = studioPageResources.data as Resource[]
-		}
+		const resourceRows = await getPageResourceRows(page, preloadedResources)
+		if (pendingResources !== pageResources) return
 
+		await populatePageResources(resourceRows, pageResources, setResourceConfig)
+	}
+
+	async function getPageResourceRows(page: StudioPage, preloadedResources?: Resource[]) {
+		if (preloadedResources) return preloadedResources
+
+		studioPageResources.filters = { parent: page.name }
+		await studioPageResources.reload()
+		return studioPageResources.data as Resource[]
+	}
+
+	async function populatePageResources(
+		resourceRows: Resource[],
+		pageResources: Record<string, any>,
+		setResourceConfig: boolean,
+	) {
 		await Promise.all(
 			resourceRows.map(async (resource: Resource) => {
 				await addPageResource(resource, pageResources)
@@ -741,9 +778,10 @@ const useCodeStore = defineStore("codeStore", () => {
 		setRouterObject,
 		routeObject,
 		routerObject,
-    teardownPage,
+		teardownPage,
 		// resources
 		resources,
+		initializePage,
 		setPageResources,
 		// two-way prop bindings (props stored as { $type: "variable", name })
 		getValueFromBinding,
