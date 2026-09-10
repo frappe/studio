@@ -8,6 +8,7 @@ import sharedDependencyResolver from "./vite/sharedDependencyResolver"
 import studioFolderWatcher from "./vite/studioFolderWatcher"
 import studioRootAlias from "./vite/studioRootAlias"
 import frameworkUIAlias from "./vite/frameworkUIAlias"
+import { getEditorRuntimeBuildInputs } from "./vite/editorRuntime"
 
 const viteDevServerPort = getViteDevServerPort()
 const appsDir = path.resolve(__dirname, "../../")
@@ -85,7 +86,11 @@ export default defineConfig(async () => {
 			alias: [...frameworkUIAliases, { find: "@", replacement: path.resolve(__dirname, "src") }],
 		},
 		build: {
+			manifest: true,
 			rolldownOptions: {
+				// Runtime facades are loaded independently through the import map. Their
+				// complete export surfaces must survive the application build.
+				preserveEntrySignatures: "exports-only",
 				onwarn(warning, warn) {
 					if (warning.code === "INVALID_ANNOTATION") return
 					warn(warning)
@@ -93,6 +98,7 @@ export default defineConfig(async () => {
 				input: {
 					studio: path.resolve(__dirname, "index.html"),
 					renderer: path.resolve(__dirname, "renderer.html"),
+					...getEditorRuntimeBuildInputs(import.meta.url),
 				},
 			},
 			outDir: `../studio/public/frontend`,

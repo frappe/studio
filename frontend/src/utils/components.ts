@@ -71,7 +71,7 @@ function getComponentProps(componentName: string, component: ConcreteComponent |
 				propertySchema,
 				componentDefinitions,
 				propName,
-				propType
+				propType,
 			)
 
 			const config: ComponentProp = {
@@ -224,6 +224,12 @@ const templateCache = new Map<string, string>()
 
 const customComponentFilePaths = new Map<string, string>()
 
+function registerBuiltCustomComponentTemplates(templates: Record<string, string>) {
+	for (const [componentName, template] of Object.entries(templates)) {
+		if (template) templateCache.set(componentName, template)
+	}
+}
+
 async function registerCustomComponentPaths(components: CustomVueComponentMeta[]) {
 	customComponentFilePaths.clear()
 	for (const comp of components) {
@@ -291,6 +297,7 @@ async function fetchCustomComponentTemplate(componentName: string): Promise<stri
 	if (templateCache.has(componentName)) {
 		return templateCache.get(componentName) || ""
 	}
+	if (import.meta.env.PROD) return ""
 
 	const filePath = customComponentFilePaths.get(componentName)
 	if (!filePath) return ""
@@ -358,7 +365,7 @@ function resolveProperty(
 	propertySchema: any,
 	componentDefinitions: Record<string, any>,
 	propName: string,
-	propType?: string
+	propType?: string,
 ) {
 	let type = propType
 
@@ -405,4 +412,5 @@ export {
 	componentHasDefaultSlot,
 	invalidateComponentCache,
 	registerCustomComponentPaths,
+	registerBuiltCustomComponentTemplates,
 }

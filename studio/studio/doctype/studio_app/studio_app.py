@@ -273,6 +273,36 @@ class StudioApp(WebsiteGenerator):
 			return None
 
 	@frappe.whitelist()
+	def get_editor_assets(self):
+		if not self.is_standard or not frappe.has_permission("Studio App", ptype="read", doc=self):
+			frappe.throw(_("You do not have permission to load editor assets"), frappe.PermissionError)
+
+		manifest_path = os.path.join(
+			frappe.get_app_path(self.frappe_app),
+			"public",
+			"app_builds",
+			self.name,
+			"editor",
+			".vite",
+			"manifest.json",
+		)
+		if not os.path.exists(manifest_path):
+			return None
+
+		with open(manifest_path) as manifest_file:
+			manifest = json.load(manifest_file)
+		entry = next((value for value in manifest.values() if value.get("isEntry")), None)
+		if not entry:
+			return None
+
+		base_path = f"/assets/{self.frappe_app}/app_builds/{self.name}/editor/"
+		return {
+			"protocol_version": 1,
+			"script": f"{base_path}{entry['file']}",
+			"stylesheets": [f"{base_path}{css_file}" for css_file in entry.get("css", [])],
+		}
+
+	@frappe.whitelist()
 	def enable_app_export(self, target_app: str):
 		frappe.db.set_value(
 			"Studio Page",
