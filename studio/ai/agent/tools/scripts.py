@@ -30,17 +30,18 @@ import frappe
 
 from studio.ai.agent.registry import Tool
 from studio.ai.agent.tools.page import load_page, save_page
-from studio.export import can_export, write_code_file
+from studio.ai.prompt_fragments import RESOURCE_SETUP_RULE
+from studio.export import write_code_file
 
 
 def run_get_page_script(ctx, args: dict) -> str:
 	page = load_page(ctx)
 	if page is None:
 		return "No page in context."
-	source = _read_script(page)
+	source = read_page_script(page)
 	if not source.strip():
 		return "This page has no script yet."
-	where = "code file (<page>.ts)" if can_export(page) else "the page's `script` field (DB)"
+	where = "code file (<page>.ts)" if page.is_standard else "the page's `script` field (DB)"
 	return f"Current page script (stored in {where}):\n{source}"
 
 
@@ -105,8 +106,9 @@ def _write_file_script(ctx, page, source: str) -> str:
 	)
 
 
-def _read_script(page) -> str:
-	if can_export(page):
+def read_page_script(page) -> str:
+	"""Read the source of truth, including exported scripts outside developer mode."""
+	if page.is_standard:
 		path = os.path.join(page.get_folder_path(), f"{page.get_export_docname()}.ts")
 		return frappe.read_file(path) or "" if os.path.exists(path) else ""
 	return page.script or ""
@@ -173,7 +175,7 @@ def build_tools(is_standard: bool) -> list[Tool]:
 		name="set_page_script",
 		side="server",
 		handler=run_set_page_script,
-		description=description,
+		description=description + " " + RESOURCE_SETUP_RULE,
 		parameters={
 			"type": "object",
 			"properties": {

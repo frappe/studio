@@ -23,3 +23,13 @@ ON_ERROR_RULE = (
 )
 
 FILTER_FORMAT_RULE = 'Filters as a map, e.g. {"status":"Open"} or {"status":["!=","Closed"]}.'
+
+RESOURCE_SETUP_RULE = (
+	"Page resources and their methods exist during setup. Declare state synchronously and use normal "
+	"computed values, watchers (including immediate watchers), and event handlers. Studio defers requests "
+	"made during setup until returned state is exposed, and evaluates configured filters and params when "
+	"each request starts. Explicit request params take precedence. Resource data is initially empty: "
+	"watch it or await a fetch inside an async handler before reading results. For dependent resources, "
+	"disable auto-fetch and use a watcher guarded by the prerequisite value. Exported scripts can also "
+	"create frappe-ui resources directly, using makeParams closures over their local refs."
+)

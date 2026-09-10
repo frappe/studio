@@ -18,6 +18,7 @@ import frappe
 
 from studio.ai import llm
 from studio.ai.agent.tools.introspect import describe_page_data
+from studio.ai.agent.tools.scripts import read_page_script
 from studio.ai.block_codec import BlockCodec
 from studio.ai.models import ModelRegistry
 from studio.ai.prompts import GENERATION
@@ -106,16 +107,16 @@ def _build_message(ctx, brief: str) -> dict:
 
 
 def _available_data_note(ctx) -> str:
-	"""A message listing the data sources already on the page, so the generator binds the
-	layout to real, existing sources (per the DATA BINDING rules). Empty when the page has
-	no data layer yet."""
+	"""Give the generator data sources and state created earlier in the current turn."""
 	page = frappe.get_doc("Studio Page", ctx.page_id) if ctx.page_id else None
 	if page is None:
 		return ""
 	state = describe_page_data(page)
-	if not state["data_sources"]:
+	state["page_script"] = read_page_script(page)
+	if not state["data_sources"] and not state["page_script"].strip():
 		return ""
 	return (
-		"Data sources already created on this page — bind the layout to THESE (and only these), "
-		"per the DATA BINDING rules:\n" + BlockCodec.to_json(state)
+		"Available page data and script — bind only to these data sources and the state exposed "
+		"by this script (top-level declarations for a custom page, setup() returns for an exported "
+		"page). Do not invent state names:\n" + BlockCodec.to_json(state)
 	)

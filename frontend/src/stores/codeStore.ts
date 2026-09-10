@@ -1,11 +1,12 @@
 import { defineStore } from "pinia"
 import {
 	ref, computed, watch, watchEffect, reactive, toRef, toRefs, unref,
-	isRef, isReactive, shallowRef, readonly, markRaw, nextTick, effectScope,
-	type ComputedRef, type EffectScope, type WatchStopHandle, h,
+	isRef, isReactive, shallowRef, readonly, markRaw, nextTick,
+	type ComputedRef, type WatchStopHandle, h,
 } from "vue"
 import { watchDebounced } from "@vueuse/core"
 import { createDocumentResource, createListResource, createResource, call } from "frappe-ui"
+import { PageScriptScope } from "@/utils/pageScriptScope"
 import { studioPageResources } from "@/data/studioResources"
 import { loadPageScriptModule, setPageScriptHotUpdateHandler } from "@/data/studioPageScripts"
 import * as globalUtils from "@/utils/globalUtils"
@@ -30,6 +31,8 @@ export const vueReactivityApis = {
 	shallowRef, readonly, markRaw, nextTick,
 }
 
+type ResourceOptions = { editor?: boolean; rows?: Resource[] }
+
 const useCodeStore = defineStore("codeStore", () => {
 	const resources = ref<Record<string, Resource>>({})
 	const routeObject = ref<ComputedRef>()
@@ -46,7 +49,9 @@ const useCodeStore = defineStore("codeStore", () => {
 	})
 	const pageScriptError = ref<string | null>(null)
 	const currentPageName = ref<string | null>(null)
-	let pageScriptScope: EffectScope | null = null
+	let pageScriptScope: PageScriptScope | null = null
+	let resourceRequests: ResourceRequests | null = null
+	let startResources: (() => void)[] = []
 	let resourceWatchers: WatchStopHandle[] = []
 
 	function setRouteObject(route: ComputedRef) {
@@ -59,188 +64,122 @@ const useCodeStore = defineStore("codeStore", () => {
 
 	// RESOURCES
 	let pendingResources: Record<string, any> | null = null
-	async function initializePage(
-		page: StudioPage,
-		isStandardPage: boolean = false,
-		setResourceConfig: boolean = false,
-		preloadedResources?: Resource[],
-	) {
-		stopResourceWatchers()
-		const pageResources = reactive({}) as Record<string, any>
-		pendingResources = pageResources
-
-		const resourceRows = await getPageResourceRows(page, preloadedResources)
-		if (pendingResources !== pageResources) return
-
-		// Expose every resource name before setup() runs. Page scripts receive stable proxies,
-		// while resource construction waits until their state bindings are available.
-		for (const resource of resourceRows) {
-			pageResources[resource.resource_name] = undefined
-		}
-		resources.value = pageResources
-
-		await setPageScript(page, isStandardPage)
-		if (pendingResources !== pageResources) return
-
-		await populatePageResources(resourceRows, pageResources, setResourceConfig)
+	async function initializePage(page: StudioPage, options: ResourceOptions = {}) {
+		teardownPage()
+		await loadPageResources(page, options, () => setPageScript(page))
 	}
 
-	async function setPageResources(
+	async function setPageResources(page: StudioPage, options: ResourceOptions = {}) {
+		await loadPageResources(page, options)
+	}
+
+	async function loadPageResources(
 		page: StudioPage,
-		setResourceConfig: boolean = false,
-		preloadedResources?: Resource[],
+		options: ResourceOptions,
+		setup?: () => Promise<void>,
 	) {
 		stopResourceWatchers()
-		// Each load uses its own map, so old async updates cannot change the current page resources.
+		resourceRequests?.stop()
+		const requests = new ResourceRequests()
+		resourceRequests = requests
+		startResources = []
 		const pageResources = reactive({}) as Record<string, any>
 		pendingResources = pageResources
-
-		const resourceRows = await getPageResourceRows(page, preloadedResources)
+		const resourceRows = await getPageResourceRows(page, options.rows)
 		if (pendingResources !== pageResources) return
 
-		await populatePageResources(resourceRows, pageResources, setResourceConfig)
+		for (const row of resourceRows) {
+			const resource = createPageResource(row, requests)
+			if (options.editor) {
+				resource.resource_id = row.resource_id
+				resource.resource_type = row.resource_type
+			}
+			pageResources[row.resource_name] = resource
+		}
+		resources.value = pageResources
+		if (setup) await setup()
+		if (pendingResources !== pageResources) return
+		for (const start of startResources) start()
+		startResources = []
+		requests.resume()
 	}
 
 	async function getPageResourceRows(page: StudioPage, preloadedResources?: Resource[]) {
 		if (preloadedResources) return preloadedResources
 
 		studioPageResources.filters = { parent: page.name }
-		await studioPageResources.reload()
-		return studioPageResources.data as Resource[]
+		return (await studioPageResources.reload()) as Resource[]
 	}
 
-	async function populatePageResources(
-		resourceRows: Resource[],
-		pageResources: Record<string, any>,
-		setResourceConfig: boolean,
-	) {
-		await Promise.all(
-			resourceRows.map(async (resource: Resource) => {
-				await addPageResource(resource, pageResources)
-				const newResource = pageResources[resource.resource_name]
-				if (setResourceConfig && newResource) {
-					newResource.resource_id = resource.resource_id
-					newResource.resource_type = resource.resource_type
-				}
-			}),
-		)
-
-		if (pendingResources === pageResources) {
-			resources.value = pageResources
-		}
-	}
-
-	async function addPageResource(resource: Resource, pageResources: Record<string, any>) {
+	function createPageResource(resource: Resource, requests: ResourceRequests) {
 		switch (resource.resource_type) {
 			case "Document":
-				return addDocumentResource(resource, pageResources)
+				return getDocumentResource(resource, requests)
 			case "Document List":
-				pageResources[resource.resource_name] = getListResource(resource)
-				break
+				return getListResource(resource, requests)
 			case "API Resource":
-				pageResources[resource.resource_name] = getAPIResource(resource)
-				break
+				return getAPIResource(resource, requests)
 		}
 	}
 
-	function getListResource(resource: DocumentListResource) {
-		let fields = []
-		if ("fields" in resource && typeof resource.fields === "string") {
-			fields = JSON.parse(resource.fields)
-		}
-
-		const params: any = {
+	function getListResource(resource: DocumentListResource, requests: ResourceRequests) {
+		const fields = typeof resource.fields === "string" ? JSON.parse(resource.fields) : resource.fields
+		const list = createListResource({
 			doctype: resource.document_type,
-			fields: fields.length ? fields : "*",
-			filters: useDynamicParams(
-				() => getEvaluatedFilters(resource.filters),
-				(filters) => {
-					listResource.update({ filters })
-					if (listResource.auto) listResource.reload()
-				},
-			),
+			fields: fields?.length ? fields : "*",
 			pageLength: resource.limit,
-			auto: resource.auto,
-			...getTransforms(resource),
-			...getSuccessErrorHandlers(resource),
-		}
-		if (resource.sort_field) {
-			params["orderBy"] = `${resource.sort_field} ${resource.sort_order}`
-		}
-		const listResource = createListResource(params)
-		// initialize listResource.data to an empty array to avoid undefined errors in the UI, frappe-ui sets data to null by default
-		listResource.data = []
-		return listResource
-	}
-
-	function getAPIResource(resource: APIResource) {
-		const apiResource = createResource({
-			url: resource.url,
-			method: resource.method,
-			params: useDynamicParams(
-				() => getAPIParams(resource.params),
-				(params) => {
-					apiResource.update({ params })
-					if (apiResource.auto) apiResource.reload()
-				},
-			),
-			auto: resource.auto,
+			orderBy: resource.sort_field ? `${resource.sort_field} ${resource.sort_order}` : undefined,
+			auto: false,
 			...getTransforms(resource),
 			...getSuccessErrorHandlers(resource),
 		})
-		return apiResource
+		list.data = []
+		const evaluate = () => getEvaluatedFilters(resource.filters)
+		const bound = bindResourceInputs(list, requests, "filters", evaluate, true)
+		bound.auto = resource.auto
+		watchResourceInputs(bound, evaluate)
+		return bound
 	}
 
-	const addDocumentResource = async (resource: DocumentResource, pageResources: Record<string, any>) => {
-		const params = {
+	function getAPIResource(resource: APIResource, requests: ResourceRequests) {
+		const api = createResource({
+			url: resource.url,
+			method: resource.method,
+			auto: false,
+			...getTransforms(resource),
+			...getSuccessErrorHandlers(resource),
+		})
+		const evaluate = () => getAPIParams(resource.params)
+		const bound = bindResourceInputs(api, requests, "params", evaluate, resource.method === "GET")
+		bound.auto = resource.auto
+		watchResourceInputs(bound, evaluate)
+		return bound
+	}
+
+	function getDocumentResource(resource: DocumentResource, requests: ResourceRequests) {
+		const evaluate = () => resource.fetch_document_using_filters
+			? getEvaluatedFilters(resource.filters) || {}
+			: { name: resource.document_name }
+		const document = new PageDocumentResource(requests, {
 			doctype: resource.document_type,
-			auto: resource.auto,
 			...getTransforms(resource),
 			...getSuccessErrorHandlers(resource),
 			...getWhitelistedMethods(resource),
-		}
-
-		if (!resource.fetch_document_using_filters || !resource.filters) {
-			pageResources[resource.resource_name] = createDocumentResource({ ...params, name: resource.document_name })
-			return
-		}
-
-		// The docname can't change on an existing document resource (frappe-ui caches them by
-		// doctype+name), so a filter change means re-resolving the docname and replacing the entry.
-		// loadDoc is the entry's only writer; latestRequest keeps only the newest lookup's result.
-		let latestRequest = 0
-		async function loadDoc(currentFilters: Filters) {
-			const request = ++latestRequest
-			const docname = await resolveDocnameFromFilters(resource, currentFilters)
-			if (request !== latestRequest) return
-			if (!docname) {
-				pageResources[resource.resource_name] = undefined
-				return
-			}
-			const doc = createDocumentResource({ ...params, name: docname })
-			// carry over the editor's config stamps (see setResourceConfig in setPageResources)
-			const oldDoc = pageResources[resource.resource_name]
-			if (oldDoc?.resource_id) {
-				doc.resource_id = oldDoc.resource_id
-				doc.resource_type = oldDoc.resource_type
-			}
-			pageResources[resource.resource_name] = doc
-		}
-
-		const filters = useDynamicParams(() => getEvaluatedFilters(resource.filters) || {}, loadDoc)
-		await loadDoc(filters)
+		}, evaluate, (filters) => resolveDocnameFromFilters(resource, filters))
+		document.resource.auto = resource.auto
+		watchResourceInputs(document.resource, evaluate, () => { void document.initialize() })
+		return document.resource
 	}
 
-	// Evaluate a resource's dynamic input ({{ }} filters/params) and return the initial value,
-	// then call onChange whenever a route/variable change alters the result
-	function useDynamicParams<T>(evaluate: () => T, onChange: (value: T) => void): T {
-		const evaluated = computed(evaluate)
-		const stop = watch(
-			() => JSON.stringify(evaluated.value),
-			() => onChange(evaluated.value),
-		)
-		resourceWatchers.push(stop)
-		return evaluated.value
+	function watchResourceInputs(resource: any, evaluate: () => any, initialize?: () => void) {
+		startResources.push(() => {
+			const refresh = () => {
+				initialize?.()
+				if (resource.auto) void resource.reload()
+			}
+			resourceWatchers.push(watch(() => JSON.stringify(evaluate()), refresh))
+			refresh()
+		})
 	}
 
 	const getEvaluatedFilters = (filters: Filters | null = null) => {
@@ -249,7 +188,7 @@ const useCodeStore = defineStore("codeStore", () => {
 			filters = JSON.parse(filters)
 		}
 
-		const evaluatedFilters: Filters = {}
+		const evaluatedFilters: Partial<Filters> = {}
 
 		for (const key in filters) {
 			const raw = filters[key]
@@ -297,12 +236,15 @@ const useCodeStore = defineStore("codeStore", () => {
 		return evaluated
 	}
 
-	const resolveDocnameFromFilters = async (resource: DocumentResource, filters: Filters) => {
+	const resolveDocnameFromFilters = async (resource: DocumentResource, filters: Partial<Filters>) => {
 		// the common `name = {{ route.params.id }}` case resolves to the docname itself — no server lookup needed
 		const keys = Object.keys(filters)
 		if (keys.length === 1 && keys[0] === "name") {
-			return filters.name
+			const name = filters.name
+			if (!Array.isArray(name)) return name
+			if (name[0] === "=") return name[1]
 		}
+		if (!keys.length || Object.values(filters).some((value) => value == null)) return null
 		// other filters (e.g. category = tech) need a lookup for one matching doc's name
 		const doc = await call("frappe.client.get_value", {
 			doctype: resource.document_type,
@@ -368,6 +310,11 @@ const useCodeStore = defineStore("codeStore", () => {
 	}
 
 	function teardownPage() {
+		pendingResources = null
+		resourceRequests?.stop()
+		resourceRequests = null
+		startResources = []
+		currentPageName.value = null
 		stopResourceWatchers()
 		disposePageScriptScope()
 	}
@@ -398,66 +345,38 @@ const useCodeStore = defineStore("codeStore", () => {
 	}
 
 	// PAGE SCRIPT
-	async function setPageScript(page: StudioPage, isStandardPage: boolean = false) {
+	async function setPageScript(page: StudioPage) {
+		const requests = resourceRequests
+		requests?.pause()
+		try {
+			await runPageScript(page)
+		} finally {
+			requests?.resume()
+		}
+	}
+
+	async function runPageScript(page: StudioPage) {
 		disposePageScriptScope()
+		const scope = new PageScriptScope(reportPageScriptError)
+		pageScriptScope = scope
 		pageScriptBindings.value = {}
 		pageScriptError.value = null
 		currentPageName.value = page.name
 
-		if (isStandardPage) {
-			pageScriptBindings.value = await loadCodePageScript(page.name)
-			return
+		if (page.is_standard) {
+			const module = await loadPageScriptModule(page.name)
+			if (!scope.active) return
+			if (typeof module?.default === "function") {
+				pageScriptBindings.value = scope.run(() => module.default(scriptContext.value))
+			}
+		} else if (page.script?.trim()) {
+			pageScriptBindings.value = compilePageScript(page.script, getTopLevelBindings(page.script))
 		}
-
-		// Non-exported app: interpret the page.script field (live, no imports).
-		const source = page.script || ""
-		if (!source.trim()) return
-		const bindingNames = getTopLevelBindings(source)
-		pageScriptBindings.value = compilePageScript(source, bindingNames)
 	}
 
 	function disposePageScriptScope() {
 		pageScriptScope?.stop()
 		pageScriptScope = null
-	}
-
-	async function loadCodePageScript(pageName: string): Promise<Record<string, any>> {
-		const mod = await loadPageScriptModule(pageName)
-		return runPageScriptSetup(mod?.default)
-	}
-
-	// Run a compiled page setup() in a fresh effect scope and return its top-level bindings. Shared
-	// by initial load and HMR: on a hot update we already hold the new module, so we re-run its
-	// setup directly instead of re-importing.
-	async function runPageScriptSetup(setup: unknown): Promise<Record<string, any>> {
-		disposePageScriptScope()
-		if (typeof setup !== "function") return {}
-		try {
-			// setup(ctx) gets the live execution context (resources/route/router) and may
-			// be async (e.g. awaiting a resource fetch). Effects (watch/computed) created BEFORE the
-			// first await are owned by the page scope; declare them before awaiting so they're
-			// disposed on navigation.
-			const bindings = runInPageScriptScope(() => (setup as Function)(scriptContext.value))
-			return (await bindings) || {}
-		} catch (error) {
-			reportPageScriptError(error)
-			return {}
-		}
-	}
-
-	function runInPageScriptScope(run: () => any): any {
-		// Reactive effects (watch/watchEffect/computed) created synchronously during `run` are
-		// owned by this scope so they're disposed on the next navigation / recompile.
-		pageScriptScope = effectScope(true)
-		let result: any
-		pageScriptScope.run(() => {
-			try {
-				result = run()
-			} catch (error) {
-				reportPageScriptError(error)
-			}
-		})
-		return result
 	}
 
 	function compilePageScript(source: string, bindingNames: string[]) {
@@ -479,7 +398,7 @@ const useCodeStore = defineStore("codeStore", () => {
 				},
 			},
 		)
-		return runInPageScriptScope(() => {
+		return pageScriptScope!.run(() => {
 			const factory = new Function(
 				"context",
 				`with (context) {
@@ -502,8 +421,16 @@ const useCodeStore = defineStore("codeStore", () => {
 	// only via their own acceptHMRUpdate.) Registered once here so both the editor and the preview
 	// (each with their own codeStore) hot-apply script edits to the page they're showing.
 	async function applyPageScriptHMR(setup: unknown) {
+		const requests = resourceRequests
+		requests?.pause()
+		disposePageScriptScope()
+		pageScriptScope = new PageScriptScope(reportPageScriptError)
 		pageScriptError.value = null
-		pageScriptBindings.value = await runPageScriptSetup(setup)
+		pageScriptBindings.value = {}
+		if (typeof setup === "function") {
+			pageScriptBindings.value = pageScriptScope.run(() => setup(scriptContext.value))
+		}
+		requests?.resume()
 	}
 	setPageScriptHotUpdateHandler((pageName, setup) => {
 		if (currentPageName.value === pageName) applyPageScriptHMR(setup)
@@ -523,7 +450,7 @@ const useCodeStore = defineStore("codeStore", () => {
 	// Base context for every script scope — event/success/error handlers, function-value props, and page-script setup
 	const scriptContext = computed(() => {
 		return {
-      ...currentResourceProxies(),
+			...currentResourceProxies(),
 			...pageScriptBindings.value,
 			...globalUtils,
 			route: currentRoute,
@@ -806,3 +733,239 @@ const useCodeStore = defineStore("codeStore", () => {
 })
 
 export default useCodeStore
+
+/** Bind inputs at request time, including calls made by user watchers before Vue flushes. */
+function bindResourceInputs(
+	resource: any,
+	requests: ResourceRequests,
+	field: "params" | "filters",
+	evaluate: () => any,
+	readOnly: boolean,
+) {
+	const inputs = computed(evaluate)
+	const override = shallowRef<any>()
+	const currentInputs = () => (override.value === undefined ? inputs.value : override.value)
+	const readKey = {}
+	const fetch = field === "filters" ? resource.list.fetch : resource.fetch
+	const request = (args: any[], read: boolean) =>
+		requests.run(
+			() => {
+				if (field === "filters") {
+					resource.update({ filters: currentInputs() })
+					return fetch(...args)
+				}
+				return fetch(args[0] ?? currentInputs(), ...args.slice(1))
+			},
+			read && !args.length ? readKey : undefined,
+		)
+
+	const reload = (...args: any[]) => request(args, readOnly)
+	if (field === "filters") {
+		// Pagination and list.reload() also reach this entry point.
+		resource.list.fetch = reload
+		resource.list.reload = reload
+		resource.list.submit = (...args: any[]) => request(args, false)
+		resource.fetch = (...args: any[]) => resource.reload(...args)
+		for (const name of ["fetchOne", "insert", "setValue", "delete", "runDocMethod"]) {
+			const operation = resource[name]
+			for (const method of ["fetch", "reload", "submit"]) {
+				const invoke = operation[method]
+				operation[method] = (...args: any[]) => requests.run(() => invoke(...args))
+			}
+		}
+	} else {
+		resource.fetch = reload
+		resource.reload = reload
+		resource.submit = (...args: any[]) => request(args, false)
+	}
+
+	return new Proxy(markRaw({}) as Record<string | symbol, any>, {
+		get(target, key) {
+			if (typeof key === "string" && key.startsWith("__v_")) return target[key]
+			if (key === field) return currentInputs()
+			if (key === "update")
+				return (options: Record<string, any>) => {
+					if (field in options) override.value = options[field]
+					resource.update(options)
+				}
+			return resource[key]
+		},
+		has: (_target, key) => key === field || key in resource,
+		ownKeys: () => Reflect.ownKeys(resource),
+		getOwnPropertyDescriptor: (_target, key) => Object.getOwnPropertyDescriptor(resource, key),
+		set(_target, key, value) {
+			if (key === field) override.value = value
+			else resource[key] = value
+			return true
+		},
+	})
+}
+
+/** A document's methods exist before its filters have resolved to a name. */
+class PageDocumentResource {
+	private current = shallowRef<any>(null)
+	private lookup: Promise<any> | null = null
+	private lookupKey = ""
+	private readKey = {}
+	readonly resource: any
+
+	constructor(
+		private requests: ResourceRequests,
+		private options: Record<string, any>,
+		private getFilters: () => any,
+		private resolveName: (filters: any) => Promise<any>,
+	) {
+		const methods: Record<string, any> = {}
+		for (const name of [
+			"get",
+			"setValue",
+			"setValueDebounced",
+			"save",
+			"delete",
+			...Object.keys(options.whitelistedMethods || {}),
+		]) {
+			methods[name] = this.operation(name)
+		}
+		const initial: Record<string | symbol, any> = {
+			doc: null,
+			name: null,
+			doctype: options.doctype,
+			auto: false,
+			...methods,
+			reload: (...args: any[]) => methods.get.fetch(...args),
+		}
+		this.resource = new Proxy(markRaw(initial), {
+			get: (target, key) =>
+				(typeof key === "string" && key.startsWith("__v_")) ||
+				key in methods ||
+				["reload", "auto", "resource_id", "resource_type"].includes(String(key))
+					? target[key]
+					: (this.current.value?.[key] ?? target[key]),
+			set: (target, key, value) => {
+				if (["auto", "resource_id", "resource_type"].includes(String(key))) target[key] = value
+				else if (this.current.value) this.current.value[key] = value
+				else target[key] = value
+				return true
+			},
+		})
+	}
+
+	initialize() {
+		return this.requests.run(() => this.resolve())
+	}
+
+	private operation(name: string) {
+		const initial: Record<string | symbol, any> = { data: null, loading: false, error: null, promise: null }
+		const invoke = (method: string, args: any[]) => {
+			const promise = this.requests.run(
+				async () => {
+					const document = await this.resolve()
+					if (!document || !this.requests.active) return
+					return document[name][method](...args)
+				},
+				name === "get" && method !== "submit" && !args.length ? this.readKey : undefined,
+			)
+			initial.promise = promise
+			return promise
+		}
+		return new Proxy(markRaw(initial), {
+			get: (target, key) => {
+				if (typeof key === "string" && key.startsWith("__v_")) return target[key]
+				if (["fetch", "reload", "submit"].includes(String(key)))
+					return (...args: any[]) => invoke(String(key), args)
+				return this.current.value?.[name]?.[key] ?? target[key]
+			},
+		})
+	}
+
+	private resolve() {
+		const filters = this.getFilters()
+		const key = JSON.stringify(filters)
+		if (this.lookup && key === this.lookupKey) return this.lookup
+		this.lookupKey = key
+		this.current.value = null
+		const lookup = this.resolveName(filters)
+			.then((name) => {
+				if (!this.requests.active || this.lookup !== lookup) return null
+				if (!name) {
+					this.lookup = null
+					return null
+				}
+				const document = createDocumentResource({ ...this.options, name, auto: false })
+				this.current.value = document
+				return document
+			})
+			.catch((error) => {
+				if (this.lookup === lookup) this.lookup = null
+				throw error
+			})
+		this.lookup = lookup
+		return lookup
+	}
+}
+
+type Request = { run: () => unknown; resolve: (value: any) => void; reject: (error: unknown) => void }
+
+/** Hold requests until setup has exposed state; batch duplicate reads within a tick. */
+class ResourceRequests {
+	private pauses = 1
+	private stopped = false
+	private scheduled = false
+	private pending = new Map<object, { request: Request; promise: Promise<any> }>()
+
+	get active() {
+		return !this.stopped
+	}
+
+	pause() {
+		this.pauses++
+	}
+
+	resume() {
+		this.pauses--
+		this.schedule()
+	}
+
+	run(run: () => unknown, readKey: object = {}) {
+		if (this.stopped) return Promise.resolve(undefined)
+		const existing = this.pending.get(readKey)
+		if (existing) return existing.promise
+		let request!: Request
+		const promise = new Promise((resolve, reject) => {
+			request = { run, resolve, reject }
+		})
+		this.pending.set(readKey, { request, promise })
+		// Auto-fetches and immediate watchers may intentionally ignore the returned promise.
+		void promise.catch(() => {})
+		this.schedule()
+		return promise
+	}
+
+	stop() {
+		this.stopped = true
+		for (const { request } of this.pending.values()) request.resolve(undefined)
+		this.pending.clear()
+	}
+
+	private schedule() {
+		if (this.pauses || this.stopped || this.scheduled) return
+		this.scheduled = true
+		void nextTick().then(() => {
+			this.scheduled = false
+			if (this.pauses || this.stopped) return
+			const requests = [...this.pending.values()]
+			this.pending.clear()
+			for (const { request } of requests) {
+				if (this.stopped) {
+					request.resolve(undefined)
+					continue
+				}
+				try {
+					Promise.resolve(request.run()).then(request.resolve, request.reject)
+				} catch (error) {
+					request.reject(error)
+				}
+			}
+		})
+	}
+}

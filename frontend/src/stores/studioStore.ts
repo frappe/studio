@@ -220,7 +220,7 @@ const useStudioStore = defineStore("store", () => {
 		}
 		activePage.value = page
 		loadRouteVariables(page)
-		await codeStore.initializePage(page, Boolean(page.is_standard), true)
+		await codeStore.initializePage(page, { editor: true })
 
 		const blocks = JSON.parse(page.draft_blocks || page.blocks || "[]")
 		if (blocks.length === 0) {
@@ -332,7 +332,7 @@ const useStudioStore = defineStore("store", () => {
 		const page = await fetchPage(activePage.value.name)
 		if (!page) return
 		activePage.value = page
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
+		await codeStore.setPageScript(page)
 	}
 
 	async function publishPage() {
@@ -647,7 +647,7 @@ const useStudioStore = defineStore("store", () => {
 	const resetState = useDebounceFn(async () => {
 		const page = activePage.value
 		if (!page) return
-		await codeStore.initializePage(page, Boolean(page.is_standard), true)
+		await codeStore.initializePage(page, { editor: true })
 	}, 300)
 
 	const codeStore = useCodeStore()
