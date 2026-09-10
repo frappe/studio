@@ -1,4 +1,5 @@
 import { shallowRef } from "vue"
+import { useStorage } from "@vueuse/core"
 import { defineStore } from "pinia"
 import { createResource, toast } from "frappe-ui"
 
@@ -23,11 +24,18 @@ type LegacyVariableMigration = {
 
 const useAlertStore = defineStore("alerts", () => {
 	const alerts = shallowRef<AppAlert[]>([])
-	const dismissedAlertIds = new Set<string>()
+	const dismissedAlertIds = useStorage<string[]>("studio:dismissed-alerts", [])
+	const legacyMigration = shallowRef<LegacyVariableMigration | null>(null)
 	let currentLegacyVariablePage: string | null = null
 
+	function copyLegacyVariables() {
+		if (!legacyMigration.value) return
+		copyToClipboard(legacyMigration.value.code)
+		toast.success("Legacy variables copied")
+	}
+
 	function show(alert: AppAlert) {
-		if (dismissedAlertIds.has(alert.id)) return
+		if (dismissedAlertIds.value.includes(alert.id)) return
 		alerts.value = [...alerts.value.filter((item) => item.id !== alert.id), alert]
 	}
 
@@ -36,7 +44,7 @@ const useAlertStore = defineStore("alerts", () => {
 	}
 
 	function dismiss(id: string) {
-		dismissedAlertIds.add(id)
+		dismissedAlertIds.value = [...new Set([...dismissedAlertIds.value, id])]
 		remove(id)
 	}
 
@@ -54,6 +62,7 @@ const useAlertStore = defineStore("alerts", () => {
 	async function loadLegacyVariableMigration(page: StudioPage) {
 		if (currentLegacyVariablePage === page.name) return
 		currentLegacyVariablePage = page.name
+		legacyMigration.value = null
 
 		try {
 			const migration = (await createResource({
@@ -62,17 +71,16 @@ const useAlertStore = defineStore("alerts", () => {
 				params: { page_name: page.name },
 			}).fetch()) as LegacyVariableMigration | null
 
-			if (!migration || currentLegacyVariablePage !== page.name) return
+			if (currentLegacyVariablePage !== page.name) return
+			legacyMigration.value = migration
+			if (!migration) return
 
 			show({
 				id: getLegacyVariableAlertId(page.name),
 				message: getLegacyVariableAlertMessage(migration.variable_names),
 				action: {
-					label: "Copy migration block",
-					onClick: () => {
-						copyToClipboard(migration.code)
-						toast.success("Migration block copied")
-					},
+					label: "Copy legacy variables",
+					onClick: copyLegacyVariables,
 				},
 			})
 		} catch (error) {
@@ -81,7 +89,10 @@ const useAlertStore = defineStore("alerts", () => {
 	}
 
 	function removeLegacyVariableMigration(pageName: string) {
-		if (currentLegacyVariablePage === pageName) currentLegacyVariablePage = null
+		if (currentLegacyVariablePage === pageName) {
+			currentLegacyVariablePage = null
+			legacyMigration.value = null
+		}
 		remove(getLegacyVariableAlertId(pageName))
 	}
 
@@ -94,6 +105,8 @@ const useAlertStore = defineStore("alerts", () => {
 	}
 
 	return {
+		legacyMigration,
+		copyLegacyVariables,
 		alerts,
 		show,
 		remove,

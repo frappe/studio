@@ -16,6 +16,7 @@
 		<button
 			type="button"
 			aria-label="Dismiss warning"
+			title="Dismiss warning"
 			class="grid h-6 w-6 shrink-0 place-items-center rounded hover:bg-surface-amber-3"
 			@click="emit('dismiss')"
 		>
