@@ -1,6 +1,7 @@
 # Copyright (c) 2024, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 import os
+import re
 
 import frappe
 from frappe import _
@@ -20,13 +21,13 @@ from studio.export import (
 )
 from studio.realtime import publish_doc_change
 from studio.studio.doctype.studio_component.studio_component import get_components_for_blocks
-from studio.studio.doctype.studio_page.legacy_variables import get_declaration
 from studio.studio.doctype.studio_page.copy_paste_handler import (
 	PAGE_RESOURCE_FIELDS,
 	PAGE_VARIABLE_FIELDS,
 	parse_list,
 	pick,
 )
+from studio.studio.doctype.studio_page.legacy_variables import get_declaration
 from studio.utils import camel_case_to_kebab_case
 
 
@@ -476,8 +477,6 @@ def get_legacy_variable_migration(page_name: str) -> dict | None:
 	page = frappe.get_doc("Studio Page", page_name)
 	if not frappe.has_permission("Studio Page", ptype="read", doc=page):
 		frappe.throw(_("You do not have permission to read this page"), frappe.PermissionError)
-	if not page.is_standard:
-		return None
 
 	variables = frappe.get_all(
 		"Studio Page Variable",
@@ -490,7 +489,9 @@ def get_legacy_variable_migration(page_name: str) -> dict | None:
 
 	declarations = "\n".join(get_declaration(variable) for variable in variables)
 	variable_names = [variable.variable_name for variable in variables]
+	if page.is_standard:
+		declarations += f"\n\nreturn {{ {', '.join(variable_names)} }}"
 	return {
-		"code": f"{declarations}\n\nreturn {{ {', '.join(variable_names)} }}",
+		"code": declarations,
 		"variable_names": variable_names,
 	}

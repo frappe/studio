@@ -56,7 +56,7 @@ const useAlertStore = defineStore("alerts", () => {
 		const visibleNames = variableNames.slice(0, 3).join(", ")
 		const remainingCount = variableNames.length - 3
 		const names = remainingCount > 0 ? `${visibleNames}, and ${remainingCount} more` : visibleNames
-		return `Legacy variables found on this page: ${names}. Add them to the page script and expose them from setup().`
+		return `Legacy variables found on this page: ${names}. Move any state you still need into the page script.`
 	}
 
 	async function loadLegacyVariableMigration(page: StudioPage) {
