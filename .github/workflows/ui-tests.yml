@@ -1,0 +1,77 @@
+name: UI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  component-tests:
+    name: Component
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-ui-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-ui-
+
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
+
+      - name: Setup bench
+        run: |
+          pip install frappe-bench
+          bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
+
+      - name: Install Studio
+        working-directory: /home/runner/frappe-bench
+        run: bench get-app studio "$GITHUB_WORKSPACE"
+        env:
+          CI: "Yes"
+
+      - name: Install frontend dependencies
+        working-directory: /home/runner/frappe-bench/apps/studio/frontend
+        run: |
+          yarn install --frozen-lockfile
+          yarn install-framework-ui
+
+      - name: Run component tests
+        working-directory: /home/runner/frappe-bench/apps/studio/frontend
+        run: yarn test:cypress

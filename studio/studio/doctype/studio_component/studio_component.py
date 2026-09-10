@@ -20,9 +20,10 @@ class StudioComponent(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
+
 		from studio.studio.doctype.studio_component_input.studio_component_input import StudioComponentInput
 
-		block: DF.JSON | None
+		block: DF.LongText | None
 		component_id: DF.Data | None
 		component_name: DF.Data | None
 		inputs: DF.Table[StudioComponentInput]
@@ -37,6 +38,10 @@ class StudioComponent(Document):
 
 	def before_export(self, doc):
 		doc.block = parse_json(doc.block)
+
+	def before_validate(self):
+		if isinstance(self.block, dict):
+			self.block = frappe.as_json(self.block, indent=None)
 
 	def on_update(self):
 		publish_doc_change("Studio Component", self.name)

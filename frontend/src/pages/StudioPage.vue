@@ -14,7 +14,7 @@
 		<StudioToolbar class="relative z-30" />
 		<div class="flex flex-col">
 			<StudioLeftPanel
-				class="absolute bottom-0 left-0 top-[var(--toolbar-height)] z-20 overflow-auto bg-surface-base"
+				class="absolute bottom-0 left-0 top-[var(--toolbar-height)] z-20 overflow-hidden bg-surface-base"
 			/>
 
 			<StudioCanvas
@@ -178,6 +178,7 @@
 				/>
 			</template>
 		</Dialog>
+		<PasteConflictDialog />
 	</div>
 </template>
 
@@ -196,6 +197,7 @@ import StudioCanvas from "@/components/StudioCanvas.vue"
 import OverlayList from "@/components/OverlayList.vue"
 import Code from "@/components/Code.vue"
 import WarningAlert from "@/components/WarningAlert.vue"
+import PasteConflictDialog from "@/components/PasteConflictDialog.vue"
 
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"

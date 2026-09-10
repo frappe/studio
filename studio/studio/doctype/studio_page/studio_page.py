@@ -11,6 +11,7 @@ from frappe.utils import get_datetime
 
 from studio.export import (
 	can_export,
+	delete_file,
 	delete_folder,
 	parse_json,
 	remove_null_fields,
@@ -20,7 +21,13 @@ from studio.export import (
 from studio.realtime import publish_doc_change
 from studio.studio.doctype.studio_component.studio_component import get_components_for_blocks
 from studio.studio.doctype.studio_page.legacy_variables import get_declaration
-from studio.utils import camel_case_to_kebab_case, has_page_write_perm
+from studio.studio.doctype.studio_page.copy_paste_handler import (
+	PAGE_RESOURCE_FIELDS,
+	PAGE_VARIABLE_FIELDS,
+	parse_list,
+	pick,
+)
+from studio.utils import camel_case_to_kebab_case
 
 
 class StudioPage(Document):
@@ -53,10 +60,6 @@ class StudioPage(Document):
 			self.name = f"page-{frappe.generate_hash(length=8)}"
 
 	def before_insert(self):
-		if isinstance(self.blocks, list):
-			self.blocks = frappe.as_json(self.blocks, indent=None)
-		if isinstance(self.draft_blocks, list):
-			self.draft_blocks = frappe.as_json(self.draft_blocks, indent=None)
 		if not self.blocks:
 			self.blocks = "[]"
 		if not self.page_title:
@@ -78,6 +81,10 @@ class StudioPage(Document):
 			frappe.db.set_value("Studio App", self.studio_app, "app_home", self.name)
 
 	def before_validate(self):
+		if isinstance(self.blocks, list):
+			self.blocks = frappe.as_json(self.blocks, indent=None)
+		if isinstance(self.draft_blocks, list):
+			self.draft_blocks = frappe.as_json(self.draft_blocks, indent=None)
 		# vue router needs a leading slash
 		if not self.route.startswith("/"):
 			self.route = f"/{self.route}"
@@ -104,19 +111,82 @@ class StudioPage(Document):
 		"""Move the page script into its companion <page>.ts and clear the DB `script` field. Called on enabling exports"""
 		if not self.script:
 			return
-		folder = self.get_folder_path()
-		frappe.create_folder(folder)
-		stem = self.get_export_docname()
-		if not os.path.exists(os.path.join(folder, f"{stem}.ts")):
-			write_code_file(self, folder, code_field="script", extension="ts", filename=stem)
+		if os.path.exists(self.get_script_file_path()):
+			self.db_set("script", None, update_modified=False)
+		else:
+			self.write_script_file()
+
+	def write_script_file(self):
+		"""Write the page script to its companion <page>.ts and clear the DB field."""
+		if self.script:
+			frappe.create_folder(self.get_folder_path())
+			write_code_file(
+				self,
+				self.get_folder_path(),
+				code_field="script",
+				extension="ts",
+				filename=self.get_export_docname(),
+			)
+		else:
+			delete_file(self.get_script_file_path())
 		self.db_set("script", None, update_modified=False)
 
 	def restore_script_from_file(self):
 		"""Load the exported <page>.ts back into the `script` field, so the code survives in DB-only
 		mode (called before the export folder is deleted on un-export)."""
-		ts_path = os.path.join(self.get_folder_path(), f"{self.get_export_docname()}.ts")
-		if os.path.exists(ts_path):
-			self.db_set("script", frappe.read_file(ts_path), update_modified=False)
+		if self.has_script_file():
+			self.db_set("script", frappe.read_file(self.get_script_file_path()), update_modified=False)
+
+	@frappe.whitelist()
+	def get_copy(self, blocks=None) -> dict:
+		"""Page settings, data sources, variables, script and the components `blocks` use, for copy-paste."""
+		self.check_permission("read")
+		blocks = parse_list(blocks if blocks is not None else self.draft_blocks or self.blocks, "blocks")
+		script = self.get_script_source()
+		return {
+			**self.get_dependencies(blocks, script),
+			"page_title": self.page_title,
+			"allow_guest": self.allow_guest,
+			"resources": [pick(row, PAGE_RESOURCE_FIELDS) for row in self.resources],
+			"variables": [pick(row, PAGE_VARIABLE_FIELDS) for row in self.variables],
+			"script": script,
+		}
+
+	@frappe.whitelist()
+	def get_dependencies(self, blocks, script: str = "") -> dict:
+		"""What `blocks` (and `script`) need from outside themselves, for copy-paste: Studio components,
+		app files, and this page's data sources and variables they reference."""
+		self.check_permission("read")
+		blocks = parse_list(blocks, "blocks")
+		text = frappe.as_json(blocks)
+
+		def used(name):
+			return bool(name) and re.search(rf"\b{re.escape(name)}\b", text)
+
+		return {
+			"components": get_components_for_blocks(blocks),
+			"files": self.get_app_files(script, blocks),
+			"resources": [pick(r, PAGE_RESOURCE_FIELDS) for r in self.resources if used(r.resource_name)],
+			"variables": [pick(v, PAGE_VARIABLE_FIELDS) for v in self.variables if used(v.variable_name)],
+		}
+
+	def get_app_files(self, script: str, blocks) -> list[dict]:
+		if not (self.is_standard and self.frappe_app):
+			return []
+		app = self.get_app()
+		script_dir = os.path.relpath(self.get_folder_path(), app.get_folder_path())
+		return app.collect_files(script, script_dir, blocks)
+
+	def get_app(self):
+		return frappe.get_cached_doc("Studio App", self.studio_app)
+
+	def get_script_source(self) -> str:
+		if self.has_script_file():
+			return frappe.read_file(self.get_script_file_path())
+		return self.script or ""
+
+	def has_script_file(self) -> bool:
+		return bool(self.is_standard and self.frappe_app and os.path.exists(self.get_script_file_path()))
 
 	def relocate_on_retitle(self):
 		"""The page folder and its files are named after the page title, so a retitle relocates them.
@@ -134,9 +204,7 @@ class StudioPage(Document):
 		)
 		old_page_script = os.path.join(old_folder, f"{old_stem}.ts")
 		if os.path.exists(old_page_script):
-			os.rename(
-				old_page_script, os.path.join(self.get_folder_path(), f"{self.get_export_docname()}.ts")
-			)
+			os.rename(old_page_script, self.get_script_file_path())
 		delete_folder(old_folder)
 
 	def export_components(self):
@@ -343,6 +411,9 @@ class StudioPage(Document):
 	def get_file_name(self):
 		return f"{self.get_export_docname()}.json"
 
+	def get_script_file_path(self) -> str:
+		return os.path.join(self.get_folder_path(), f"{self.get_export_docname()}.ts")
+
 
 @frappe.whitelist()
 def find_page_with_route(app_name: str, page_route: str) -> str | None:
@@ -354,28 +425,6 @@ def find_page_with_route(app_name: str, page_route: str) -> str | None:
 		)
 	except frappe.DoesNotExistError:
 		pass
-
-
-PAGE_RESOURCE_FIELDS = (
-	"resource_type",
-	"resource_name",
-	"auto",
-	"fields",
-	"filters",
-	"limit",
-	"sort_field",
-	"sort_order",
-	"document_type",
-	"document_name",
-	"fetch_document_using_filters",
-	"url",
-	"method",
-	"params",
-	"whitelisted_methods",
-	"transform",
-	"on_success",
-	"on_error",
-)
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
@@ -445,19 +494,3 @@ def get_legacy_variable_migration(page_name: str) -> dict | None:
 		"code": f"{declarations}\n\nreturn {{ {', '.join(variable_names)} }}",
 		"variable_names": variable_names,
 	}
-
-
-@frappe.whitelist()
-def duplicate_page(page_name: str, app_name: str | None):
-	if not frappe.has_permission("Studio Page", ptype="write"):
-		frappe.throw(_("You do not have permission to duplicate a page."))
-
-	page = frappe.get_doc("Studio Page", page_name)
-	new_page = frappe.copy_doc(page)
-	del new_page.page_name
-	new_page.page_title = f"{new_page.page_title} Copy"
-	new_page.route = None
-	new_page.studio_app = app_name
-	new_page.insert()
-
-	return new_page

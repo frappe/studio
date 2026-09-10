@@ -15,7 +15,7 @@
 					</div>
 					<ItemActions
 						class="-mt-1 self-start"
-						:menuOptions="getResourceMenu(resource, resource_name)"
+						:menuOptions="getResourceMenu(resource_name)"
 						@edit="openResource(resource_name)"
 					/>
 				</div>
@@ -51,6 +51,7 @@ import { isObjectEmpty, getAutocompleteValues, getParamsObj, confirm, copyToClip
 import { studioPageResources } from "@/data/studioResources"
 import type { Resource } from "@/types/Studio/StudioResource"
 import { toast } from "frappe-ui"
+import { copyDataSource } from "@/utils/blockCopyPaste"
 
 /**
  * Insert resource into DB
@@ -150,7 +151,7 @@ const getStoredResource = async (resource_name: string) => {
 	return studioPageResources.data[0]
 }
 
-const getResourceMenu = (resource: Resource, resource_name: string) => {
+const getResourceMenu = (resource_name: string) => {
 	return [
 		{
 			label: "Delete",
@@ -159,11 +160,9 @@ const getResourceMenu = (resource: Resource, resource_name: string) => {
 			onClick: () => deleteResource(resource_name),
 		},
 		{
-			label: "Copy Object",
+			label: "Copy",
 			icon: "lucide-copy",
-			onClick: () => {
-				copyToClipboard(resource)
-			},
+			onClick: () => copyDataSource(getStoredResource(resource_name), resource_name),
 		},
 	]
 }
