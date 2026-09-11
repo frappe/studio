@@ -27,11 +27,8 @@ from studio.studio.doctype.studio_page.copy_paste_handler import (
 	parse_list,
 	pick,
 )
+from studio.studio.doctype.studio_page.legacy_variables import get_declaration
 from studio.utils import camel_case_to_kebab_case
-
-# A variable is referenced as {{ name }} and spread into the page's JS eval context, so its
-# name must be a bare JS identifier.
-VARIABLE_NAME_REGEX = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 
 class StudioPage(Document):
@@ -44,7 +41,6 @@ class StudioPage(Document):
 		from frappe.types import DF
 
 		from studio.studio.doctype.studio_page_resource.studio_page_resource import StudioPageResource
-		from studio.studio.doctype.studio_page_variable.studio_page_variable import StudioPageVariable
 
 		allow_guest: DF.Check
 		blocks: DF.LongText | None
@@ -58,7 +54,6 @@ class StudioPage(Document):
 		route: DF.Data | None
 		script: DF.Code | None
 		studio_app: DF.Link | None
-		variables: DF.Table[StudioPageVariable]
 	# end: auto-generated types
 
 	def autoname(self):
@@ -96,9 +91,8 @@ class StudioPage(Document):
 			self.route = f"/{self.route}"
 
 	def validate(self):
-		# passed from the frontend for faster page saves when variables & resources are not changed
+		# passed from the frontend for faster page saves when resources are not changed
 		if not hasattr(self, "_skip_validate"):
-			self.validate_variables()
 			self.process_resources()
 
 	def on_update(self):
@@ -270,21 +264,6 @@ class StudioPage(Document):
 	def delete_ai_sessions(self):
 		for session in frappe.get_all("Studio AI Session", filters={"page": self.name}, pluck="name"):
 			frappe.delete_doc("Studio AI Session", session, ignore_missing=True)
-
-	def validate_variables(self):
-		# check for duplicate variable names and show the duplicate variable name
-		variable_names = [variable.variable_name for variable in self.variables]
-		duplicate_variable_names = set(x for x in variable_names if variable_names.count(x) > 1)
-		if duplicate_variable_names:
-			frappe.throw(_("Duplicate variable name: {0}").format(", ".join(duplicate_variable_names)))
-
-		for variable in self.variables:
-			if not VARIABLE_NAME_REGEX.match(variable.variable_name or ""):
-				frappe.throw(
-					_(
-						"Invalid variable name '{0}' — use letters, digits and underscores, starting with a letter."
-					).format(variable.variable_name)
-				)
 
 	def process_resources(self):
 		for resource in self.resources:
@@ -490,8 +469,29 @@ def get_page(app_name: str, page_route: str, preview: bool = False) -> dict:
 			{"resource_id": row.name, **{field: row.get(field) for field in PAGE_RESOURCE_FIELDS}}
 			for row in page.resources
 		],
-		"variables": [
-			{"name": row.name, **{field: row.get(field) for field in PAGE_VARIABLE_FIELDS}}
-			for row in page.variables
-		],
+	}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_legacy_variable_migration(page_name: str) -> dict | None:
+	page = frappe.get_doc("Studio Page", page_name)
+	if not frappe.has_permission("Studio Page", ptype="read", doc=page):
+		frappe.throw(_("You do not have permission to read this page"), frappe.PermissionError)
+
+	variables = frappe.get_all(
+		"Studio Page Variable",
+		filters={"parent": page.name, "parenttype": "Studio Page"},
+		fields=["variable_name", "variable_type", "initial_value"],
+		order_by="idx asc",
+	)
+	if not variables:
+		return None
+
+	declarations = "\n".join(get_declaration(variable) for variable in variables)
+	variable_names = [variable.variable_name for variable in variables]
+	if page.is_standard:
+		declarations += f"\n\nreturn {{ {', '.join(variable_names)} }}"
+	return {
+		"code": declarations,
+		"variable_names": variable_names,
 	}

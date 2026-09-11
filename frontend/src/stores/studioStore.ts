@@ -7,13 +7,11 @@ import {
 	fetchApp,
 	fetchPage,
 	confirm,
-	getInitialVariableValue,
 	getRouteVariables,
 } from "@/utils/helpers"
 import { getBlockInstance, getRootBlock, getBlockCopyWithoutParent, jsToJson } from "@/utils/serializer"
 import { studioPages } from "@/data/studioPages"
 import { studioApps } from "@/data/studioApps"
-import { studioVariables } from "@/data/studioVariables"
 
 import Block from "@/utils/block"
 import useCanvasStore from "@/stores/canvasStore"
@@ -29,9 +27,8 @@ import type { CustomVueComponentMeta } from "@/types/vue"
 import type { StudioApp } from "@/types/Studio/StudioApp"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { PageCopy } from "@/utils/blockCopyPaste"
-import type { BlockOptions, LeftPanelOptions, RightPanelOptions, leftPanelComponentTabOptions, StudioMode } from "@/types"
+import type { BindingOption, LeftPanelOptions, RightPanelOptions, leftPanelComponentTabOptions, StudioMode } from "@/types"
 import ComponentContextMenu from "@/components/ComponentContextMenu.vue"
-import type { Variable, VariableOption } from "@/types/Studio/StudioPageVariable"
 import { toast, dialog } from "frappe-ui"
 import { createResource, call } from "frappe-ui"
 
@@ -223,8 +220,7 @@ const useStudioStore = defineStore("store", () => {
 		}
 		activePage.value = page
 		loadRouteVariables(page)
-		await setPageData(page)
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
+		await codeStore.initializePage(page, { editor: true })
 
 		const blocks = JSON.parse(page.draft_blocks || page.blocks || "[]")
 		if (blocks.length === 0) {
@@ -336,7 +332,7 @@ const useStudioStore = defineStore("store", () => {
 		const page = await fetchPage(activePage.value.name)
 		if (!page) return
 		activePage.value = page
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
+		await codeStore.setPageScript(page)
 	}
 
 	async function publishPage() {
@@ -651,61 +647,14 @@ const useStudioStore = defineStore("store", () => {
 	const resetState = useDebounceFn(async () => {
 		const page = activePage.value
 		if (!page) return
-		// re-resolve data sources with the new value, then re-run the page script so bindings that
-		// derive from a resource (e.g. refs seeded from note.doc via a watcher) re-bind to the new doc.
-		await codeStore.setPageResources(page, true)
-		await codeStore.setPageScript(page, Boolean(page.is_standard))
+		await codeStore.initializePage(page, { editor: true })
 	}, 300)
 
 	const codeStore = useCodeStore()
 	codeStore.setRouteObject(routeObject)
 	codeStore.setRouterObject(readonly(router))
 
-	// A page script (or a composable/util it imports) hot-updated. Re-run it in place when it's the
-	// active page so new refs/functions and changed dependency code show up on the canvas, in the
-	// value selectors and in completions — no reload. Non-active pages refresh lazily on navigation
-	// (studioPageScripts caches the latest setup).
-	async function setPageData(page: StudioPage) {
-		await codeStore.setPageVariables(page)
-		await codeStore.setPageResources(page, true)
-	}
-
-	const variableConfigs = computed<Record<string, Variable>>(() => {
-		const configs: Record<string, Variable> = {}
-		studioVariables.data.map((variable: Variable) => {
-			configs[variable.variable_name] = {
-				...variable,
-				initial_value: getInitialVariableValue(variable),
-			}
-		})
-		return configs
-	})
-
-	const variableOptions = computed(() => {
-		const options: VariableOption[] = []
-
-		function traverse(obj: any, path = "") {
-			for (const key in obj) {
-				const currentPath = path ? `${path}.${key}` : key
-				const variableType = path === "" ? variableConfigs.value[key]?.variable_type : typeof obj[key]
-				options.push({
-					value: currentPath,
-					label: currentPath,
-					type: variableType
-				})
-
-				if (typeof obj[key] === "object" && obj[key] !== null) {
-					// add nested properties
-					traverse(obj[key], currentPath)
-				}
-			}
-		}
-
-		traverse(codeStore.variables)
-		return options
-	})
-
-	const pageScriptBindingOptions = computed<VariableOption[]>(() => {
+	const pageScriptBindingOptions = computed<BindingOption[]>(() => {
 		return Object.entries(codeStore.pageScriptTemplateBindings).map(([key, value]) => ({
 			value: key,
 			label: key,
@@ -770,9 +719,6 @@ const useStudioStore = defineStore("store", () => {
 		// styles
 		propertyFilter,
 		// data/code
-		variableConfigs,
-		setPageData,
-		variableOptions,
 		pageScriptBindingOptions,
 	}
 })

@@ -6,7 +6,7 @@ import { getCompletions } from "./autocompletions"
 import { vueImportCompletions } from "./vueApiCompletions"
 
 // An ES module/standard app's page script's `setup(context)` param holds the page's runtime context. Treat that
-// param as a single object whose members are the page's data sources, variables, route and router,
+// param as a single object whose members are the page's data sources, route and router,
 // then reuse the event-script completion engine — it reads nested objects straight off the live
 // values, so `context.todos.data` completes the same way `todos.data` does in an event script.
 // Anything that isn't a member access off the param falls back to Vue-API import completions.
@@ -27,15 +27,12 @@ function contextSource(param: string): CompletionSource {
 	}
 }
 
-// The shape the setup param holds at runtime. Variables and page-script bindings reach the script
-// as refs, so surface them as `{ value }` — completion then offers `.value` and that value's own
-// members, exactly like event scripts do.
+// The shape the setup param holds at runtime. Page-script bindings reach the script as refs, so
+// surface them as `{ value }` — completion then offers `.value` and that value's own members,
+// exactly like event scripts do.
 function buildContextItem(): Record<string, any> {
 	const codeStore = useCodeStore()
 	const item: Record<string, any> = {}
-	for (const [name, value] of Object.entries(codeStore.variables || {})) {
-		item[name] = { value }
-	}
 	for (const [name, value] of Object.entries(codeStore.resources || {})) {
 		item[name] = value
 	}

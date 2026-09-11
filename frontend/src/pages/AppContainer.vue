@@ -50,8 +50,7 @@ async function loadPage() {
 	page.value = await findPageWithRoute(window.app_name, currentPath, Boolean(window.is_preview))
 	if (token !== loadToken || !page.value) return
 	componentStore.setComponents(page.value.components || [])
-	await store.setPageData(page.value)
-	await codeStore.setPageScript(page.value, Boolean(page.value.is_standard))
+	await store.initializePage(page.value)
 	if (token !== loadToken) return
 
 	const blocks = JSON.parse(page.value?.blocks)

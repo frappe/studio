@@ -243,7 +243,7 @@ watch(
 			doctypeFields.value.forEach((field) => {
 				newEvent.value.fields?.push({
 					field: field.value,
-					value: Object.keys(codeStore.variables).includes(field.value) ? field.value : "",
+					value: field.value in codeStore.pageScriptTemplateBindings ? field.value : "",
 					name: field.value,
 				})
 			})
@@ -302,10 +302,10 @@ const actions: ActionConfigurations = {
 					columns: [
 						{ label: "Field", fieldname: "field", fieldtype: "select", options: doctypeFields.value },
 						{
-							label: "Variable",
+							label: "Value",
 							fieldname: "value",
 							fieldtype: "select",
-							options: [...store.variableOptions, ...store.pageScriptBindingOptions],
+							options: store.pageScriptBindingOptions,
 						},
 					],
 					rows: newEvent.value.fields,

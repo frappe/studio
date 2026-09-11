@@ -1,4 +1,4 @@
-from studio.ai.prompt_fragments import ON_ERROR_RULE, ON_SUCCESS_RULE, TRANSFORM_RULE
+from studio.ai.prompt_fragments import ON_ERROR_RULE, ON_SUCCESS_RULE, RESOURCE_SETUP_RULE, TRANSFORM_RULE
 
 COMPONENT_CATALOG = """AVAILABLE COMPONENTS:
 LAYOUT:
@@ -45,12 +45,12 @@ ACTIONS:
 - ContextMenu: {options: [{label: "string", icon: "lucide-icon-name", onClick: "function"}] OR grouped [{group: "string", options: [{label, icon}]}]}
   # A right-click menu — put the target surface as child content in the default slot; the menu opens on right-click of that area.
 # For buttons and dropdowns, icons must be lucide-* strings from https://lucide.dev/icons (e.g. lucide-plus, lucide-edit, etc.)
-# HANDLER PROPS (onClick inside Dialog actions, Dropdown/ContextMenu options, etc.) must be an function string — "() => { counter.value = 0 }" — NOT a bare statement. The component calls it directly, so a plain "counter.value = 0" string throws "onClick is not a function". Variables are refs (write via .value); data sources and route/router are in scope. (This differs from a block's `events`, which ARE bare statements.)
+# HANDLER PROPS (onClick inside Dialog actions, Dropdown/ContextMenu options, etc.) must be an function string — "() => { counter.value = 0 }" — NOT a bare statement. The component calls it directly, so a plain "counter.value = 0" string throws "onClick is not a function". The page script's bindings are in scope — refs are written via .value — along with data sources and route/router. (This differs from a block's `events`, which ARE bare statements.)
 
 OVERLAYS:
 - Dialog: {modelValue: false, title: "string", message: "string", size: "xs|sm|md|lg(DEFAULT)|xl|2xl|3xl|4xl|5xl|6xl|7xl", icon: "lucide-icon-name", position: "center(DEFAULT)|top", dismissible: true, showCloseButton: true, bare: false, actions: [{label: "string", variant: "solid|subtle|outline|ghost", theme: "gray (DEFAULT — omit unless red/green/blue is semantically required; Example: red for destructive actions)", onClick: "function"}]}
   # modelValue is the open/visibility state (v-model) — keep it false so the dialog starts hidden; it is opened via interaction wired separately.
-  # An action's onClick is an function string (see HANDLER PROPS above), e.g. a Reset action → "() => { counter.value = 0; showResetDialog.value = false }". To close the dialog, set its modelValue variable false.
+  # An action's onClick is an function string (see HANDLER PROPS above), e.g. a Reset action → "() => { counter.value = 0; showResetDialog.value = false }". To close the dialog, set its modelValue ref false.
   # Dialog body content goes in the block's default slot, NOT in a prop. title/message/icon/actions render the built-in header + footer chrome around those children.
   # Use bare:true to drop all chrome (no padded card, header, or auto-actions) and render only your children.
 
@@ -119,7 +119,7 @@ BLOCK_SCHEMA = """BLOCK SCHEMA (each block is a JSON object with these optional 
 - "style": { }                  — camelCase CSS (see STYLE PROPERTY ROUTING below)
 - "mstyle": { }                 — mobile style overrides
 - "tstyle": { }                 — tablet style overrides
-- "events": { }                 — event handlers, eventName → JS script, e.g. {"click":"counter.value++"}. Variables are refs (write with .value); the script also sees data sources and route/router.
+- "events": { }                 — event handlers, eventName → JS script, e.g. {"click":"counter.value++"}. Page-script refs are written with .value; the script also sees data sources and route/router.
 - "visibility": "expr"          — render the block only when a {{ }} expression is truthy, e.g. "{{ todos.data.length > 0 }}"
 - "c": [ ]                       — children list (array of block objects). These are the block's DEFAULT-slot content (e.g. a Dialog's body, a ContextMenu's target surface).
 - "slots": { }                  — NAMED slots only, for components that expose them: {"<slotName>": [ ...child block objects... ]} (each value is a block list in THIS same schema — a slot holds blocks only, so use a TextBlock for a plain label). Default content goes in "c" — use "slots" only for a component's named slots. On an EXISTING block, fill a named slot with set_slot(component_id, slot_name, blocks) and drop a wrong one with remove_slot(component_id, slot_name).
@@ -146,12 +146,12 @@ BUILD_RULES = """BUILDING BLOCKS RULES:
 
 # Plain string (not an f-string) so `{{ }}` binding tokens survive; interpolated into
 # SYSTEM_PROMPT so one-shot generation can bake live-data bindings into props.
-BINDING_CONTRACT = """DATA BINDING — when the page shows live data or a variable, a block prop's VALUE is a `{{ }}` expression (bound at render):
+BINDING_CONTRACT = """DATA BINDING — when the page shows live data or page state, a block prop's VALUE is a `{{ }}` expression (bound at render):
 - list of records → a Repeater with props {"data":"{{ <source>.data }}","dataKey":"name"} whose ONE row-template child uses {{ dataItem.<field> }} in its props; or a ListView with props {"rows":"{{ <source>.data }}"} + columns.
 - a single Document's field → {{ <source>.doc.<field> }}; a count → {{ <source>.data.length }}.
-- a variable (read-only display) → {{ <variable> }} (e.g. a TextBlock with props {"text":"{{ counter }}"}).
-- an INPUT whose value should SYNC with a variable two-way (v-model) → props {"modelValue":{"$type":"variable","name":"<variable>"}} — an object, NOT a {{ }} string. Typing updates the variable and vice-versa; use this for TextInput/FormControl/Select/Checkbox/Switch/etc.
-Bind ONLY to the data sources / variables listed as available on the page, and only to fields a source actually fetches. Do NOT invent a data source in the JSON — sources are created separately; here you only bind to ones that already exist."""
+- a piece of page state (read-only display) → {{ <ref> }} (e.g. a TextBlock with props {"text":"{{ counter }}"}), where `counter` is a ref declared in the page script.
+- an INPUT whose value should SYNC with page state two-way (v-model) → props {"modelValue":{"$type":"variable","name":"<ref>"}} — an object, NOT a {{ }} string. Typing updates the ref and vice-versa; use this for TextInput/FormControl/Select/Checkbox/Switch/etc.
+Bind ONLY to the data sources listed as available on the page (and only to fields a source actually fetches) and to state the page script declares. Do NOT invent a data source in the JSON — sources are created separately; here you only bind to ones that already exist."""
 
 
 # SYSTEM_PROMPT (one-shot generation) and the agent prompt so every place that writes executable JS
@@ -167,7 +167,7 @@ This JS has the page context in scope plus ordinary browser globals (`window`, `
   - read → `<source>.data` (list) or `<source>.doc` (single Document)
   Every `.submit(...)` returns a Promise — chain `.then(() => { ... })` to close a dialog, clear inputs, or toast after it lands.
 - `call('dotted.method.path', { arg: value })` — a frappe-ui helper for a ONE-OFF whitelisted server call not tied to a source; returns a Promise, e.g. `call('frappe.client.get_count', { doctype: 'Note' }).then((n) => { count.value = n })`. Do NOT use `createResource`/`createListResource` in inline JS — they are NOT in scope here; use an existing source or `call`.
-- `toast.success(msg)` / `toast.error(msg)`; `getIcon(name)`; variables (refs — read/write via `.value`); `route`, `router`.
+- `toast.success(msg)` / `toast.error(msg)`; `getIcon(name)`; the page script's bindings (refs — read/write via `.value`); `route`, `router`.
 CRUD example — a Dialog "Save" action that creates a Note via the `notes` source (NOT frappe.db), then clears + closes:
   "() => { notes.insert.submit({ title: newNoteTitle.value }).then(() => { newNoteTitle.value = ''; showNewNoteDialog.value = false }) }"
 """
@@ -198,19 +198,19 @@ EXAMPLE — "A login form with email, password and a submit button":
 # rules are pulled from prompt_fragments so the agent reads the SAME text here and at the
 # add_data_source call site; the string is built by concatenation for that reason.
 DATA_WIRING = (
-	"""# Wiring live data & variables
-A binding is a `{{ }}` expression sitting in a block prop. Its context: data sources (`{{ <source>.data }}` for a Document-List/API result, `{{ <source>.doc }}` for a single Document), variables (`{{ counter }}`), page-script bindings, and `route`/`router`.
+	"""# Wiring live data & page state
+A binding is a `{{ }}` expression sitting in a block prop. Its context: data sources (`{{ <source>.data }}` for a Document-List/API result, `{{ <source>.doc }}` for a single Document), the page script's bindings (`{{ counter }}`), and `route`/`router`.
 
 THE ONE RULE — bake bindings in at creation. A block you add gets its id on the CANVAS, so you cannot reference it later this turn. Put every binding straight into the block's props in the SAME add_block / generate_page call — never add a block and then bind it, and never ask the user to paste the page. bind_prop / set_repeater_data are ONLY for blocks that ALREADY EXIST in the page structure.
 
 Build a data-driven view — BACKEND FIRST, then layout:
   1. Introspect — get_doctype_fields (and list_doctypes if unsure of the DocType) to fix the DocType and the REAL field names.
-  2. Create the data layer FIRST — add_data_source (+ local state, see State & logic below). Call get_page_state first to reuse an existing source/variable instead of duplicating. Keep filters concrete, e.g. open ToDos → {"status":"Open"}.
+  2. Create the data layer FIRST — add_data_source (+ local state, see State & logic below). Call get_page_state first to reuse an existing source instead of duplicating. Keep filters concrete, e.g. open ToDos → {"status":"Open"}.
   3. Build the layout binding to it, with the bindings baked into props. The columns/fields you show ARE the data source's fields[] — never bind a field the source didn't fetch.
      - list with a custom row → a Repeater, props {"data":"{{ <source>.data }}","dataKey":"name"}, with ONE child row-template whose props use {{ dataItem.<field> }} (dataItem = current row, dataIndex = its 0-based index). Build ONE template — it repeats automatically; never one child per record.
      - tabular list → a ListView with its columns set and props {"rows":"{{ <source>.data }}"}.
      - single value / count → a block prop bound to {{ <source>.doc.<field> }} or {{ <source>.data.length }}.
-     - a variable → the display block's prop bound to {{ <variable> }} (e.g. a TextBlock with props {"text":"{{ counter }}"}).
+     - a piece of page state → the display block's prop bound to {{ <ref> }} (e.g. a TextBlock with props {"text":"{{ counter }}"}), with `counter` declared in the page script.
 
 Data-source lifecycle hooks (optional, on add_data_source / update_data_source) — reach for these instead of a page script when the logic belongs to ONE source:
 - transform — """
@@ -226,7 +226,7 @@ Data-source lifecycle hooks (optional, on add_data_source / update_data_source) 
 
 Editing an EXISTING block's binding (it's already in the page structure): bind_prop(component_id, prop, expression) — expression WITHOUT braces — or set_repeater_data for an existing Repeater.
 
-Two-way inputs (v-model): to make a form input's value mirror a piece of reactive state BOTH ways (typing updates the state, and vice-versa), do NOT use a {{ }} binding (that's read-only). New input → props {"modelValue":{"$type":"variable","name":"<name>"}}; existing input → sync_variable(component_id, name). Create that state first (see State & logic below).
+Two-way inputs (v-model): to make a form input's value mirror a piece of reactive state BOTH ways (typing updates the state, and vice-versa), do NOT use a {{ }} binding (that's read-only). New input → props {"modelValue":{"$type":"variable","name":"<ref>"}}; existing input → sync_variable(component_id, ref). Declare that ref in the page script first (see State & logic below).
 
 Interactivity (events & visibility) — same new-vs-existing rule as bindings:
 - Make a block DO something on interaction with an event handler. New block → put it in the block's `events` field at creation, e.g. a button with {"events":{"click":"counter.value++"}}. Existing block → set_event_handler(component_id, event, script). The script is JS with the page context in scope; reactive state is refs, so write them via .value (increment a counter: counter.value++; reset: counter.value = 0).
@@ -236,18 +236,23 @@ Interactivity (events & visibility) — same new-vs-existing rule as bindings:
 
 
 # Mode-specific "State & logic" sections appended to DATA_WIRING. Plain strings (NOT f-strings) so the
-# `{{ }}` binding tokens survive verbatim. The non-exported app keeps state in Studio Page variables and
-# a bare interpreted script; the exported app keeps it in code (setup() modules, stores, composables).
+# `{{ }}` binding tokens survive verbatim. Both modes keep state in the page script; they differ only in
+# its form — a bare interpreted body for the non-exported app, a real setup() module for the exported one.
 CUSTOM_PAGE_CODE = """# State & logic
-Variables — reactive page state (a counter, a toggle, a selected filter). add_variable(name, type, initial_value); reference anywhere as {{ name }}. update_variable to retype/re-seed, delete_variable to remove (warns if still bound). Reuse before duplicating (list_variables).
+The PAGE SCRIPT is the only home for reactive page state (a counter, a toggle, a selected filter) and for logic that outgrows a single event handler: shared helpers, watchers, computed values, data fetched on mount.
 
-Page script (advanced) — for page logic that outgrows a single event handler: shared helpers, watchers, computed values, data fetched on mount. This app is NOT exported, so its script is a BARE `<script setup>` body — NO `export`, NO `import`, NO `setup()` wrapper. Declare state and helpers at the top level and they're auto-exposed to {{ }} and handlers (do NOT write a return). Vue reactivity APIs (ref/computed/watch), variables, resources, route and router are directly in scope — write `ref(0)`, never `context.ref`. set_page_script replaces the whole script (read it first with get_page_script); it runs live on the canvas the moment it's saved."""
+This app is NOT exported, so its script is a BARE `<script setup>` body — NO `export`, NO `import`, NO `setup()` wrapper. Declare state and helpers at the top level and they're auto-exposed to {{ }} and handlers (do NOT write a return). Vue reactivity APIs (ref/computed/watch), the page's data sources, route and router are directly in scope — write `ref(0)`, never `context.ref`. set_page_script replaces the whole script (read it first with get_page_script); it runs live on the canvas the moment it's saved.
+DECLARE STATE THE SAME TURN YOU ADD UI THAT USES IT. Any reactive state your UI touches — a Dialog's open flag, an input's modelValue, a counter/toggle a button mutates — must be a ref declared at the top level of the page script. A button `events` like `showDialog.value = true`, or a modelValue bound to `showDialog`, does NOTHING unless the page script declares `showDialog`. So whenever you add interactive UI, call set_page_script in the SAME turn to add the backing state — never wire an event or binding to a name the page script doesn't declare.
+Example:
+const showCreateDialog = ref(false)
+const newTitle = ref('')
+const createNote = () => notes.insert.submit({ title: newTitle.value }).then(() => { newTitle.value = '' })"""
 
 STANDARD_PAGE_CODE = """# State & logic
-This app is EXPORTED — its frontend is a real TypeScript codebase on disk (page scripts, stores, composables, utils, components) that you edit as files and ship via a build. Prefer real code over Studio Page variables here.
+This app is EXPORTED — its frontend is a real TypeScript codebase on disk (page scripts, stores, composables, utils, components) that you edit as files and ship via a build.
 
-Reactive state & page logic — author the page's setup() MODULE with set_page_script. It is a REAL ES module, so you MUST `import` framework APIs at the TOP — Vue reactivity `import { ref, computed, watch } from 'vue'`; and as needed `import { call, toast } from 'frappe-ui'`, `import { defineStore, storeToRefs } from 'pinia'`, and the app's own files via '@app/*'. `ref`/`computed`/`watch` are NOT on `context` — NEVER write `context.ref` or `const { ref } = context`; import them from 'vue'. The `context` PARAM carries the PAGE's own things: its data sources/resources, its variables, `route` and `router` (e.g. `context.notes`, `context.route`). Only what you RETURN becomes bindings usable in {{ }} and handlers. Declare page-local state as refs — do NOT create Studio Page variables. set_page_script replaces the whole module (read it first with get_page_script).
-DECLARE STATE THE SAME TURN YOU ADD UI THAT USES IT. There is no add_variable in an exported app, so any reactive state your UI touches — a Dialog's open flag, an input's modelValue, a counter/toggle a button mutates — must be a ref you declare in setup() and RETURN. A button `events` like `showDialog.value = true`, or a modelValue bound to `showDialog`, does NOTHING unless setup() declares and returns `showDialog`. So whenever you add interactive UI, call set_page_script in the SAME turn to add the backing state — never wire an event or binding to a name the page script doesn't return.
+Reactive state & page logic — author the page's setup() MODULE with set_page_script. It is a REAL ES module, so you MUST `import` framework APIs at the TOP — Vue reactivity `import { ref, computed, watch } from 'vue'`; and as needed `import { call, toast } from 'frappe-ui'`, `import { defineStore, storeToRefs } from 'pinia'`, and the app's own files via '@app/*'. `ref`/`computed`/`watch` are NOT on `context` — NEVER write `context.ref` or `const { ref } = context`; import them from 'vue'. The `context` PARAM carries the PAGE's own things: its data sources/resources, `route` and `router` (e.g. `context.notes`, `context.route`). Only what you RETURN becomes bindings usable in {{ }} and handlers. Declare page-local state as refs. set_page_script replaces the whole module (read it first with get_page_script).
+DECLARE STATE THE SAME TURN YOU ADD UI THAT USES IT. Any reactive state your UI touches — a Dialog's open flag, an input's modelValue, a counter/toggle a button mutates — must be a ref you declare in setup() and RETURN. A button `events` like `showDialog.value = true`, or a modelValue bound to `showDialog`, does NOTHING unless setup() declares and returns `showDialog`. So whenever you add interactive UI, call set_page_script in the SAME turn to add the backing state — never wire an event or binding to a name the page script doesn't return.
 Example:
 import { ref } from 'vue'
 export default function setup(context) {
@@ -295,6 +300,8 @@ When the user attaches an image (a screenshot or design mock), treat it as the s
 
 {data_and_code_wiring}
 
+{RESOURCE_SETUP_RULE}
+
 {SCRIPTING_RULES}
 
 # Asking vs proceeding
@@ -309,8 +316,8 @@ When the user attaches an image (a screenshot or design mock), treat it as the s
 
 
 # Two agents, picked by whether the app is exported. Both share everything except the
-# State & logic section: the non-exported agent keeps state in variables + a bare interpreted script;
-# the standard agent keeps it in code (setup() modules, stores, composables) edited as files.
+# State & logic section: the non-exported agent writes a bare interpreted page script; the standard
+# agent writes real code (setup() modules, stores, composables) edited as files.
 AGENT_SYSTEM_CUSTOM = get_agent_system(DATA_WIRING + "\n\n" + CUSTOM_PAGE_CODE)
 AGENT_SYSTEM_STANDARD = get_agent_system(DATA_WIRING + "\n\n" + STANDARD_PAGE_CODE)
 

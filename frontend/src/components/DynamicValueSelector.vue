@@ -5,13 +5,13 @@
 		class="!w-auto"
 		placement="left-start"
 		modelValue=""
-		@update:modelValue="(option: VariableOption) => emit('update:modelValue', option.value, bindVariable)"
+		@update:modelValue="(option: BindingOption) => emit('update:modelValue', option.value, syncState)"
 	>
 		<template #target="{ togglePopover }">
 			<IconButton
-				v-if="bindVariable"
+				v-if="syncState"
 				:icon="Link2"
-				label="Synced with variable. Click to change."
+				label="Synced with page state. Click to change."
 				placement="bottom"
 				class="mr-1"
 				:tabIndex="-1"
@@ -34,10 +34,10 @@
 		</template>
 		<template #footer v-if="dynamicValueOptions.length > 0">
 			<div class="flex items-center gap-1 px-2" @mousedown.prevent>
-				<Tooltip text="Changing the selected variable value will change the prop value and vice versa">
+				<Tooltip text="Changing the selected value will change the prop value and vice versa">
 					<FeatherIcon name="info" class="size-3 text-ink-gray-5" />
 				</Tooltip>
-				<Switch v-model="bindVariable" label="Sync with variable" class="w-full hover:bg-transparent" />
+				<Switch v-model="syncState" label="Sync with state" class="w-full hover:bg-transparent" />
 			</div>
 		</template>
 	</Autocomplete>
@@ -51,25 +51,24 @@ import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
 import useComponentEditorStore from "@/stores/componentEditorStore"
 import Block from "@/utils/block"
-import type { VariableOption } from "@/types/Studio/StudioPageVariable"
 import type { ComponentInput } from "@/types/Studio/StudioComponent"
-import type { SlotScope } from "@/types"
+import type { BindingOption, SlotScope } from "@/types"
 import { isObjectEmpty } from "@/utils/helpers"
 import { getBindingType } from "@/utils/parseCode"
 import useCodeStore from "@/stores/codeStore"
 import Link2 from "~icons/lucide/link-2"
 import LucideCirclePlus from "~icons/lucide/circle-plus"
 
-const props = defineProps<{ block?: Block; isVariableBound?: string | null }>()
+const props = defineProps<{ block?: Block; boundStateName?: string | null }>()
 const emit = defineEmits<{
-	(event: "update:modelValue", value: string, bindVariable: boolean): void
+	(event: "update:modelValue", value: string, syncState: boolean): void
 }>()
-const bindVariable = ref(!!props.isVariableBound)
+const syncState = ref(!!props.boundStateName)
 
 watch(
-	() => props.isVariableBound,
+	() => props.boundStateName,
 	(newValue) => {
-		bindVariable.value = !!newValue
+		syncState.value = !!newValue
 	},
 )
 
@@ -84,7 +83,7 @@ const dynamicValueOptions = computed(() => {
 		// Component context
 		const componentInputs = useComponentEditorStore().componentInputs
 		if (!isObjectEmpty(componentInputs)) {
-			const componentContext: VariableOption[] = []
+			const componentContext: BindingOption[] = []
 			componentInputs.map?.((input: ComponentInput) => {
 				componentContext.push({
 					value: `inputs.${input.input_name}`,
@@ -98,14 +97,6 @@ const dynamicValueOptions = computed(() => {
 			})
 		}
 	} else {
-		// Variables group
-		if (store.variableOptions.length > 0) {
-			groups.push({
-				group: "Variables",
-				items: store.variableOptions,
-			})
-		}
-
 		// Scoped slot props exposed by the enclosing component (Repeater's dataItem, List's item, ...)
 		const slotScopeOptions = getSlotScopeOptions(props.block?.slotScope)
 		if (slotScopeOptions.length) {
@@ -155,7 +146,7 @@ const dynamicValueOptions = computed(() => {
 	return groups
 })
 
-function getSlotScopeOptions(slotScope?: SlotScope | null): VariableOption[] {
+function getSlotScopeOptions(slotScope?: SlotScope | null): BindingOption[] {
 	return Object.entries(slotScope || {}).flatMap(([name, value]) => {
 		if (value && typeof value === "object" && !Array.isArray(value)) {
 			return Object.keys(value).map((key) => ({
