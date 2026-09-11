@@ -1,7 +1,7 @@
 import { shallowRef } from "vue"
 import { useStorage } from "@vueuse/core"
 import { defineStore } from "pinia"
-import { createResource, toast } from "frappe-ui"
+import { createResource } from "frappe-ui"
 
 import { copyToClipboard } from "@/utils/helpers"
 import type { StudioPage } from "@/types/Studio/StudioPage"
@@ -31,7 +31,6 @@ const useAlertStore = defineStore("alerts", () => {
 	function copyLegacyVariables() {
 		if (!legacyMigration.value) return
 		copyToClipboard(legacyMigration.value.code)
-		toast.success("Legacy variables copied")
 	}
 
 	function show(alert: AppAlert) {
