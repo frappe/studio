@@ -31,7 +31,12 @@ export const vueReactivityApis = {
 	shallowRef, readonly, markRaw, nextTick,
 }
 
-type ResourceOptions = { editor?: boolean; rows?: Resource[] }
+type PageResourceOptions = {
+	/** Attach resource IDs and types for the editor's Data panel. */
+	includeEditorMetadata?: boolean
+	/** Use these definitions instead of fetching the page's resources. */
+	preloadedResources?: Resource[]
+}
 
 const useCodeStore = defineStore("codeStore", () => {
 	const resources = ref<Record<string, Resource>>({})
@@ -63,20 +68,28 @@ const useCodeStore = defineStore("codeStore", () => {
 	}
 
 	// RESOURCES
-	let pendingResources: Record<string, any> | null = null
-	async function initializePage(page: StudioPage, options: ResourceOptions = {}) {
-		teardownPage()
-		await loadPageResources(page, options, () => setPageScript(page))
-	}
-
-	async function setPageResources(page: StudioPage, options: ResourceOptions = {}) {
-		await loadPageResources(page, options)
-	}
-
-	async function loadPageResources(
+	async function initializePage(
 		page: StudioPage,
-		options: ResourceOptions,
-		setup?: () => Promise<void>,
+		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions = {},
+	) {
+		teardownPage()
+		const requests = await preparePageResources(page, { includeEditorMetadata, preloadedResources })
+		if (!requests || requests !== resourceRequests) return
+		await setPageScript(page)
+		activatePageResources(requests)
+	}
+
+	async function setPageResources(
+		page: StudioPage,
+		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions = {},
+	) {
+		const requests = await preparePageResources(page, { includeEditorMetadata, preloadedResources })
+		activatePageResources(requests)
+	}
+
+	async function preparePageResources(
+		page: StudioPage,
+		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions,
 	) {
 		stopResourceWatchers()
 		resourceRequests?.stop()
@@ -84,21 +97,23 @@ const useCodeStore = defineStore("codeStore", () => {
 		resourceRequests = requests
 		startResources = []
 		const pageResources = reactive({}) as Record<string, any>
-		pendingResources = pageResources
-		const resourceRows = await getPageResourceRows(page, options.rows)
-		if (pendingResources !== pageResources) return
+		const resourceRows = await getPageResourceRows(page, preloadedResources)
+		if (requests !== resourceRequests) return
 
 		for (const row of resourceRows) {
 			const resource = createPageResource(row, requests)
-			if (options.editor) {
+			if (includeEditorMetadata) {
 				resource.resource_id = row.resource_id
 				resource.resource_type = row.resource_type
 			}
 			pageResources[row.resource_name] = resource
 		}
 		resources.value = pageResources
-		if (setup) await setup()
-		if (pendingResources !== pageResources) return
+		return requests
+	}
+
+	function activatePageResources(requests: ResourceRequests | undefined) {
+		if (!requests || requests !== resourceRequests) return
 		for (const start of startResources) start()
 		startResources = []
 		requests.resume()
@@ -310,7 +325,6 @@ const useCodeStore = defineStore("codeStore", () => {
 	}
 
 	function teardownPage() {
-		pendingResources = null
 		resourceRequests?.stop()
 		resourceRequests = null
 		startResources = []

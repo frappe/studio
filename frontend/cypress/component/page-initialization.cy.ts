@@ -48,7 +48,7 @@ describe("page initialization", () => {
 	})
 
 	it("exposes state to filters before a setup request fetches", async () => {
-		await store.initializePage(page(), { rows: [notes] })
+		await store.initializePage(page(), { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
 		expect(store.pageScriptError).to.equal(null)
 		expect(requests).to.have.length(1)
@@ -58,7 +58,7 @@ describe("page initialization", () => {
 
 	it("runs auto-fetches with the initial script state", async () => {
 		await store.initializePage(page('const category = ref("Tech")'), {
-			rows: [{ ...notes, auto: true }],
+			preloadedResources: [{ ...notes, auto: true }],
 		})
 		await new Promise((resolve) => setTimeout(resolve, 0))
 		await store.resources.notes.promise
@@ -67,10 +67,10 @@ describe("page initialization", () => {
 	})
 
 	it("uses the new route state when resetting the page", async () => {
-		await store.initializePage(page(), { rows: [notes] })
+		await store.initializePage(page(), { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
 		category.value = "Sports"
-		await store.initializePage(page(), { rows: [notes] })
+		await store.initializePage(page(), { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
 		expect(requests.map((request) => request.params.category)).to.deep.equal(["News", "Sports"])
 		expect(store.pageScriptTemplateBindings.title).to.equal("Sports")
@@ -83,7 +83,7 @@ describe("page initialization", () => {
 			const changes = ref(0)
 			watch(category, () => changes.value++)
 		`),
-			{ rows: [notes] },
+			{ preloadedResources: [notes] },
 		)
 		const bindings = store.pageScriptBindings
 		bindings.category.value = "Tech"
@@ -96,19 +96,32 @@ describe("page initialization", () => {
 	})
 
 	it("does not rerun setup on a resource-only refresh", async () => {
-		await store.initializePage(page(), { rows: [notes] })
+		await store.initializePage(page(), { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
-		await store.setPageResources(page(), { rows: [notes] })
+		await store.setPageResources(page(), { preloadedResources: [notes] })
 		expect(requests).to.have.length(1)
 	})
 
 	it("uses fresh params for requests made by a saved script", async () => {
-		await store.initializePage(page(), { rows: [notes] })
+		await store.initializePage(page(), { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
 		await store.setPageScript(page(script.replace("ref(route.params.category)", 'ref("Edited")')))
 		await store.pageScriptBindings.loaded
 		expect(requests.map((request) => request.params.category)).to.deep.equal(["News", "Edited"])
 		expect(store.pageScriptTemplateBindings.title).to.equal("Edited")
+	})
+
+	it("does not run setup or fetch when navigation supersedes resource preparation", async () => {
+		const oldLoad = store.initializePage(page('const category = ref("Old")'), {
+			preloadedResources: [{ ...notes, auto: true }],
+		})
+		await store.initializePage(page('const category = ref("Current")'), {
+			preloadedResources: [{ ...notes, auto: true }],
+		})
+		await oldLoad
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(store.pageScriptTemplateBindings.category).to.equal("Current")
+		expect(requests.map((request) => request.params.category)).to.deep.equal(["Current"])
 	})
 
 	it("ignores an old script import after navigating to another page", async () => {
@@ -124,9 +137,11 @@ describe("page initialization", () => {
 					signalImport()
 				}),
 		})
-		const oldLoad = store.initializePage({ name: "old", is_standard: 1 } as StudioPage, { rows: [] })
+		const oldLoad = store.initializePage({ name: "old", is_standard: 1 } as StudioPage, {
+			preloadedResources: [{ ...notes, auto: true }],
+		})
 		await imported
-		await store.initializePage(page('const title = ref("New page")'), { rows: [] })
+		await store.initializePage(page('const title = ref("New page")'), { preloadedResources: [] })
 		let oldSetupRan = false
 		resolveModule({
 			default: () => {
@@ -136,6 +151,7 @@ describe("page initialization", () => {
 		})
 		await oldLoad
 		expect(oldSetupRan).to.equal(false)
+		expect(requests).to.have.length(0)
 		expect(store.pageScriptTemplateBindings.title).to.equal("New page")
 	})
 
@@ -152,7 +168,7 @@ describe("page initialization", () => {
 				},
 			}),
 		})
-		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, { rows: [notes] })
+		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, { preloadedResources: [notes] })
 		await store.pageScriptBindings.loaded
 		expect(store.pageScriptTemplateBindings.title).to.equal("Exported")
 	})
@@ -165,7 +181,7 @@ describe("page initialization", () => {
 			const loaded = note.reload().then(() => { resolved.value = note.name })
 		`),
 			{
-				rows: [
+				preloadedResources: [
 					{
 						resource_id: "note",
 						resource_name: "note",
@@ -190,7 +206,7 @@ describe("page initialization", () => {
 			const category = ref("News")
 			watch(category, () => notes.reload(), { immediate: true })
 		`),
-			{ rows: [{ ...notes, auto: true }] },
+			{ preloadedResources: [{ ...notes, auto: true }] },
 		)
 		await new Promise((resolve) => setTimeout(resolve, 0))
 		expect(requests.map((r) => r.params.category)).to.deep.equal(["News"])
@@ -208,7 +224,7 @@ describe("page initialization", () => {
 				notes.submit({ category: "Second" }),
 			])
 		`),
-			{ rows: [notes] },
+			{ preloadedResources: [notes] },
 		)
 		await store.pageScriptBindings.loaded
 		expect(requests.map((r) => r.params.category)).to.deep.equal(["First", "Second"])
@@ -221,7 +237,7 @@ describe("page initialization", () => {
 			notes.params = { category: "Assigned" }
 			const loaded = notes.reload()
 		`),
-			{ rows: [notes] },
+			{ preloadedResources: [notes] },
 		)
 		await store.pageScriptBindings.loaded
 		expect(requests[0].params.category).to.equal("Assigned")
@@ -234,7 +250,7 @@ describe("page initialization", () => {
 			const loaded = notes.reload()
 		`),
 			{
-				rows: [
+				preloadedResources: [
 					{
 						...notes,
 						resource_type: "Document List",
@@ -258,7 +274,7 @@ describe("page initialization", () => {
 			watch(selected, value => { if (value) note.reload() }, { immediate: true })
 		`),
 			{
-				rows: [
+				preloadedResources: [
 					{
 						resource_id: "note",
 						resource_name: "note",
@@ -288,7 +304,7 @@ describe("page initialization", () => {
 		setPageScriptImporters({
 			standard: async () => ({ default: async () => ({ title: "Too late" }) }),
 		})
-		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, { rows: [] })
+		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, { preloadedResources: [] })
 		expect(store.pageScriptError).to.contain("synchronously")
 		expect(store.pageScriptBindings).to.deep.equal({})
 	})
