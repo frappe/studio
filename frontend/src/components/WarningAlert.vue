@@ -3,7 +3,7 @@
 		role="alert"
 		class="relative z-40 flex h-8 items-center gap-2 border-b border-outline-amber-3 bg-surface-amber-2 px-3 text-sm text-ink-gray-8"
 	>
-		<FeatherIcon name="alert-circle" class="h-3.5 w-3.5 shrink-0 text-ink-amber-6" />
+		<span class="lucide-alert-circle mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-amber-7" />
 		<p class="min-w-0 flex-1 truncate">{{ message }}</p>
 		<button
 			v-if="action"
