@@ -25,6 +25,7 @@ import {
 } from "@/data/studioPageScripts"
 import { registerCustomComponentPaths } from "@/utils/components"
 import type { CustomVueComponentMeta } from "@/types/vue"
+import { loadStandardAppEditor } from "@/data/standardAppEditor"
 
 import type { StudioApp } from "@/types/Studio/StudioApp"
 import type { StudioPage } from "@/types/Studio/StudioPage"
@@ -91,8 +92,9 @@ const useStudioStore = defineStore("store", () => {
 		if (!appDoc) return
 		activeApp.value = appDoc
 		await setAppPages(appName)
-		await setCustomComponents()
-		await setupPageScripts()
+		const loadedEditorBundle = await setupStandardAppEditor()
+		await setCustomComponents(loadedEditorBundle)
+		if (!loadedEditorBundle) await setupPageScripts()
 	}
 
 	async function deleteApp(appName: string, appTitle: string) {
@@ -532,9 +534,26 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	// custom components
-	async function setCustomComponents() {
-		await loadCustomVueComponents()
+	async function setCustomComponents(registryAlreadyLoaded = false) {
+		if (registryAlreadyLoaded) {
+			customVueComponents.value = await loadCustomVueComponentMetadata()
+		} else {
+			await loadCustomVueComponents()
+		}
 		await registerCustomComponentPaths(customVueComponents.value)
+	}
+
+	async function setupStandardAppEditor() {
+		if (!activeApp.value?.is_standard || import.meta.env.DEV) return false
+		return loadStandardAppEditor(activeApp.value.name)
+	}
+
+	async function loadCustomVueComponentMetadata() {
+		const frappeApp = activeApp.value?.frappe_app
+		if (!frappeApp) return []
+		const components: CustomVueComponentMeta[] =
+			(await call("studio.api.get_custom_vue_components", { frappe_app: frappeApp })) || []
+		return components.filter((component) => component.studio_app === activeApp.value?.name)
 	}
 
 	async function loadCustomVueComponents() {
