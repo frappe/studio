@@ -32,3 +32,7 @@ Studio is a visual app builder for the Frappe Framework. It allows developers to
    - Use `createResource`, `createDocumentResource`, `createListResource`, `call` from frappe-ui for data fetching
    - Look at ./frontend/src/data/ for examples of data fetching composables
    - Handle loading, error, and success states explicitly
+
+## Legacy page variable migration
+
+When migrating existing page variables to scripts, follow [Legacy variable migration](studio/studio/doctype/studio_page/patches/migrate_variables_to_page_script.md).
