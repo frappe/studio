@@ -329,8 +329,9 @@ const useStudioStore = defineStore("store", () => {
 	// page and re-run setup() on the canvas. (Standard pages update only after their app rebuilds.)
 	async function reloadActivePageScript() {
 		if (!activePage.value) return
-		const page = await fetchPage(activePage.value.name)
-		if (!page) return
+		const pageName = activePage.value.name
+		const page = await fetchPage(pageName)
+		if (!page || activePage.value?.name !== pageName) return
 		activePage.value = page
 		await codeStore.setPageScript(page)
 	}
