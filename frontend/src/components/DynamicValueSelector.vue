@@ -109,9 +109,7 @@ const dynamicValueOptions = computed(() => {
 		// Data Sources group
 		const dataSourceOptions = Object.keys(codeStore.resources).map((resourceName) => {
 			const completion =
-				codeStore.resources[resourceName]?.resource_type === "Document"
-					? `${resourceName}.doc`
-					: `${resourceName}.data`
+				"doc" in (codeStore.resources[resourceName] ?? {}) ? `${resourceName}.doc` : `${resourceName}.data`
 			return {
 				value: completion,
 				label: resourceName,
