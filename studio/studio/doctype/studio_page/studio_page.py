@@ -1,5 +1,6 @@
 # Copyright (c) 2024, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
+import json
 import os
 import re
 
@@ -27,7 +28,6 @@ from studio.studio.doctype.studio_page.copy_paste_handler import (
 	parse_list,
 	pick,
 )
-from studio.studio.doctype.studio_page.legacy_variables import get_declaration
 from studio.utils import camel_case_to_kebab_case
 
 
@@ -495,3 +495,13 @@ def get_legacy_variable_migration(page_name: str) -> dict | None:
 		"code": declarations,
 		"variable_names": variable_names,
 	}
+
+
+def get_declaration(variable: frappe._dict) -> str:
+	defaults = {"String": '""', "Number": "0", "Boolean": "false", "Object": "{}"}
+	value = (variable.initial_value or "").strip()
+	try:
+		json.loads(value)
+	except ValueError:
+		value = defaults.get(variable.variable_type, '""')
+	return f"const {variable.variable_name} = ref({value})"
