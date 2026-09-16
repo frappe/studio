@@ -168,7 +168,9 @@ describe("page initialization", () => {
 				},
 			}),
 		})
-		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, { preloadedResources: [notes] })
+		await store.initializePage({ name: "standard", is_standard: 1 } as StudioPage, {
+			preloadedResources: [notes],
+		})
 		await store.pageScriptBindings.loaded
 		expect(store.pageScriptTemplateBindings.title).to.equal("Exported")
 	})
@@ -298,6 +300,23 @@ describe("page initialization", () => {
 		expect(store.pageScriptTemplateBindings.title).to.equal("SECOND")
 		expect(store.resources.note.reload).to.equal(reload)
 		expect(requests.map((r) => r.params.name)).to.deep.equal(["FIRST", "SECOND"])
+	})
+
+	it("stops old resource watchers on refresh and navigation", async () => {
+		await store.initializePage(page('const category = ref("News")'), {
+			preloadedResources: [{ ...notes, auto: true }],
+		})
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		const category = store.pageScriptBindings.category
+		await store.setPageResources(page(), { preloadedResources: [{ ...notes, auto: true }] })
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		category.value = "Tech"
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(requests.map((request) => request.params.category)).to.deep.equal(["News", "News", "Tech"])
+		store.teardownPage()
+		category.value = "Sports"
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(requests).to.have.length(3)
 	})
 
 	it("explains how to migrate an async setup", async () => {

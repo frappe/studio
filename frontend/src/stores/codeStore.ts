@@ -20,6 +20,10 @@ import type {
 	DocumentListResource,
 	APIResource,
 	DataResult,
+	PageResource,
+	APIResourceInstance,
+	ListResourceInstance,
+	DocumentResourceInstance,
 } from "@/types/Studio/StudioResource"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { ExpressionEvaluationContext } from "@/types"
@@ -32,14 +36,12 @@ export const vueReactivityApis = {
 }
 
 type PageResourceOptions = {
-	/** Attach resource IDs and types for the editor's Data panel. */
-	includeEditorMetadata?: boolean
 	/** Use these definitions instead of fetching the page's resources. */
 	preloadedResources?: Resource[]
 }
 
 const useCodeStore = defineStore("codeStore", () => {
-	const resources = ref<Record<string, Resource>>({})
+	const resources = ref<Record<string, PageResource>>({})
 	const routeObject = ref<ComputedRef>()
 	const routerObject = ref<Router | Readonly<Router>>()
 
@@ -55,9 +57,7 @@ const useCodeStore = defineStore("codeStore", () => {
 	const pageScriptError = ref<string | null>(null)
 	const currentPageName = ref<string | null>(null)
 	let pageScriptScope: PageScriptScope | null = null
-	let resourceRequests: ResourceRequests | null = null
-	let startResources: (() => void)[] = []
-	let resourceWatchers: WatchStopHandle[] = []
+	let pageResourceScope: PageResourceScope | null = null
 
 	function setRouteObject(route: ComputedRef) {
 		routeObject.value = route
@@ -70,78 +70,73 @@ const useCodeStore = defineStore("codeStore", () => {
 	// RESOURCES
 	async function initializePage(
 		page: StudioPage,
-		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions = {},
+		{ preloadedResources }: PageResourceOptions = {},
 	) {
 		teardownPage()
-		const requests = await preparePageResources(page, { includeEditorMetadata, preloadedResources })
-		if (!requests || requests !== resourceRequests) return
+		const resourceScope = await preparePageResources(page, { preloadedResources })
+		if (!resourceScope.active) return
 		await setPageScript(page)
-		activatePageResources(requests)
+		resourceScope.activate()
 	}
 
 	async function setPageResources(
 		page: StudioPage,
-		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions = {},
+		{ preloadedResources }: PageResourceOptions = {},
 	) {
-		const requests = await preparePageResources(page, { includeEditorMetadata, preloadedResources })
-		activatePageResources(requests)
+		const resourceScope = await preparePageResources(page, { preloadedResources })
+		resourceScope.activate()
 	}
 
 	async function preparePageResources(
 		page: StudioPage,
-		{ includeEditorMetadata = false, preloadedResources }: PageResourceOptions,
+		{ preloadedResources }: PageResourceOptions,
 	) {
-		stopResourceWatchers()
-		resourceRequests?.stop()
-		const requests = new ResourceRequests()
-		resourceRequests = requests
-		startResources = []
-		const pageResources = reactive({}) as Record<string, any>
+		pageResourceScope?.stop()
+		const resourceScope = new PageResourceScope()
+		pageResourceScope = resourceScope
+		const pageResources = reactive<Record<string, PageResource>>({})
 		const resourceRows = await getPageResourceRows(page, preloadedResources)
-		if (requests !== resourceRequests) return
+		if (!resourceScope.active) return resourceScope
 
 		for (const row of resourceRows) {
-			const resource = createPageResource(row, requests)
-			if (includeEditorMetadata) {
-				resource.resource_id = row.resource_id
-				resource.resource_type = row.resource_type
-			}
+			const resource = createPageResource(row, resourceScope)
 			pageResources[row.resource_name] = resource
 		}
 		resources.value = pageResources
-		return requests
-	}
-
-	function activatePageResources(requests: ResourceRequests | undefined) {
-		if (!requests || requests !== resourceRequests) return
-		for (const start of startResources) start()
-		startResources = []
-		requests.resume()
+		return resourceScope
 	}
 
 	async function getPageResourceRows(page: StudioPage, preloadedResources?: Resource[]) {
-		if (preloadedResources) return preloadedResources
-
-		studioPageResources.filters = { parent: page.name }
-		return (await studioPageResources.reload()) as Resource[]
+		let rows = preloadedResources
+		if (!rows) {
+			studioPageResources.filters = { parent: page.name }
+			rows = (await studioPageResources.reload()) as Resource[]
+		}
+		return rows.map((row: Resource) => {
+			const resource = { ...row }
+			for (const field of ["fields", "filters", "params", "whitelisted_methods"]) {
+				const value = resource[field]
+				if (typeof value === "string") resource[field] = value.trim() ? JSON.parse(value) : undefined
+			}
+			return resource
+		})
 	}
 
-	function createPageResource(resource: Resource, requests: ResourceRequests) {
+	function createPageResource(resource: Resource, resourceScope: PageResourceScope): PageResource {
 		switch (resource.resource_type) {
 			case "Document":
-				return getDocumentResource(resource, requests)
+				return createPageDocumentResource(resource, resourceScope)
 			case "Document List":
-				return getListResource(resource, requests)
+				return createPageListResource(resource, resourceScope)
 			case "API Resource":
-				return getAPIResource(resource, requests)
+				return createPageAPIResource(resource, resourceScope)
 		}
 	}
 
-	function getListResource(resource: DocumentListResource, requests: ResourceRequests) {
-		const fields = typeof resource.fields === "string" ? JSON.parse(resource.fields) : resource.fields
-		const list = createListResource({
+	function createPageListResource(resource: DocumentListResource, resourceScope: PageResourceScope) {
+		const list: ListResourceInstance = createListResource({
 			doctype: resource.document_type,
-			fields: fields?.length ? fields : "*",
+			fields: resource.fields?.length ? resource.fields : "*",
 			pageLength: resource.limit,
 			orderBy: resource.sort_field ? `${resource.sort_field} ${resource.sort_order}` : undefined,
 			auto: false,
@@ -150,14 +145,14 @@ const useCodeStore = defineStore("codeStore", () => {
 		})
 		list.data = []
 		const evaluate = () => getEvaluatedFilters(resource.filters)
-		const bound = bindResourceInputs(list, requests, "filters", evaluate, true)
+		const bound = bindResourceInputs(list, resourceScope, "filters", evaluate, true)
 		bound.auto = resource.auto
-		watchResourceInputs(bound, evaluate)
+		watchResourceInputs(resourceScope, bound, evaluate)
 		return bound
 	}
 
-	function getAPIResource(resource: APIResource, requests: ResourceRequests) {
-		const api = createResource({
+	function createPageAPIResource(resource: APIResource, resourceScope: PageResourceScope) {
+		const api: APIResourceInstance = createResource({
 			url: resource.url,
 			method: resource.method,
 			auto: false,
@@ -165,43 +160,39 @@ const useCodeStore = defineStore("codeStore", () => {
 			...getSuccessErrorHandlers(resource),
 		})
 		const evaluate = () => getAPIParams(resource.params)
-		const bound = bindResourceInputs(api, requests, "params", evaluate, resource.method === "GET")
+		const bound = bindResourceInputs(api, resourceScope, "params", evaluate, resource.method === "GET")
 		bound.auto = resource.auto
-		watchResourceInputs(bound, evaluate)
+		watchResourceInputs(resourceScope, bound, evaluate)
 		return bound
 	}
 
-	function getDocumentResource(resource: DocumentResource, requests: ResourceRequests) {
+	function createPageDocumentResource(resource: DocumentResource, resourceScope: PageResourceScope) {
 		const evaluate = () => resource.fetch_document_using_filters
 			? getEvaluatedFilters(resource.filters) || {}
 			: { name: resource.document_name }
-		const document = new PageDocumentResource(requests, {
+		const document = new PageDocumentResource(resourceScope, {
 			doctype: resource.document_type,
 			...getTransforms(resource),
 			...getSuccessErrorHandlers(resource),
 			...getWhitelistedMethods(resource),
 		}, evaluate, (filters) => resolveDocnameFromFilters(resource, filters))
 		document.resource.auto = resource.auto
-		watchResourceInputs(document.resource, evaluate, () => { void document.initialize() })
+		watchResourceInputs(resourceScope, document.resource, evaluate, () => { void document.initialize() })
 		return document.resource
 	}
 
-	function watchResourceInputs(resource: any, evaluate: () => any, initialize?: () => void) {
-		startResources.push(() => {
+	function watchResourceInputs(resourceScope: PageResourceScope, resource: PageResource, evaluate: () => any, initialize?: () => void) {
+		resourceScope.onStart(() => {
 			const refresh = () => {
 				initialize?.()
 				if (resource.auto) void resource.reload()
 			}
-			resourceWatchers.push(watch(() => JSON.stringify(evaluate()), refresh))
-			refresh()
+			return watch(() => JSON.stringify(evaluate()), refresh, { immediate: true })
 		})
 	}
 
-	const getEvaluatedFilters = (filters: Filters | null = null) => {
+	function getEvaluatedFilters(filters: Filters | null = null) {
 		if (!filters) return
-		if (typeof filters === "string") {
-			filters = JSON.parse(filters)
-		}
 
 		const evaluatedFilters: Partial<Filters> = {}
 
@@ -224,7 +215,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		return evaluatedFilters
 	}
 
-	const evaluateFilterValue = (value: any): any => {
+	function evaluateFilterValue(value: any): any {
 		if (Array.isArray(value)) {
 			return value.map((item) => evaluateFilterValue(item)).filter((item) => item !== undefined)
 		}
@@ -235,13 +226,10 @@ const useCodeStore = defineStore("codeStore", () => {
 		return value
 	}
 
-	function getAPIParams(params: Record<string, any> | string | null = null) {
+	function getAPIParams(params: Record<string, any> | null = null) {
 		if (!params) return null
-		if (typeof params === "string") {
-			params = JSON.parse(params)
-		}
 		// evaluate on a copy: evaluation re-runs on every context change and must not bake values into the config
-		const evaluated: Record<string, any> = { ...(params as Record<string, any>) }
+		const evaluated: Record<string, any> = { ...params }
 		Object.entries(evaluated).forEach(([key, value]) => {
 			if (isDynamicValue(value)) {
 				// null ?? undefined → undefined, so nullish params get dropped on serialization
@@ -251,7 +239,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		return evaluated
 	}
 
-	const resolveDocnameFromFilters = async (resource: DocumentResource, filters: Partial<Filters>) => {
+	async function resolveDocnameFromFilters(resource: DocumentResource, filters: Partial<Filters>) {
 		// the common `name = {{ route.params.id }}` case resolves to the docname itself — no server lookup needed
 		const keys = Object.keys(filters)
 		if (keys.length === 1 && keys[0] === "name") {
@@ -269,7 +257,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		return doc?.name
 	}
 
-	const getTransforms = (resource: Resource) => {
+	function getTransforms(resource: Resource) {
 		if (!resource.transform) return {}
 		return {
 			transform: (data: any) => {
@@ -291,7 +279,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		}
 	}
 
-	const getSuccessErrorHandlers = (resource: Resource) => {
+	function getSuccessErrorHandlers(resource: Resource) {
 		const handlers: Record<string, Function> = {}
 		if (resource.on_success) {
 			handlers["onSuccess"] = (data: DataResult) => {
@@ -306,30 +294,19 @@ const useCodeStore = defineStore("codeStore", () => {
 		return handlers
 	}
 
-	const getWhitelistedMethods = (resource: DocumentResource) => {
+	function getWhitelistedMethods(resource: DocumentResource) {
 		if (resource.whitelisted_methods) {
-			let whitelisted_methods = resource.whitelisted_methods
-			if (typeof resource.whitelisted_methods === "string") {
-				whitelisted_methods = JSON.parse(resource.whitelisted_methods)
-			}
 			const methods: Record<string, string> = {}
-			whitelisted_methods.forEach((method: string) => methods[method] = method)
+			resource.whitelisted_methods.forEach((method: string) => methods[method] = method)
 			return { whitelistedMethods: methods }
 		}
 		return {}
 	}
 
-	function stopResourceWatchers() {
-		resourceWatchers.forEach((stop) => stop())
-		resourceWatchers = []
-	}
-
 	function teardownPage() {
-		resourceRequests?.stop()
-		resourceRequests = null
-		startResources = []
+		pageResourceScope?.stop()
+		pageResourceScope = null
 		currentPageName.value = null
-		stopResourceWatchers()
 		disposePageScriptScope()
 	}
 
@@ -360,12 +337,12 @@ const useCodeStore = defineStore("codeStore", () => {
 
 	// PAGE SCRIPT
 	async function setPageScript(page: StudioPage) {
-		const requests = resourceRequests
-		requests?.pause()
+		const resourceScope = pageResourceScope
+		resourceScope?.pause()
 		try {
 			await runPageScript(page)
 		} finally {
-			requests?.resume()
+			resourceScope?.resume()
 		}
 	}
 
@@ -435,8 +412,8 @@ const useCodeStore = defineStore("codeStore", () => {
 	// only via their own acceptHMRUpdate.) Registered once here so both the editor and the preview
 	// (each with their own codeStore) hot-apply script edits to the page they're showing.
 	async function applyPageScriptHMR(setup: unknown) {
-		const requests = resourceRequests
-		requests?.pause()
+		const resourceScope = pageResourceScope
+		resourceScope?.pause()
 		disposePageScriptScope()
 		pageScriptScope = new PageScriptScope(reportPageScriptError)
 		pageScriptError.value = null
@@ -444,7 +421,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		if (typeof setup === "function") {
 			pageScriptBindings.value = pageScriptScope.run(() => setup(scriptContext.value))
 		}
-		requests?.resume()
+		resourceScope?.resume()
 	}
 	setPageScriptHotUpdateHandler((pageName, setup) => {
 		if (currentPageName.value === pageName) applyPageScriptHMR(setup)
@@ -749,22 +726,23 @@ const useCodeStore = defineStore("codeStore", () => {
 export default useCodeStore
 
 /** Bind inputs at request time, including calls made by user watchers before Vue flushes. */
-function bindResourceInputs(
-	resource: any,
-	requests: ResourceRequests,
+function bindResourceInputs<T extends APIResourceInstance | ListResourceInstance>(
+	resource: T,
+	resourceScope: PageResourceScope,
 	field: "params" | "filters",
 	evaluate: () => any,
 	readOnly: boolean,
-) {
+): T {
 	const inputs = computed(evaluate)
 	const override = shallowRef<any>()
 	const currentInputs = () => (override.value === undefined ? inputs.value : override.value)
 	const readKey = {}
-	const fetch = field === "filters" ? resource.list.fetch : resource.fetch
+	const list = field === "filters" ? resource as ListResourceInstance : null
+	const fetch = list ? list.list.fetch : resource.fetch
 	const request = (args: any[], read: boolean) =>
-		requests.run(
+		resourceScope.run(
 			() => {
-				if (field === "filters") {
+				if (list) {
 					resource.update({ filters: currentInputs() })
 					return fetch(...args)
 				}
@@ -774,42 +752,43 @@ function bindResourceInputs(
 		)
 
 	const reload = (...args: any[]) => request(args, readOnly)
-	if (field === "filters") {
+	if (list) {
 		// Pagination and list.reload() also reach this entry point.
-		resource.list.fetch = reload
-		resource.list.reload = reload
-		resource.list.submit = (...args: any[]) => request(args, false)
+		list.list.fetch = reload
+		list.list.reload = reload
+		list.list.submit = (...args: any[]) => request(args, false)
 		resource.fetch = (...args: any[]) => resource.reload(...args)
-		for (const name of ["fetchOne", "insert", "setValue", "delete", "runDocMethod"]) {
-			const operation = resource[name]
-			for (const method of ["fetch", "reload", "submit"]) {
+		for (const name of ["fetchOne", "insert", "setValue", "delete", "runDocMethod"] as const) {
+			const operation = list[name]
+			for (const method of ["fetch", "reload", "submit"] as const) {
 				const invoke = operation[method]
-				operation[method] = (...args: any[]) => requests.run(() => invoke(...args))
+				operation[method] = (...args: any[]) => resourceScope.run(() => invoke(...args))
 			}
 		}
 	} else {
-		resource.fetch = reload
-		resource.reload = reload
-		resource.submit = (...args: any[]) => request(args, false)
+		const api = resource as APIResourceInstance
+		api.fetch = reload
+		api.reload = reload
+		api.submit = (...args: any[]) => request(args, false)
 	}
 
-	return new Proxy(markRaw({}) as Record<string | symbol, any>, {
+	return new Proxy(markRaw({}) as T, {
 		get(target, key) {
-			if (typeof key === "string" && key.startsWith("__v_")) return target[key]
+			if (typeof key === "string" && key.startsWith("__v_")) return Reflect.get(target, key)
 			if (key === field) return currentInputs()
 			if (key === "update")
 				return (options: Record<string, any>) => {
 					if (field in options) override.value = options[field]
 					resource.update(options)
 				}
-			return resource[key]
+			return Reflect.get(resource, key)
 		},
 		has: (_target, key) => key === field || key in resource,
 		ownKeys: () => Reflect.ownKeys(resource),
 		getOwnPropertyDescriptor: (_target, key) => Object.getOwnPropertyDescriptor(resource, key),
 		set(_target, key, value) {
 			if (key === field) override.value = value
-			else resource[key] = value
+			else Reflect.set(resource, key, value)
 			return true
 		},
 	})
@@ -817,15 +796,15 @@ function bindResourceInputs(
 
 /** A document's methods exist before its filters have resolved to a name. */
 class PageDocumentResource {
-	private current = shallowRef<any>(null)
-	private lookup: Promise<any> | null = null
+	private current = shallowRef<DocumentResourceInstance | null>(null)
+	private lookup: Promise<DocumentResourceInstance | null> | null = null
 	private lookupKey = ""
 	private readKey = {}
-	readonly resource: any
+	readonly resource: DocumentResourceInstance
 
 	constructor(
-		private requests: ResourceRequests,
-		private options: Record<string, any>,
+		private resourceScope: PageResourceScope,
+		private options: { doctype: string; whitelistedMethods?: Record<string, string> },
 		private getFilters: () => any,
 		private resolveName: (filters: any) => Promise<any>,
 	) {
@@ -848,34 +827,34 @@ class PageDocumentResource {
 			...methods,
 			reload: (...args: any[]) => methods.get.fetch(...args),
 		}
-		this.resource = new Proxy(markRaw(initial), {
+		this.resource = new Proxy(markRaw(initial) as DocumentResourceInstance, {
 			get: (target, key) =>
 				(typeof key === "string" && key.startsWith("__v_")) ||
 				key in methods ||
-				["reload", "auto", "resource_id", "resource_type"].includes(String(key))
-					? target[key]
-					: (this.current.value?.[key] ?? target[key]),
+				["reload", "auto"].includes(String(key))
+					? Reflect.get(target, key)
+					: ((this.current.value && Reflect.get(this.current.value, key)) ?? Reflect.get(target, key)),
 			set: (target, key, value) => {
-				if (["auto", "resource_id", "resource_type"].includes(String(key))) target[key] = value
-				else if (this.current.value) this.current.value[key] = value
-				else target[key] = value
+				if (key === "auto") target[key] = value
+				else if (this.current.value) Reflect.set(this.current.value, key, value)
+				else Reflect.set(target, key, value)
 				return true
 			},
 		})
 	}
 
 	initialize() {
-		return this.requests.run(() => this.resolve())
+		return this.resourceScope.run(() => this.resolve())
 	}
 
 	private operation(name: string) {
 		const initial: Record<string | symbol, any> = { data: null, loading: false, error: null, promise: null }
 		const invoke = (method: string, args: any[]) => {
-			const promise = this.requests.run(
+			const promise = this.resourceScope.run(
 				async () => {
 					const document = await this.resolve()
-					if (!document || !this.requests.active) return
-					return document[name][method](...args)
+					if (!document || !this.resourceScope.active) return
+					return Reflect.get(document, name)[method](...args)
 				},
 				name === "get" && method !== "submit" && !args.length ? this.readKey : undefined,
 			)
@@ -884,10 +863,10 @@ class PageDocumentResource {
 		}
 		return new Proxy(markRaw(initial), {
 			get: (target, key) => {
-				if (typeof key === "string" && key.startsWith("__v_")) return target[key]
+				if (typeof key === "string" && key.startsWith("__v_")) return Reflect.get(target, key)
 				if (["fetch", "reload", "submit"].includes(String(key)))
 					return (...args: any[]) => invoke(String(key), args)
-				return this.current.value?.[name]?.[key] ?? target[key]
+				return (this.current.value && Reflect.get(this.current.value, name)?.[key]) ?? Reflect.get(target, key)
 			},
 		})
 	}
@@ -900,7 +879,7 @@ class PageDocumentResource {
 		this.current.value = null
 		const lookup = this.resolveName(filters)
 			.then((name) => {
-				if (!this.requests.active || this.lookup !== lookup) return null
+				if (!this.resourceScope.active || this.lookup !== lookup) return null
 				if (!name) {
 					this.lookup = null
 					return null
@@ -920,8 +899,11 @@ class PageDocumentResource {
 
 type Request = { run: () => unknown; resolve: (value: any) => void; reject: (error: unknown) => void }
 
-/** Hold requests until setup has exposed state; batch duplicate reads within a tick. */
-class ResourceRequests {
+/** Own resource watchers and queued requests for one page load or resource refresh. */
+class PageResourceScope {
+	private starts: (() => WatchStopHandle)[] = []
+	private watchers: WatchStopHandle[] = []
+	private started = false
 	private pauses = 1
 	private stopped = false
 	private scheduled = false
@@ -929,6 +911,18 @@ class ResourceRequests {
 
 	get active() {
 		return !this.stopped
+	}
+
+	onStart(start: () => WatchStopHandle) {
+		if (!this.stopped) this.starts.push(start)
+	}
+
+	activate() {
+		if (this.stopped || this.started) return
+		this.started = true
+		for (const start of this.starts) this.watchers.push(start())
+		this.starts = []
+		this.resume()
 	}
 
 	pause() {
@@ -957,6 +951,9 @@ class ResourceRequests {
 
 	stop() {
 		this.stopped = true
+		this.starts = []
+		for (const stop of this.watchers) stop()
+		this.watchers = []
 		for (const { request } of this.pending.values()) request.resolve(undefined)
 		this.pending.clear()
 	}

@@ -70,6 +70,10 @@ watch(showResourceDialog, (show) => {
 	}
 })
 
+async function refreshResources() {
+	if (store.activePage) await codeStore.setPageResources(store.activePage)
+}
+
 const addResource = (resource: Resource) => {
 	if (!resource.resource_name) {
 		toast.error("Data Source Name is required")
@@ -85,7 +89,7 @@ const addResource = (resource: Resource) => {
 		})
 		.then(async (data: any) => {
 			if (store.activePage) {
-				await codeStore.setPageResources(store.activePage, { includeEditorMetadata: true })
+				await refreshResources()
 				store.syncPageModified(data)
 			}
 			showResourceDialog.value = false
@@ -101,7 +105,7 @@ const deleteResource = async (resource_name: string) => {
 		.submit(stored.resource_id)
 		.then(async () => {
 			if (store.activePage) {
-				await codeStore.setPageResources(store.activePage, { includeEditorMetadata: true })
+				await refreshResources()
 				await store.refreshActivePageModified()
 			}
 			toast.success(`Data Source ${resource_name} deleted successfully`)
@@ -116,7 +120,7 @@ const editResource = async (resource: Resource) => {
 		.submit(getResourceValues(resource))
 		.then(async (data: any) => {
 			if (store.activePage) {
-				await codeStore.setPageResources(store.activePage, { includeEditorMetadata: true })
+				await refreshResources()
 				store.syncPageModified(data)
 			}
 			toast.success(`Data Source ${resource.resource_name} updated successfully`)
