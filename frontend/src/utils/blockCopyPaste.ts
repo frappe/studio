@@ -372,7 +372,7 @@ function usesComponents(blocks: BlockOptions[]): boolean {
 
 function usesPageData(blocks: BlockOptions[]): boolean {
 	const codeStore = useCodeStore()
-	const names = [...Object.keys(codeStore.resources), ...Object.keys(codeStore.variables)]
+	const names = Object.keys(codeStore.resources)
 	const text = JSON.stringify(blocks)
 	return names.some((name) => name && text.includes(name))
 }

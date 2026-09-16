@@ -5,11 +5,11 @@ A page's script exposes top-level bindings — refs, computed, functions — usa
 app is exported, and set_page_script serves both (build_tools picks the description):
 
   - Non-exported page → a bare `<script setup>` body (no `export`/`import`/`setup()`),
-    interpreted live. Top-level declarations are auto-exposed; Vue APIs, variables,
-    resources, route and router are ambient (write `ref(0)`, not `context.ref`).
+    interpreted live. Top-level declarations are auto-exposed; Vue APIs, resources,
+    route and router are ambient (write `ref(0)`, not `context.ref`).
   - Standard (exported) page → a real ES module whose default export is a
     `setup(context)` function returning its bindings; it may `import`, and reads
-    variables/resources/route/router off `context`.
+    resources/route/router off `context`.
 
 Where that script LIVES also differs, and the two write paths differ:
   - Non-standard page → the DB `script` field. Editing it is live: the canvas
@@ -30,17 +30,18 @@ import frappe
 
 from studio.ai.agent.registry import Tool
 from studio.ai.agent.tools.page import load_page, save_page
-from studio.export import can_export, write_code_file
+from studio.ai.prompt_fragments import RESOURCE_SETUP_RULE
+from studio.export import write_code_file
 
 
 def run_get_page_script(ctx, args: dict) -> str:
 	page = load_page(ctx)
 	if page is None:
 		return "No page in context."
-	source = _read_script(page)
+	source = read_page_script(page)
 	if not source.strip():
 		return "This page has no script yet."
-	where = "code file (<page>.ts)" if can_export(page) else "the page's `script` field (DB)"
+	where = "code file (<page>.ts)" if page.is_standard else "the page's `script` field (DB)"
 	return f"Current page script (stored in {where}):\n{source}"
 
 
@@ -105,8 +106,9 @@ def _write_file_script(ctx, page, source: str) -> str:
 	)
 
 
-def _read_script(page) -> str:
-	if can_export(page):
+def read_page_script(page) -> str:
+	"""Read the source of truth, including exported scripts outside developer mode."""
+	if page.is_standard:
 		path = os.path.join(page.get_folder_path(), f"{page.get_export_docname()}.ts")
 		return frappe.read_file(path) or "" if os.path.exists(path) else ""
 	return page.script or ""
@@ -142,7 +144,7 @@ _CUSTOM_SET_DESCRIPTION = (
 	"`setup()` wrapper). For page logic that outgrows a single event handler: shared helpers, watchers, "
 	"computed values, data fetched on mount. Declare state and helpers at the TOP LEVEL and every "
 	"top-level const/function is auto-exposed to {{ }} and handlers — do NOT write a return. Vue "
-	"reactivity APIs (ref/computed/watch), the page's variables, resources, route and router are all "
+	"reactivity APIs (ref/computed/watch), the page's resources, route and router are all "
 	"directly in scope — write `ref(0)` and `route.params`, never `context.ref`. Pass the ENTIRE script "
 	"(it replaces the current one; read it first with get_page_script). It runs live on the canvas once saved."
 )
@@ -153,7 +155,7 @@ _STANDARD_SET_DESCRIPTION = (
 	"APIs at the top: `import { ref, computed, watch } from 'vue'` (also 'frappe-ui', 'pinia', 'vue-router', "
 	"and app files via '@app/*'). `ref`/`computed` are NOT on `context` — never write `context.ref` or "
 	"`const { ref } = context`; import them from 'vue'. The `context` param carries the PAGE's own things — "
-	"its data sources/resources, variables, `route` and `router` (e.g. `context.notes`, `context.route`). "
+	"its data sources/resources, `route` and `router` (e.g. `context.notes`, `context.route`). "
 	"Only what you RETURN becomes bindings usable in {{ }} and handlers. Pass the ENTIRE module (it replaces "
 	"the current one; read it first with get_page_script)."
 )
@@ -173,7 +175,7 @@ def build_tools(is_standard: bool) -> list[Tool]:
 		name="set_page_script",
 		side="server",
 		handler=run_set_page_script,
-		description=description,
+		description=description + " " + RESOURCE_SETUP_RULE,
 		parameters={
 			"type": "object",
 			"properties": {

@@ -17,9 +17,9 @@
 			<DynamicValueSelector
 				v-if="!isTestingComponent"
 				:block="block"
-				@update:modelValue="(value, bindVariable) => setDynamicValue(propName, value, bindVariable)"
+				@update:modelValue="(value, syncState) => setDynamicValue(propName, value, syncState)"
 				:class="{ 'mt-1 self-start': isCodeField(config.inputType) || Boolean(config.editor) }"
-				:isVariableBound="isVariableBound(config.modelValue)"
+				:boundStateName="getBoundStateName(config.modelValue)"
 			/>
 
 			<Code
@@ -191,7 +191,7 @@ const componentProps = computed(() => {
 		propConfig.modelValue = value === undefined ? resolveDefault(config) : value
 
 		if (
-			(isDynamicValue(propConfig.modelValue) || isVariableBound(propConfig.modelValue)) &&
+			(isDynamicValue(propConfig.modelValue) || getBoundStateName(propConfig.modelValue)) &&
 			!isCodeField(propConfig.inputType)
 		) {
 			propConfig.inputType = "code"
@@ -280,11 +280,12 @@ function syncConditionalProps() {
 	})
 }
 
-function setDynamicValue(propName: string, varName: string, bindVariable: boolean) {
-	if (bindVariable) {
-		setProp(propName, { $type: "variable", name: varName })
+function setDynamicValue(propName: string, bindingName: string, syncState: boolean) {
+	if (syncState) {
+		// two-way (v-model) binding; `$type: "variable"` is the stored tag for it
+		setProp(propName, { $type: "variable", name: bindingName })
 	} else {
-		setProp(propName, `{{ ${varName} }}`)
+		setProp(propName, `{{ ${bindingName} }}`)
 	}
 }
 
@@ -311,7 +312,7 @@ const handlePropUpdate = (propName: string, newValue: any) => {
 	setProp(propName, newValue)
 }
 
-const isVariableBound = (value: any) => {
+const getBoundStateName = (value: any) => {
 	return value?.$type === "variable" ? value.name : null
 }
 

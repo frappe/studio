@@ -65,20 +65,20 @@ You need this setup to work on Studio's frontend, and to build standard (exporte
 	bench --site studio.localhost set-config ignore_csrf 1
 	bench setup requirements --dev
 	```
- 
+
 2. Open a new terminal session and run the following commands:
 	```bash
 	cd frappe-bench/apps/studio
 	yarn install
 	yarn dev --host
 	```
- 
+
 3. Now, you can access the site on vite dev server at `http://studio.localhost:8080` (the port shifts along with your bench's `webserver_port`)
 4. In one more terminal session, you can start the watcher and keep it running alongside `bench start`:
 	```bash
 	bench --site studio.localhost watch-studio
 	```
- 
+
 It watches the `studio` folder of every installed app and imports changed app/page/component JSON into the database, so apps edited on disk (by hand, the CLI or an AI agent) show up in the editor without a `bench migrate`. Deletions are not synchronized, so remove the corresponding database record separately. Page scripts don't need it — vite hot-reloads the `.ts` files straight off disk.
 
 **Note:** Exported apps can only be edited on a local setup with the dev server running. On a production site they only run, they can't be edited. We will be adding customization support for standard apps soon.

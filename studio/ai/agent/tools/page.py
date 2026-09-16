@@ -1,10 +1,9 @@
 """Shared helpers for server tools that mutate a Studio Page's child tables
-(data sources → `resources`, variables → `variables`).
+(data sources → `resources`).
 
-Both families load the page, mutate a child table, save, commit, and emit a
-`reload` event; and both warn when a deleted name is still bound somewhere. That
-common machinery lives here so data.py and variables.py stay focused on their own
-field shapes.
+Such a tool loads the page, mutates a child table, saves, commits, and emits a
+`reload` event; and warns when a deleted name is still bound somewhere. That
+common machinery lives here so data.py stays focused on its own field shapes.
 """
 
 import re
@@ -30,7 +29,7 @@ def save_page(page) -> str | None:
 	"""Save the page (runs child-table validation + JSON conversion) and return an error
 	string on failure, else None.
 
-	The commit is intentional, not a stray mid-transaction commit: each data/variable
+	The commit is intentional, not a stray mid-transaction commit: each data-source
 	tool is one atomic unit, and committing makes it durable and visible to the reload
 	event the handler emits next (the canvas re-reads the child table straight after)."""
 	try:

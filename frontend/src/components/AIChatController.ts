@@ -25,7 +25,6 @@ export interface AIChatContext {
 	scrollToBottom: () => void
 	reloadPageData: (opts: {
 		resources?: boolean
-		variables?: boolean
 		script?: boolean
 		modified?: string
 	}) => void
@@ -164,11 +163,10 @@ export class AIChatController {
 	}
 
 	onReload = (data: any) => {
-		// A server tool wrote page data (data sources / variables / script). Re-fetch so the
-		// canvas re-evaluates `{{ }}` bindings and re-runs setup() against the live state.
+		// A server tool wrote page data (data sources / script). Re-fetch so the canvas
+		// re-evaluates `{{ }}` bindings and re-runs setup() against the live state.
 		this.ctx.reloadPageData({
 			resources: !!data.resources,
-			variables: !!data.variables,
 			script: !!data.script,
 			modified: data.modified,
 		})

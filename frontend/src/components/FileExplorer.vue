@@ -411,7 +411,7 @@ function focusFormInput(formRef: { value: any }, start?: number, end?: number) {
 // A page's script (studio_page/<stem>/<stem>.ts) gets a setup() skeleton instead of an empty file.
 const PAGE_SCRIPT_BOILERPLATE = `export default function setup(context) {
 	// Reactive state, computed values, watchers and functions for this page.
-	// Read this page's data sources and variables from context, e.g. context.todos
+	// Read this page's data sources from context, e.g. context.todos
 
 	return {}
 }

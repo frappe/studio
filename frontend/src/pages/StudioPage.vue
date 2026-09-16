@@ -1,5 +1,15 @@
 <template>
-	<div class="studio isolate h-screen flex-col overflow-hidden bg-surface-gray-2">
+	<div
+		class="studio isolate h-screen flex-col overflow-hidden bg-surface-gray-2"
+		:style="{ '--toolbar-height': `${3.5 + alertStore.alerts.length * 2}rem` }"
+	>
+		<WarningAlert
+			v-for="alert in alertStore.alerts"
+			:key="alert.id"
+			:message="alert.message"
+			:action="alert.action"
+			@dismiss="alertStore.dismiss(alert.id)"
+		/>
 		<ComponentContextMenu ref="componentContextMenu"></ComponentContextMenu>
 		<StudioToolbar class="relative z-30" />
 		<div class="flex flex-col">
@@ -186,10 +196,12 @@ import StudioRightPanel from "@/components/StudioRightPanel.vue"
 import StudioCanvas from "@/components/StudioCanvas.vue"
 import OverlayList from "@/components/OverlayList.vue"
 import Code from "@/components/Code.vue"
+import WarningAlert from "@/components/WarningAlert.vue"
 import PasteConflictDialog from "@/components/PasteConflictDialog.vue"
 
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
+import useAlertStore from "@/stores/alertStore"
 import { studioPages } from "@/data/studioPages"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import { useStudioEvents } from "@/utils/useStudioEvents"
@@ -201,6 +213,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useStudioStore()
 const canvasStore = useCanvasStore()
+const alertStore = useAlertStore()
 
 const getCompletions = useStudioCompletions()
 const getDynamicValueCompletions = useDynamicValueCompletions()
@@ -325,18 +338,30 @@ onActivated(async () => {
 	const pageID = route.params.pageID
 	if (pageID && pageID !== store.selectedPage && pageID !== "new") {
 		await loadPage(route.params.appID as string, pageID as string)
+		if (store.activePage?.name === pageID) {
+			void alertStore.showAlerts(store.activePage)
+		}
 	}
 })
 
 onDeactivated(() => {
+	if (store.activePage) {
+		alertStore.removeAlerts(store.activePage.name)
+	}
 	store.selectedPage = null
 	store.activePage = null
 })
 
 watch(
 	() => route.params.pageID,
-	async () => {
+	async (pageID, previousPageID) => {
+		if (previousPageID && previousPageID !== "new") {
+			alertStore.removeAlerts(previousPageID as string)
+		}
 		await setPage()
+		if (store.activePage?.name === pageID) {
+			void alertStore.showAlerts(store.activePage)
+		}
 	},
 	{ immediate: true },
 )

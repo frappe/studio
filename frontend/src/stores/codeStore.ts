@@ -1,16 +1,16 @@
 import { defineStore } from "pinia"
 import {
 	ref, computed, watch, watchEffect, reactive, toRef, toRefs, unref,
-	isRef, isReactive, shallowRef, readonly, markRaw, nextTick, effectScope,
-	type ComputedRef, type EffectScope, type WatchStopHandle, h,
+	isRef, isReactive, shallowRef, readonly, markRaw, nextTick,
+	type ComputedRef, type WatchStopHandle, h,
 } from "vue"
 import { watchDebounced } from "@vueuse/core"
 import { createDocumentResource, createListResource, createResource, call } from "frappe-ui"
+import { PageScriptScope } from "@/utils/pageScriptScope"
 import { studioPageResources } from "@/data/studioResources"
-import { studioVariables } from "@/data/studioVariables"
 import { loadPageScriptModule, setPageScriptHotUpdateHandler } from "@/data/studioPageScripts"
 import * as globalUtils from "@/utils/globalUtils"
-import { getInitialVariableValue, getValueFromObject, setValueInObject } from "@/utils/helpers"
+import { getValueFromObject, setValueInObject } from "@/utils/helpers"
 import { isDynamicValue, normalizeDynamicValue } from "@/utils/code"
 import { isFunctionExpression, toOptionalChaining, getTopLevelBindings } from "@/utils/parseCode"
 import type {
@@ -20,9 +20,12 @@ import type {
 	DocumentListResource,
 	APIResource,
 	DataResult,
+	PageResource,
+	APIResourceInstance,
+	ListResourceInstance,
+	DocumentResourceInstance,
 } from "@/types/Studio/StudioResource"
 import type { StudioPage } from "@/types/Studio/StudioPage"
-import type { Variable } from "@/types/Studio/StudioPageVariable"
 import type { ExpressionEvaluationContext } from "@/types"
 import type { Router } from "vue-router"
 
@@ -32,9 +35,13 @@ export const vueReactivityApis = {
 	shallowRef, readonly, markRaw, nextTick,
 }
 
+type PageResourceOptions = {
+	/** Use these definitions instead of fetching the page's resources. */
+	preloadedResources?: Resource[]
+}
+
 const useCodeStore = defineStore("codeStore", () => {
-	const resources = ref<Record<string, Resource>>({})
-	const variables = ref<Record<string, any>>({})
+	const resources = ref<Record<string, PageResource>>({})
 	const routeObject = ref<ComputedRef>()
 	const routerObject = ref<Router | Readonly<Router>>()
 
@@ -49,8 +56,8 @@ const useCodeStore = defineStore("codeStore", () => {
 	})
 	const pageScriptError = ref<string | null>(null)
 	const currentPageName = ref<string | null>(null)
-	let pageScriptScope: EffectScope | null = null
-	let resourceWatchers: WatchStopHandle[] = []
+	let pageScriptScope: PageScriptScope | null = null
+	let pageResourceScope: PageResourceScope | null = null
 
 	function setRouteObject(route: ComputedRef) {
 		routeObject.value = route
@@ -61,161 +68,133 @@ const useCodeStore = defineStore("codeStore", () => {
 	}
 
 	// RESOURCES
-	let pendingResources: Record<string, any> | null = null
+	async function initializePage(
+		page: StudioPage,
+		{ preloadedResources }: PageResourceOptions = {},
+	) {
+		teardownPage()
+		const resourceScope = await preparePageResources(page, { preloadedResources })
+		if (!resourceScope.active) return
+		await setPageScript(page)
+		resourceScope.activate()
+	}
+
 	async function setPageResources(
 		page: StudioPage,
-		setResourceConfig: boolean = false,
-		preloadedResources?: Resource[],
+		{ preloadedResources }: PageResourceOptions = {},
 	) {
-		stopResourceWatchers()
-		// Each load uses its own map, so old async updates cannot change the current page resources.
-		const pageResources = reactive({}) as Record<string, any>
-		pendingResources = pageResources
-
-		let resourceRows = preloadedResources
-		if (!resourceRows) {
-			studioPageResources.filters = { parent: page.name }
-			await studioPageResources.reload()
-			if (pendingResources !== pageResources) return
-			resourceRows = studioPageResources.data as Resource[]
-		}
-
-		await Promise.all(
-			resourceRows.map(async (resource: Resource) => {
-				await addPageResource(resource, pageResources)
-				const newResource = pageResources[resource.resource_name]
-				if (setResourceConfig && newResource) {
-					newResource.resource_id = resource.resource_id
-					newResource.resource_type = resource.resource_type
-				}
-			}),
-		)
-
-		if (pendingResources === pageResources) {
-			resources.value = pageResources
-		}
+		const resourceScope = await preparePageResources(page, { preloadedResources })
+		resourceScope.activate()
 	}
 
-	async function addPageResource(resource: Resource, pageResources: Record<string, any>) {
+	async function preparePageResources(
+		page: StudioPage,
+		{ preloadedResources }: PageResourceOptions,
+	) {
+		pageResourceScope?.stop()
+		const resourceScope = new PageResourceScope()
+		pageResourceScope = resourceScope
+		const pageResources = reactive<Record<string, PageResource>>({})
+		const resourceRows = await getPageResourceRows(page, preloadedResources)
+		if (!resourceScope.active) return resourceScope
+
+		for (const row of resourceRows) {
+			const resource = createPageResource(row, resourceScope)
+			pageResources[row.resource_name] = resource
+		}
+		resources.value = pageResources
+		return resourceScope
+	}
+
+	async function getPageResourceRows(page: StudioPage, preloadedResources?: Resource[]) {
+		let rows = preloadedResources
+		if (!rows) {
+			studioPageResources.filters = { parent: page.name }
+			rows = (await studioPageResources.reload()) as Resource[]
+		}
+		return rows.map((row: Resource) => {
+			const resource = { ...row }
+			for (const field of ["fields", "filters", "params", "whitelisted_methods"]) {
+				const value = resource[field]
+				if (typeof value === "string") resource[field] = value.trim() ? JSON.parse(value) : undefined
+			}
+			return resource
+		})
+	}
+
+	function createPageResource(resource: Resource, resourceScope: PageResourceScope): PageResource {
 		switch (resource.resource_type) {
 			case "Document":
-				return addDocumentResource(resource, pageResources)
+				return createPageDocumentResource(resource, resourceScope)
 			case "Document List":
-				pageResources[resource.resource_name] = getListResource(resource)
-				break
+				return createPageListResource(resource, resourceScope)
 			case "API Resource":
-				pageResources[resource.resource_name] = getAPIResource(resource)
-				break
+				return createPageAPIResource(resource, resourceScope)
 		}
 	}
 
-	function getListResource(resource: DocumentListResource) {
-		let fields = []
-		if ("fields" in resource && typeof resource.fields === "string") {
-			fields = JSON.parse(resource.fields)
-		}
-
-		const params: any = {
+	function createPageListResource(resource: DocumentListResource, resourceScope: PageResourceScope) {
+		const list: ListResourceInstance = createListResource({
 			doctype: resource.document_type,
-			fields: fields.length ? fields : "*",
-			filters: useDynamicParams(
-				() => getEvaluatedFilters(resource.filters),
-				(filters) => {
-					listResource.update({ filters })
-					if (listResource.auto) listResource.reload()
-				},
-			),
+			fields: resource.fields?.length ? resource.fields : "*",
 			pageLength: resource.limit,
-			auto: resource.auto,
-			...getTransforms(resource),
-			...getSuccessErrorHandlers(resource),
-		}
-		if (resource.sort_field) {
-			params["orderBy"] = `${resource.sort_field} ${resource.sort_order}`
-		}
-		const listResource = createListResource(params)
-		// initialize listResource.data to an empty array to avoid undefined errors in the UI, frappe-ui sets data to null by default
-		listResource.data = []
-		return listResource
-	}
-
-	function getAPIResource(resource: APIResource) {
-		const apiResource = createResource({
-			url: resource.url,
-			method: resource.method,
-			params: useDynamicParams(
-				() => getAPIParams(resource.params),
-				(params) => {
-					apiResource.update({ params })
-					if (apiResource.auto) apiResource.reload()
-				},
-			),
-			auto: resource.auto,
+			orderBy: resource.sort_field ? `${resource.sort_field} ${resource.sort_order}` : undefined,
+			auto: false,
 			...getTransforms(resource),
 			...getSuccessErrorHandlers(resource),
 		})
-		return apiResource
+		list.data = []
+		const evaluate = () => getEvaluatedFilters(resource.filters)
+		const bound = bindResourceInputs(list, resourceScope, "filters", evaluate, true)
+		bound.auto = resource.auto
+		watchResourceInputs(resourceScope, bound, evaluate)
+		return bound
 	}
 
-	const addDocumentResource = async (resource: DocumentResource, pageResources: Record<string, any>) => {
-		const params = {
+	function createPageAPIResource(resource: APIResource, resourceScope: PageResourceScope) {
+		const api: APIResourceInstance = createResource({
+			url: resource.url,
+			method: resource.method,
+			auto: false,
+			...getTransforms(resource),
+			...getSuccessErrorHandlers(resource),
+		})
+		const evaluate = () => getAPIParams(resource.params)
+		const bound = bindResourceInputs(api, resourceScope, "params", evaluate, resource.method === "GET")
+		bound.auto = resource.auto
+		watchResourceInputs(resourceScope, bound, evaluate)
+		return bound
+	}
+
+	function createPageDocumentResource(resource: DocumentResource, resourceScope: PageResourceScope) {
+		const evaluate = () => resource.fetch_document_using_filters
+			? getEvaluatedFilters(resource.filters) || {}
+			: { name: resource.document_name }
+		const document = new PageDocumentResource(resourceScope, {
 			doctype: resource.document_type,
-			auto: resource.auto,
 			...getTransforms(resource),
 			...getSuccessErrorHandlers(resource),
 			...getWhitelistedMethods(resource),
-		}
-
-		if (!resource.fetch_document_using_filters || !resource.filters) {
-			pageResources[resource.resource_name] = createDocumentResource({ ...params, name: resource.document_name })
-			return
-		}
-
-		// The docname can't change on an existing document resource (frappe-ui caches them by
-		// doctype+name), so a filter change means re-resolving the docname and replacing the entry.
-		// loadDoc is the entry's only writer; latestRequest keeps only the newest lookup's result.
-		let latestRequest = 0
-		async function loadDoc(currentFilters: Filters) {
-			const request = ++latestRequest
-			const docname = await resolveDocnameFromFilters(resource, currentFilters)
-			if (request !== latestRequest) return
-			if (!docname) {
-				pageResources[resource.resource_name] = undefined
-				return
-			}
-			const doc = createDocumentResource({ ...params, name: docname })
-			// carry over the editor's config stamps (see setResourceConfig in setPageResources)
-			const oldDoc = pageResources[resource.resource_name]
-			if (oldDoc?.resource_id) {
-				doc.resource_id = oldDoc.resource_id
-				doc.resource_type = oldDoc.resource_type
-			}
-			pageResources[resource.resource_name] = doc
-		}
-
-		const filters = useDynamicParams(() => getEvaluatedFilters(resource.filters) || {}, loadDoc)
-		await loadDoc(filters)
+		}, evaluate, (filters) => resolveDocnameFromFilters(resource, filters))
+		document.resource.auto = resource.auto
+		watchResourceInputs(resourceScope, document.resource, evaluate, () => { void document.initialize() })
+		return document.resource
 	}
 
-	// Evaluate a resource's dynamic input ({{ }} filters/params) and return the initial value,
-	// then call onChange whenever a route/variable change alters the result
-	function useDynamicParams<T>(evaluate: () => T, onChange: (value: T) => void): T {
-		const evaluated = computed(evaluate)
-		const stop = watch(
-			() => JSON.stringify(evaluated.value),
-			() => onChange(evaluated.value),
-		)
-		resourceWatchers.push(stop)
-		return evaluated.value
+	function watchResourceInputs(resourceScope: PageResourceScope, resource: PageResource, evaluate: () => any, initialize?: () => void) {
+		resourceScope.onStart(() => {
+			const refresh = () => {
+				initialize?.()
+				if (resource.auto) void resource.reload()
+			}
+			return watch(() => JSON.stringify(evaluate()), refresh, { immediate: true })
+		})
 	}
 
-	const getEvaluatedFilters = (filters: Filters | null = null) => {
+	function getEvaluatedFilters(filters: Filters | null = null) {
 		if (!filters) return
-		if (typeof filters === "string") {
-			filters = JSON.parse(filters)
-		}
 
-		const evaluatedFilters: Filters = {}
+		const evaluatedFilters: Partial<Filters> = {}
 
 		for (const key in filters) {
 			const raw = filters[key]
@@ -236,7 +215,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		return evaluatedFilters
 	}
 
-	const evaluateFilterValue = (value: any): any => {
+	function evaluateFilterValue(value: any): any {
 		if (Array.isArray(value)) {
 			return value.map((item) => evaluateFilterValue(item)).filter((item) => item !== undefined)
 		}
@@ -247,13 +226,10 @@ const useCodeStore = defineStore("codeStore", () => {
 		return value
 	}
 
-	function getAPIParams(params: Record<string, any> | string | null = null) {
+	function getAPIParams(params: Record<string, any> | null = null) {
 		if (!params) return null
-		if (typeof params === "string") {
-			params = JSON.parse(params)
-		}
 		// evaluate on a copy: evaluation re-runs on every context change and must not bake values into the config
-		const evaluated: Record<string, any> = { ...(params as Record<string, any>) }
+		const evaluated: Record<string, any> = { ...params }
 		Object.entries(evaluated).forEach(([key, value]) => {
 			if (isDynamicValue(value)) {
 				// null ?? undefined → undefined, so nullish params get dropped on serialization
@@ -263,12 +239,15 @@ const useCodeStore = defineStore("codeStore", () => {
 		return evaluated
 	}
 
-	const resolveDocnameFromFilters = async (resource: DocumentResource, filters: Filters) => {
+	async function resolveDocnameFromFilters(resource: DocumentResource, filters: Partial<Filters>) {
 		// the common `name = {{ route.params.id }}` case resolves to the docname itself — no server lookup needed
 		const keys = Object.keys(filters)
 		if (keys.length === 1 && keys[0] === "name") {
-			return filters.name
+			const name = filters.name
+			if (!Array.isArray(name)) return name
+			if (name[0] === "=") return name[1]
 		}
+		if (!keys.length || Object.values(filters).some((value) => value == null)) return null
 		// other filters (e.g. category = tech) need a lookup for one matching doc's name
 		const doc = await call("frappe.client.get_value", {
 			doctype: resource.document_type,
@@ -278,7 +257,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		return doc?.name
 	}
 
-	const getTransforms = (resource: Resource) => {
+	function getTransforms(resource: Resource) {
 		if (!resource.transform) return {}
 		return {
 			transform: (data: any) => {
@@ -300,7 +279,7 @@ const useCodeStore = defineStore("codeStore", () => {
 		}
 	}
 
-	const getSuccessErrorHandlers = (resource: Resource) => {
+	function getSuccessErrorHandlers(resource: Resource) {
 		const handlers: Record<string, Function> = {}
 		if (resource.on_success) {
 			handlers["onSuccess"] = (data: DataResult) => {
@@ -315,54 +294,32 @@ const useCodeStore = defineStore("codeStore", () => {
 		return handlers
 	}
 
-	const getWhitelistedMethods = (resource: DocumentResource) => {
+	function getWhitelistedMethods(resource: DocumentResource) {
 		if (resource.whitelisted_methods) {
-			let whitelisted_methods = resource.whitelisted_methods
-			if (typeof resource.whitelisted_methods === "string") {
-				whitelisted_methods = JSON.parse(resource.whitelisted_methods)
-			}
 			const methods: Record<string, string> = {}
-			whitelisted_methods.forEach((method: string) => methods[method] = method)
+			resource.whitelisted_methods.forEach((method: string) => methods[method] = method)
 			return { whitelistedMethods: methods }
 		}
 		return {}
 	}
 
-	function stopResourceWatchers() {
-		resourceWatchers.forEach((stop) => stop())
-		resourceWatchers = []
-	}
-
 	function teardownPage() {
-		stopResourceWatchers()
+		pageResourceScope?.stop()
+		pageResourceScope = null
+		currentPageName.value = null
 		disposePageScriptScope()
 	}
 
-	// VARIABLES
-	async function setPageVariables(page: StudioPage, preloadedVariables?: Variable[]) {
-		let variableRows = preloadedVariables
-		if (!variableRows) {
-			studioVariables.filters = { parent: page.name }
-			await studioVariables.reload()
-			variableRows = studioVariables.data as Variable[]
-		}
-		variables.value = {}
-
-		variableRows.map((variable: Variable) => {
-			variables.value[variable.variable_name] = getInitialVariableValue(variable)
-		})
+	function getValueFromBinding(bindingPath: string, localContext?: ExpressionEvaluationContext) {
+		const context = { ...pageScriptTemplateBindings.value, ...localContext }
+		return getValueFromObject(context, bindingPath)
 	}
 
-	function getValueFromVariable(variablePath: string, localContext?: ExpressionEvaluationContext) {
-		const context = { ...variables.value, ...pageScriptTemplateBindings.value, ...localContext }
-		return getValueFromObject(context, variablePath)
-	}
-
-	function setValueInVariable(variablePath: string, value: any, localContext?: ExpressionEvaluationContext) {
-		const pathParts = variablePath.split(".")
+	function setValueInBinding(bindingPath: string, value: any, localContext?: ExpressionEvaluationContext) {
+		const pathParts = bindingPath.split(".")
 		const rootKey = pathParts[0]
 		if (localContext && localContext[rootKey] !== undefined) {
-			setValueInObject(localContext, variablePath, value)
+			setValueInObject(localContext, bindingPath, value)
 			return
 		}
 
@@ -375,26 +332,37 @@ const useCodeStore = defineStore("codeStore", () => {
 			}
 			return
 		}
-		setValueInObject(variables.value, variablePath, value)
+		setValueInObject(pageScriptBindings.value, bindingPath, value)
 	}
 
 	// PAGE SCRIPT
-	async function setPageScript(page: StudioPage, isStandardPage: boolean = false) {
+	async function setPageScript(page: StudioPage) {
+		const resourceScope = pageResourceScope
+		resourceScope?.pause()
+		try {
+			await runPageScript(page)
+		} finally {
+			resourceScope?.resume()
+		}
+	}
+
+	async function runPageScript(page: StudioPage) {
 		disposePageScriptScope()
+		const scope = new PageScriptScope(reportPageScriptError)
+		pageScriptScope = scope
 		pageScriptBindings.value = {}
 		pageScriptError.value = null
 		currentPageName.value = page.name
 
-		if (isStandardPage) {
-			pageScriptBindings.value = await loadCodePageScript(page.name)
-			return
+		if (page.is_standard) {
+			const module = await loadPageScriptModule(page.name)
+			if (!scope.active) return
+			if (typeof module?.default === "function") {
+				pageScriptBindings.value = scope.run(() => module.default(scriptContext.value))
+			}
+		} else if (page.script?.trim()) {
+			pageScriptBindings.value = compilePageScript(page.script, getTopLevelBindings(page.script))
 		}
-
-		// Non-exported app: interpret the page.script field (live, no imports).
-		const source = page.script || ""
-		if (!source.trim()) return
-		const bindingNames = getTopLevelBindings(source)
-		pageScriptBindings.value = compilePageScript(source, bindingNames)
 	}
 
 	function disposePageScriptScope() {
@@ -402,50 +370,11 @@ const useCodeStore = defineStore("codeStore", () => {
 		pageScriptScope = null
 	}
 
-	async function loadCodePageScript(pageName: string): Promise<Record<string, any>> {
-		const mod = await loadPageScriptModule(pageName)
-		return runPageScriptSetup(mod?.default)
-	}
-
-	// Run a compiled page setup() in a fresh effect scope and return its top-level bindings. Shared
-	// by initial load and HMR: on a hot update we already hold the new module, so we re-run its
-	// setup directly instead of re-importing.
-	async function runPageScriptSetup(setup: unknown): Promise<Record<string, any>> {
-		disposePageScriptScope()
-		if (typeof setup !== "function") return {}
-		try {
-			// setup(ctx) gets the live execution context (resources/variables/route/router) and may
-			// be async (e.g. awaiting a resource fetch). Effects (watch/computed) created BEFORE the
-			// first await are owned by the page scope; declare them before awaiting so they're
-			// disposed on navigation.
-			const bindings = runInPageScriptScope(() => (setup as Function)(scriptContext.value))
-			return (await bindings) || {}
-		} catch (error) {
-			reportPageScriptError(error)
-			return {}
-		}
-	}
-
-	function runInPageScriptScope(run: () => any): any {
-		// Reactive effects (watch/watchEffect/computed) created synchronously during `run` are
-		// owned by this scope so they're disposed on the next navigation / recompile.
-		pageScriptScope = effectScope(true)
-		let result: any
-		pageScriptScope.run(() => {
-			try {
-				result = run()
-			} catch (error) {
-				reportPageScriptError(error)
-			}
-		})
-		return result
-	}
-
 	function compilePageScript(source: string, bindingNames: string[]) {
 		// Run the page script source once, like a Vue `<script setup>`, and return every top-level
 		// binding (refs/reactive/computed/functions/classes). Free identifiers resolve through a
 		// proxy over the LIVE execution context, so the script sees the Vue reactivity APIs and
-		// variables/resources/modules — including ones registered a tick later. The source is
+		// resources and modules — including ones registered a tick later. The source is
 		// always run (even with no named bindings) so watcher-only scripts still take effect.
 		const liveContext = new Proxy(
 			{},
@@ -460,7 +389,7 @@ const useCodeStore = defineStore("codeStore", () => {
 				},
 			},
 		)
-		return runInPageScriptScope(() => {
+		return pageScriptScope!.run(() => {
 			const factory = new Function(
 				"context",
 				`with (context) {
@@ -483,8 +412,16 @@ const useCodeStore = defineStore("codeStore", () => {
 	// only via their own acceptHMRUpdate.) Registered once here so both the editor and the preview
 	// (each with their own codeStore) hot-apply script edits to the page they're showing.
 	async function applyPageScriptHMR(setup: unknown) {
+		const resourceScope = pageResourceScope
+		resourceScope?.pause()
+		disposePageScriptScope()
+		pageScriptScope = new PageScriptScope(reportPageScriptError)
 		pageScriptError.value = null
-		pageScriptBindings.value = await runPageScriptSetup(setup)
+		pageScriptBindings.value = {}
+		if (typeof setup === "function") {
+			pageScriptBindings.value = pageScriptScope.run(() => setup(scriptContext.value))
+		}
+		resourceScope?.resume()
 	}
 	setPageScriptHotUpdateHandler((pageName, setup) => {
 		if (currentPageName.value === pageName) applyPageScriptHMR(setup)
@@ -493,7 +430,6 @@ const useCodeStore = defineStore("codeStore", () => {
 	// SCRIPT CONTEXTS
 	const evalContext = computed(() => {
 		return {
-			...variables.value,
 			...resources.value,
 			...pageScriptTemplateBindings.value,
 			...globalUtils,
@@ -504,10 +440,7 @@ const useCodeStore = defineStore("codeStore", () => {
 
 	// Base context for every script scope — event/success/error handlers, function-value props, and page-script setup
 	const scriptContext = computed(() => {
-		const variablesRefs = toRefs(variables.value)
-		// Resources and currentRoute are proxies so scripts can destructure them once and still see the current values
 		return {
-			...variablesRefs,
 			...currentResourceProxies(),
 			...pageScriptBindings.value,
 			...globalUtils,
@@ -763,15 +696,14 @@ const useCodeStore = defineStore("codeStore", () => {
 		setRouterObject,
 		routeObject,
 		routerObject,
+		teardownPage,
 		// resources
 		resources,
+		initializePage,
 		setPageResources,
-		teardownPage,
-		// variables
-		variables,
-		setPageVariables,
-		getValueFromVariable,
-		setValueInVariable,
+		// two-way prop bindings (props stored as { $type: "variable", name })
+		getValueFromBinding,
+		setValueInBinding,
 		// page script
 		pageScriptBindings,
 		pageScriptTemplateBindings,
@@ -792,3 +724,259 @@ const useCodeStore = defineStore("codeStore", () => {
 })
 
 export default useCodeStore
+
+/** Bind inputs at request time, including calls made by user watchers before Vue flushes. */
+function bindResourceInputs<T extends APIResourceInstance | ListResourceInstance>(
+	resource: T,
+	resourceScope: PageResourceScope,
+	field: "params" | "filters",
+	evaluate: () => any,
+	readOnly: boolean,
+): T {
+	const inputs = computed(evaluate)
+	const override = shallowRef<any>()
+	const currentInputs = () => (override.value === undefined ? inputs.value : override.value)
+	const readKey = {}
+	const list = field === "filters" ? resource as ListResourceInstance : null
+	const fetch = list ? list.list.fetch : resource.fetch
+	const request = (args: any[], read: boolean) =>
+		resourceScope.run(
+			() => {
+				if (list) {
+					resource.update({ filters: currentInputs() })
+					return fetch(...args)
+				}
+				return fetch(args[0] ?? currentInputs(), ...args.slice(1))
+			},
+			read && !args.length ? readKey : undefined,
+		)
+
+	const reload = (...args: any[]) => request(args, readOnly)
+	if (list) {
+		// Pagination and list.reload() also reach this entry point.
+		list.list.fetch = reload
+		list.list.reload = reload
+		list.list.submit = (...args: any[]) => request(args, false)
+		resource.fetch = (...args: any[]) => resource.reload(...args)
+		for (const name of ["fetchOne", "insert", "setValue", "delete", "runDocMethod"] as const) {
+			const operation = list[name]
+			for (const method of ["fetch", "reload", "submit"] as const) {
+				const invoke = operation[method]
+				operation[method] = (...args: any[]) => resourceScope.run(() => invoke(...args))
+			}
+		}
+	} else {
+		const api = resource as APIResourceInstance
+		api.fetch = reload
+		api.reload = reload
+		api.submit = (...args: any[]) => request(args, false)
+	}
+
+	return new Proxy(markRaw({}) as T, {
+		get(target, key) {
+			if (typeof key === "string" && key.startsWith("__v_")) return Reflect.get(target, key)
+			if (key === field) return currentInputs()
+			if (key === "update")
+				return (options: Record<string, any>) => {
+					if (field in options) override.value = options[field]
+					resource.update(options)
+				}
+			return Reflect.get(resource, key)
+		},
+		has: (_target, key) => key === field || key in resource,
+		ownKeys: () => Reflect.ownKeys(resource),
+		getOwnPropertyDescriptor: (_target, key) => Object.getOwnPropertyDescriptor(resource, key),
+		set(_target, key, value) {
+			if (key === field) override.value = value
+			else Reflect.set(resource, key, value)
+			return true
+		},
+	})
+}
+
+/** A document's methods exist before its filters have resolved to a name. */
+class PageDocumentResource {
+	private current = shallowRef<DocumentResourceInstance | null>(null)
+	private lookup: Promise<DocumentResourceInstance | null> | null = null
+	private lookupKey = ""
+	private readKey = {}
+	readonly resource: DocumentResourceInstance
+
+	constructor(
+		private resourceScope: PageResourceScope,
+		private options: { doctype: string; whitelistedMethods?: Record<string, string> },
+		private getFilters: () => any,
+		private resolveName: (filters: any) => Promise<any>,
+	) {
+		const methods: Record<string, any> = {}
+		for (const name of [
+			"get",
+			"setValue",
+			"setValueDebounced",
+			"save",
+			"delete",
+			...Object.keys(options.whitelistedMethods || {}),
+		]) {
+			methods[name] = this.operation(name)
+		}
+		const initial: Record<string | symbol, any> = {
+			doc: null,
+			name: null,
+			doctype: options.doctype,
+			auto: false,
+			...methods,
+			reload: (...args: any[]) => methods.get.fetch(...args),
+		}
+		this.resource = new Proxy(markRaw(initial) as DocumentResourceInstance, {
+			get: (target, key) =>
+				(typeof key === "string" && key.startsWith("__v_")) ||
+				key in methods ||
+				["reload", "auto"].includes(String(key))
+					? Reflect.get(target, key)
+					: ((this.current.value && Reflect.get(this.current.value, key)) ?? Reflect.get(target, key)),
+			set: (target, key, value) => {
+				if (key === "auto") target[key] = value
+				else if (this.current.value) Reflect.set(this.current.value, key, value)
+				else Reflect.set(target, key, value)
+				return true
+			},
+		})
+	}
+
+	initialize() {
+		return this.resourceScope.run(() => this.resolve())
+	}
+
+	private operation(name: string) {
+		const initial: Record<string | symbol, any> = { data: null, loading: false, error: null, promise: null }
+		const invoke = (method: string, args: any[]) => {
+			const promise = this.resourceScope.run(
+				async () => {
+					const document = await this.resolve()
+					if (!document || !this.resourceScope.active) return
+					return Reflect.get(document, name)[method](...args)
+				},
+				name === "get" && method !== "submit" && !args.length ? this.readKey : undefined,
+			)
+			initial.promise = promise
+			return promise
+		}
+		return new Proxy(markRaw(initial), {
+			get: (target, key) => {
+				if (typeof key === "string" && key.startsWith("__v_")) return Reflect.get(target, key)
+				if (["fetch", "reload", "submit"].includes(String(key)))
+					return (...args: any[]) => invoke(String(key), args)
+				return (this.current.value && Reflect.get(this.current.value, name)?.[key]) ?? Reflect.get(target, key)
+			},
+		})
+	}
+
+	private resolve() {
+		const filters = this.getFilters()
+		const key = JSON.stringify(filters)
+		if (this.lookup && key === this.lookupKey) return this.lookup
+		this.lookupKey = key
+		this.current.value = null
+		const lookup = this.resolveName(filters)
+			.then((name) => {
+				if (!this.resourceScope.active || this.lookup !== lookup) return null
+				if (!name) {
+					this.lookup = null
+					return null
+				}
+				const document = createDocumentResource({ ...this.options, name, auto: false })
+				this.current.value = document
+				return document
+			})
+			.catch((error) => {
+				if (this.lookup === lookup) this.lookup = null
+				throw error
+			})
+		this.lookup = lookup
+		return lookup
+	}
+}
+
+type Request = { run: () => unknown; resolve: (value: any) => void; reject: (error: unknown) => void }
+
+/** Own resource watchers and queued requests for one page load or resource refresh. */
+class PageResourceScope {
+	private starts: (() => WatchStopHandle)[] = []
+	private watchers: WatchStopHandle[] = []
+	private started = false
+	private pauses = 1
+	private stopped = false
+	private scheduled = false
+	private pending = new Map<object, { request: Request; promise: Promise<any> }>()
+
+	get active() {
+		return !this.stopped
+	}
+
+	onStart(start: () => WatchStopHandle) {
+		if (!this.stopped) this.starts.push(start)
+	}
+
+	activate() {
+		if (this.stopped || this.started) return
+		this.started = true
+		for (const start of this.starts) this.watchers.push(start())
+		this.starts = []
+		this.resume()
+	}
+
+	pause() {
+		this.pauses++
+	}
+
+	resume() {
+		this.pauses--
+		this.schedule()
+	}
+
+	run(run: () => unknown, readKey: object = {}) {
+		if (this.stopped) return Promise.resolve(undefined)
+		const existing = this.pending.get(readKey)
+		if (existing) return existing.promise
+		let request!: Request
+		const promise = new Promise((resolve, reject) => {
+			request = { run, resolve, reject }
+		})
+		this.pending.set(readKey, { request, promise })
+		// Auto-fetches and immediate watchers may intentionally ignore the returned promise.
+		void promise.catch(() => {})
+		this.schedule()
+		return promise
+	}
+
+	stop() {
+		this.stopped = true
+		this.starts = []
+		for (const stop of this.watchers) stop()
+		this.watchers = []
+		for (const { request } of this.pending.values()) request.resolve(undefined)
+		this.pending.clear()
+	}
+
+	private schedule() {
+		if (this.pauses || this.stopped || this.scheduled) return
+		this.scheduled = true
+		void nextTick().then(() => {
+			this.scheduled = false
+			if (this.pauses || this.stopped) return
+			const requests = [...this.pending.values()]
+			this.pending.clear()
+			for (const { request } of requests) {
+				if (this.stopped) {
+					request.resolve(undefined)
+					continue
+				}
+				try {
+					Promise.resolve(request.run()).then(request.resolve, request.reject)
+				} catch (error) {
+					request.reject(error)
+				}
+			}
+		})
+	}
+}

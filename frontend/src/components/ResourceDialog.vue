@@ -155,7 +155,7 @@
 
 				<ScriptSection
 					title="On Success"
-					description="Update variables or control other data sources everytime the data loads successfully"
+					description="Update page state or control other data sources everytime the data loads successfully"
 					v-model="newResource.on_success"
 					:boilerplate="getFnBoilerplate('success')"
 					:completions="(context: CompletionContext) => getEditorCompletions(context)"

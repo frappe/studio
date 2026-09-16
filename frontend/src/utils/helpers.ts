@@ -3,7 +3,6 @@ import { createDocumentResource, createResource, dialog } from "frappe-ui"
 import { toast } from "frappe-ui"
 
 import type { ObjectLiteral, StyleValue, SelectOption, HashString, RGBString } from "@/types"
-import type { Variable } from "@/types/Studio/StudioPageVariable"
 import type { StudioApp } from "@/types/Studio/StudioApp"
 import DOMPurify from "dompurify"
 
@@ -353,22 +352,6 @@ function getParamsArray(params?: string | Record<string, unknown>) {
 	return paramsArray
 }
 
-// variables
-const getInitialVariableValue = (variable: Variable) => {
-	// cast variable's initial value as per variable type
-	let initialValue = variable.initial_value
-	if (variable.variable_type === "Number") {
-		initialValue = Number(initialValue)
-	} else if (variable.variable_type === "Boolean") {
-		initialValue = (initialValue === "true")
-	} else if (variable.variable_type === "Object" && typeof initialValue === "string") {
-		initialValue = JSON.parse(initialValue)
-	} else if (variable.variable_type === "String" && typeof initialValue === "string") {
-		initialValue = JSON.parse(initialValue)
-	}
-	return initialValue
-}
-
 // dialogs
 async function confirm(message: string, title: string = "Confirm"): Promise<boolean> {
 	return new Promise((resolve) => {
@@ -601,8 +584,6 @@ export {
 	getAutocompleteValues,
 	getParamsObj,
 	getParamsArray,
-	// variables
-	getInitialVariableValue,
 	// dialog
 	confirm,
 	// colors

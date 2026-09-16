@@ -18,7 +18,7 @@
 				.
 			</li>
 			<li>Functions to wire to component events (e.g. a button's click).</li>
-			<li>Read this page's variables, data sources and attached modules directly by name.</li>
+			<li>Read this page's data sources and attached modules directly by name.</li>
 		</ul>
 		<pre class="overflow-x-auto rounded bg-surface-gray-2 p-2 text-xs leading-snug text-ink-gray-7">
 const count = ref(0)

@@ -128,7 +128,7 @@ add_block = Tool(
 					"tstyle": {"type": "object", "description": "Tablet style overrides."},
 					"events": {
 						"type": "object",
-						"description": 'Event handlers: eventName → JS script, e.g. {"click":"counter.value++"}. Variables are refs (write with .value).',
+						"description": 'Event handlers: eventName → JS script, e.g. {"click":"counter.value++"}. Page-script refs are written with .value.',
 					},
 					"visibility": {
 						"type": "string",
