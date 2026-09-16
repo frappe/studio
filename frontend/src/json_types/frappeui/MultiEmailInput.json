@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/SwitchProps",
+  "$ref": "#/definitions/MultiEmailInputProps",
   "definitions": {
-    "SwitchProps": {
+    "MultiEmailInputProps": {
       "type": "object",
       "properties": {
         "label": {
@@ -62,28 +62,81 @@
         "id": {
           "type": "string"
         },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": "string"
+              },
+              "disabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          }
+        },
+        "loading": {
+          "type": "boolean"
+        },
         "size": {
           "type": "string",
           "enum": [
             "xs",
             "sm",
-            "md"
+            "md",
+            "lg"
           ]
         },
-        "padded": {
-          "type": "boolean"
+        "placeholder": {
+          "type": "string"
         },
-        "controlPosition": {
-          "type": "string",
-          "enum": [
-            "start",
-            "end"
-          ]
+        "emptyText": {
+          "type": "string"
+        },
+        "loadingText": {
+          "type": "string"
         },
         "disabled": {
           "type": "boolean"
         },
-        "icon": {
+        "validate": {
+          "type": "object"
+        },
+        "createLabel": {
+          "type": "object"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ]
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end"
+          ]
+        },
+        "offset": {
+          "type": "number"
+        },
+        "portalTo": {
           "type": [
             "string"
           ]

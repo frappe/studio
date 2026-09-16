@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/DesktopShellProps",
+  "$ref": "#/definitions/LoadingTextProps",
   "definitions": {
-    "DesktopShellProps": {
+    "LoadingTextProps": {
       "type": "object",
       "properties": {
-        "scroll": {
-          "type": "boolean"
+        "text": {
+          "type": "string"
         }
       },
       "additionalProperties": false

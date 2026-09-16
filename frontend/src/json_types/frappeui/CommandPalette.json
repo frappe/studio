@@ -1,12 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/DesktopShellProps",
+  "$ref": "#/definitions/CommandPaletteProps",
   "definitions": {
-    "DesktopShellProps": {
+    "CommandPaletteProps": {
       "type": "object",
       "properties": {
-        "scroll": {
+        "filterable": {
           "type": "boolean"
+        },
+        "title": {
+          "type": "string"
         }
       },
       "additionalProperties": false
