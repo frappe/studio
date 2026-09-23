@@ -20,6 +20,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # data source specs call the real server: a site on these is served on port 8000
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
@@ -55,6 +73,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cypress-
 
+      - name: Install MariaDB Client
+        run: |
+          sudo apt update
+          sudo apt-get install mariadb-client
+
       - name: Setup bench
         run: |
           pip install frappe-bench
@@ -62,9 +85,20 @@ jobs:
 
       - name: Install Studio
         working-directory: /home/runner/frappe-bench
-        run: bench get-app studio "$GITHUB_WORKSPACE"
+        run: |
+          bench get-app studio "$GITHUB_WORKSPACE"
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+          bench new-site --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app studio
         env:
           CI: "Yes"
+
+      - name: Start web server
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench serve --port 8000 &> /tmp/web.log &
+          curl --retry 30 --retry-delay 1 --retry-all-errors --silent --output /dev/null -H "X-Frappe-Site-Name: test_site" http://127.0.0.1:8000/api/method/ping
 
       - name: Install frontend dependencies
         working-directory: /home/runner/frappe-bench/apps/studio/frontend
@@ -75,3 +109,7 @@ jobs:
       - name: Run component tests
         working-directory: /home/runner/frappe-bench/apps/studio/frontend
         run: yarn test:cypress
+
+      - name: Web server log
+        if: failure()
+        run: cat /tmp/web.log
