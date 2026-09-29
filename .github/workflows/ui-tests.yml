@@ -102,9 +102,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: /home/runner/frappe-bench/apps/studio/frontend
-        run: |
-          yarn install --frozen-lockfile
-          yarn install-framework-ui
+        run: yarn install --frozen-lockfile
 
       - name: Run component tests
         working-directory: /home/runner/frappe-bench/apps/studio/frontend
