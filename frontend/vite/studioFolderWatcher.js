@@ -20,24 +20,57 @@ import { isCSSRequest } from "vite"
  *    The `hotUpdate` hook swallows those events; genuine edits to a mounted custom
  *    component still hot-update via Vue's HMR.
  */
-function studioFolderWatcher(appsDir) {
+function studioFolderWatcher(appsDir, extraStudioDirs = []) {
 	let studioFoldersCache = null
+	let watchFoldersCache = null
 
-	function getStudioFolders() {
-		if (studioFoldersCache) return studioFoldersCache
-		const folders = []
+	// Matching forms: every studio folder by its scanned path and by its real path (events can
+	// arrive in either form for a symlinked app). Watch list: the real path of each folder, once.
+	function load() {
+		const entries = []
+		const ownPackage = realPathOrSelf(path.join(appsDir, "studio", "studio"))
+		const add = (dir) => {
+			const real = realPathOrSelf(dir)
+			if (real === ownPackage) return
+			entries.push({ dir: normalize(dir), real })
+		}
 		if (fs.existsSync(appsDir)) {
 			for (const appName of fs.readdirSync(appsDir)) {
 				// Skip studio itself, already watched
 				if (appName === "studio") continue
 				const studioDir = path.join(appsDir, appName, "studio")
-				if (fs.existsSync(studioDir) && fs.statSync(studioDir).isDirectory()) {
-					folders.push(normalize(studioDir))
-				}
+				if (fs.existsSync(studioDir) && fs.statSync(studioDir).isDirectory()) add(studioDir)
 			}
 		}
-		studioFoldersCache = folders
-		return folders
+		// Studio folders of apps installed from outside apps/ (e.g. via a .pth), already resolved by
+		// the caller. Studio's own package is excluded by real path: every editable install's .pth
+		// points at it, and apps/studio may itself be a symlink to a checkout elsewhere.
+		for (const dir of extraStudioDirs) add(dir)
+		const seenReal = new Set()
+		const watch = []
+		const forms = new Set()
+		for (const { dir, real } of entries) {
+			forms.add(dir)
+			forms.add(real)
+			if (!seenReal.has(real)) {
+				seenReal.add(real)
+				// Watch the canonical path: an alias and its real folder would otherwise both be
+				// watched and report the same change twice
+				watch.push(real)
+			}
+		}
+		studioFoldersCache = [...forms]
+		watchFoldersCache = watch
+	}
+
+	function getStudioFolders() {
+		if (!studioFoldersCache) load()
+		return studioFoldersCache
+	}
+
+	function getWatchFolders() {
+		if (!watchFoldersCache) load()
+		return watchFoldersCache
 	}
 
 	function isUnderStudioFolder(filePath) {
@@ -81,7 +114,7 @@ function studioFolderWatcher(appsDir) {
 		},
 
 		configureServer(server) {
-			const studioFolders = getStudioFolders()
+			const studioFolders = getWatchFolders()
 			if (!studioFolders.length) return
 
 			const watcher = server.watcher
@@ -150,6 +183,14 @@ if (import.meta.hot) {
 	})
 }
 `
+}
+
+function realPathOrSelf(folder) {
+	try {
+		return normalize(fs.realpathSync(folder))
+	} catch {
+		return folder
+	}
 }
 
 // chokidar/Vite report paths with forward slashes; match that so startsWith comparisons hold.
