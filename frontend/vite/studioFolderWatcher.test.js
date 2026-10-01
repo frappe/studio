@@ -1,5 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import { once } from "node:events"
 import fs from "fs"
 import os from "os"
 import path from "path"
@@ -87,12 +88,16 @@ test("live chokidar: alias folder + real file watched emits studio:file-changed 
 	const plugin = studioFolderWatcher(appsDir)
 	const watcher = chokidar.watch([], { ignoreInitial: true })
 	const events = []
-	plugin.configureServer({ ws: { send: (m) => events.push(m) }, watcher })
-	watcher.add(file) // what Vite's ensureWatchedFile does for an imported real file
-	await new Promise((r) => setTimeout(r, 500))
-	fs.writeFileSync(file, "2")
-	await new Promise((r) => setTimeout(r, 1000))
-	await watcher.close()
+	const ready = once(watcher, "ready", { signal: AbortSignal.timeout(5000) })
+	try {
+		plugin.configureServer({ ws: { send: (m) => events.push(m) }, watcher })
+		watcher.add(file) // what Vite's ensureWatchedFile does for an imported real file
+		await ready
+		fs.writeFileSync(file, "2")
+		await new Promise((r) => setTimeout(r, 1000))
+	} finally {
+		await watcher.close()
+	}
 	const changed = events.filter((e) => e.event === "studio:file-changed")
 	assert.equal(changed.length, 1, JSON.stringify(changed))
 })
