@@ -91,7 +91,7 @@ export default defineConfig(async () => {
 			studioRootAlias(),
 			// Root must be the frontend dir
 			sharedDependencyResolver(path.resolve(__dirname)),
-			studioFolderWatcher(appsDir),
+			studioFolderWatcher(appsDir, appPthSources),
 		],
 		resolve: {
 			alias: [
