@@ -159,8 +159,8 @@
 		</template>
 		<template #actions>
 			<template v-if="!openFileReadOnly">
-				<Button size="xs" variant="solid" :loading="saving" :disabled="!dirty" @click="save">Save</Button>
 				<Button size="xs" variant="ghost" icon="lucide-trash-2" @click="removeFile" title="Delete file" />
+				<Button size="xs" variant="solid" :loading="saving" :disabled="!dirty" @click="save">Save</Button>
 			</template>
 			<Button size="xs" variant="ghost" icon="lucide-x" @click="closeFile" title="Close editor" />
 		</template>
@@ -196,7 +196,7 @@ import {
 	type StudioFileNode,
 } from "@/data/studioFiles"
 import { confirm } from "@/utils/helpers"
-import { pageScriptCompletions } from "@/utils/pageScriptCompletions"
+import { pageScriptCompletions } from "@/utils/completions/pageScriptCompletions"
 import type { ContextMenuOption } from "@/types"
 
 const store = useStudioStore()
@@ -221,6 +221,7 @@ async function loadTree() {
 	loading.value = true
 	try {
 		tree.value = await listStudioFiles(location.value)
+		store.hasRouterFile = Boolean(findNode("router.ts"))
 	} catch (error: any) {
 		toast.error("Failed to load files", { description: error?.messages?.join(", ") })
 	} finally {
@@ -265,14 +266,17 @@ const activePageHasScript = computed(() => Boolean(findNode(activePagePaths.valu
 
 function openActivePageScript() {
 	const scriptPath = activePagePaths.value?.script
-	if (!scriptPath) return
-	const scriptNode = findNode(scriptPath)
-	if (scriptNode) {
-		selectedNode.value = scriptNode
-		openNode(scriptNode)
+	if (scriptPath) openOrCreateFile(scriptPath)
+}
+
+function openOrCreateFile(path: string) {
+	const node = findNode(path)
+	if (node) {
+		selectedNode.value = node
+		openNode(node)
 	} else {
 		newEntryType.value = "file"
-		newEntryPath.value = scriptPath
+		newEntryPath.value = path
 		showNewEntryDialog.value = true
 		focusFormInput(pathInput)
 	}
@@ -320,6 +324,7 @@ function getFileBadge(path: string): { label: string; colorClass: string } {
 }
 
 async function openNode(node: StudioFileNode) {
+	if (node.path === "router.ts") return openRouterEditor()
 	if (dirty.value) {
 		const discard = await confirm("Discard unsaved changes?")
 		if (!discard) return
@@ -332,6 +337,12 @@ async function openNode(node: StudioFileNode) {
 	} catch (error: any) {
 		toast.error("Failed to open file", { description: error?.messages?.join(", ") })
 	}
+}
+
+// the router editor owns router.ts: its completions, page-name warning and help live there
+function openRouterEditor() {
+	store.studioLayout.leftPanelActiveTab = "Pages"
+	store.showRouterEditor = true
 }
 
 function onEditorChange(value: string) {
@@ -501,18 +512,10 @@ watch(
 			const stop = watch(loading, async (isLoading) => {
 				if (isLoading) return
 				stop()
-				const node = findNode(path)
-				if (node) {
-					selectedNode.value = node
-					await openNode(node)
-				}
+				openOrCreateFile(path)
 			})
 		} else {
-			const node = findNode(path)
-			if (node) {
-				selectedNode.value = node
-				await openNode(node)
-			}
+			openOrCreateFile(path)
 		}
 	},
 )

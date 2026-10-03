@@ -73,6 +73,12 @@ const useStudioStore = defineStore("store", () => {
 	// cross-panel navigation
 	const selectedVueFile = ref<string | null>(null)
 	const selectedVueComponent = ref<string | null>(null)
+	// kept by FileExplorer from its tree; a custom app's router script is `activeApp.router_script`
+	const hasRouterFile = ref(false)
+	const showRouterEditor = ref(false)
+	const hasRouterScript = computed(() =>
+		activeApp.value?.is_standard ? hasRouterFile.value : Boolean(activeApp.value?.router_script),
+	)
 
 	function navigateToCodeFile(studioFilePath: string) {
 		studioLayout.value.leftPanelActiveTab = "Code"
@@ -91,9 +97,20 @@ const useStudioStore = defineStore("store", () => {
 		const appDoc = await fetchApp(appName)
 		if (!appDoc) return
 		activeApp.value = appDoc
+		await setAppBoot(appName)
 		await setAppPages(appName)
 		await setCustomComponents()
 		await setupPageScripts()
+	}
+
+	// the canvas is not a rendered app page, so it asks for the app's studio_app_boot dict
+	async function setAppBoot(appName: string) {
+		try {
+			window.boot = await call("studio.api.get_app_boot", { app_name: appName })
+		} catch (error) {
+			console.error("Failed to load app boot", error)
+			window.boot = {}
+		}
 	}
 
 	async function deleteApp(appName: string, appTitle: string) {
@@ -123,7 +140,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function updateActiveApp(key: string, value: string) {
-		studioApps.setValue.submit(
+		return studioApps.setValue.submit(
 			{ name: activeApp.value?.name, [key]: value },
 			{
 				onSuccess() {
@@ -753,6 +770,9 @@ const useStudioStore = defineStore("store", () => {
 		customVueComponents,
 		// cross-panel navigation
 		selectedVueFile,
+		hasRouterFile,
+		hasRouterScript,
+		showRouterEditor,
 		selectedVueComponent,
 		navigateToCodeFile,
 		navigateToVueComponent,

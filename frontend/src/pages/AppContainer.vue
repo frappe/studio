@@ -62,11 +62,9 @@ async function loadPage() {
 }
 
 function resolveCurrentPath(): string | undefined {
-	const { pageRoute } = route.params as { pageRoute: string[] }
-	// registered page routes carry isDynamic meta
-	if (route.meta?.isDynamic) return route.matched?.[0]?.path
-	if (pageRoute) return pageRoute[0]
-	return "/"
+	// by page, not matched path: an alias record's path is the alias, and the server looks up the page's own route
+	const pageName = route.matched[0]?.meta?.pageName
+	return window.app_pages.find((page) => page.name === pageName)?.route
 }
 
 watch(() => route.path, handleRouteChange, { immediate: true })
