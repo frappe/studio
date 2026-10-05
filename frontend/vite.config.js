@@ -128,6 +128,10 @@ export default defineConfig(async () => {
 				"engine.io-client",
 				"highlight.js/lib/core",
 				"debug",
+				"prosemirror-state",
+				"prosemirror-view",
+				"prosemirror-model",
+				"prosemirror-transform",
 			],
 		},
 	}
