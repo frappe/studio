@@ -124,6 +124,7 @@ const canvasProps = inject("canvasProps") as CanvasProps
 
 const showMarginPaddingHandlers = computed(() => {
 	return (
+		!store.isReadOnly &&
 		props.isPrimaryInstance &&
 		isBlockSelected.value &&
 		!props.block.isRoot() &&
@@ -134,6 +135,7 @@ const showMarginPaddingHandlers = computed(() => {
 
 const showResizer = computed(() => {
 	return (
+		!store.isReadOnly &&
 		props.isPrimaryInstance &&
 		!props.block.isRoot() &&
 		isBlockSelected.value &&
@@ -170,7 +172,7 @@ const getStyleClasses = computed(() => {
 		classes.push("pointer-events-auto")
 		// Place the block on the top of the stack
 		classes.push("!z-[19]")
-		if (isMovable(props.block, props.breakpoint)) {
+		if (!store.isReadOnly && isMovable(props.block, props.breakpoint)) {
 			classes.push("cursor-grab")
 		}
 	}
@@ -201,7 +203,7 @@ const componentLabelClasses = computed(() => {
 const handleMouseDown = (ev: MouseEvent) => {
 	// preventDefault keeps focus where it was, so blur explicitly to commit pending panel edits
 	;(document.activeElement as HTMLElement | null)?.blur()
-	if (ev.button !== 0 || store.mode !== "select") return
+	if (ev.button !== 0 || store.mode !== "select" || store.isReadOnly) return
 	if ((ev.target as HTMLElement).closest("button")) return
 
 	if (isReorderable(props.block, props.breakpoint)) {

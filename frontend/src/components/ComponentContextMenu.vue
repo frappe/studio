@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<ContextMenu ref="contextMenuRef" :options="contextMenuOptions" @select="handleContextMenuSelect" />
+		<ContextMenu ref="contextMenuRef" :options="visibleOptions" @select="handleContextMenuSelect" />
 		<FormDialog v-if="block" v-model:showDialog="showFormDialog" :block="block" />
 	</div>
 </template>
@@ -244,6 +244,13 @@ const contextMenuOptions: ContextMenuOption[] = [
 		},
 	},
 ]
+
+const readOnlyOptions = new Set(["Copy", "Copy Style"])
+const visibleOptions = computed(() =>
+	store.isReadOnly
+		? contextMenuOptions.filter((option) => readOnlyOptions.has(option.label))
+		: contextMenuOptions,
+)
 
 function canUnwrap() {
 	const target = block.value

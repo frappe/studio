@@ -4,7 +4,7 @@
 		<div
 			class="flex h-full w-12 flex-col items-center space-y-2 border-r border-outline-elevation-2 bg-surface-base p-3"
 		>
-			<Tooltip v-for="tab in sidebarMenu" :key="tab.label" side="right" :text="tab.label">
+			<Tooltip v-for="tab in visibleMenu" :key="tab.label" side="right" :text="tab.label">
 				<Button
 					:icon="tab.icon"
 					size="md"
@@ -39,7 +39,7 @@
 				>
 					{{ activeTab }}
 					<div class="flex items-center gap-2">
-						<RouterScriptButton v-if="activeTab === 'Pages' && store.activeApp" />
+						<RouterScriptButton v-if="activeTab === 'Pages' && store.activeApp && !store.isReadOnly" />
 						<IconButton
 							:icon="LucideChevronsLeft"
 							label="Collapse"
@@ -62,7 +62,7 @@
 				<DataPanel v-show="activeTab === 'Data'" />
 
 				<div v-show="activeTab === 'Code'">
-					<CodePanel class="p-3" v-if="store.activePage" />
+					<CodePanel class="p-3" v-if="store.activePage && !store.isReadOnly" />
 				</div>
 
 				<AIChatPanel v-show="activeTab === 'AI Assistant'" />
@@ -122,6 +122,18 @@ const canvasStore = useCanvasStore()
 const pageLayers = toRef(store, "activeLayers")
 
 const activeTab = computed(() => store.studioLayout.leftPanelActiveTab)
+
+// these tabs only add or change things, and code files can't be read outside developer mode
+const editOnlyTabs = ["Add Component", "Code", "AI Assistant"]
+const visibleMenu = computed(() =>
+	store.isReadOnly ? sidebarMenu.filter((tab) => !editOnlyTabs.includes(tab.label)) : sidebarMenu,
+)
+
+watch(
+	() => store.isReadOnly && editOnlyTabs.includes(activeTab.value),
+	(isHidden) => isHidden && (store.studioLayout.leftPanelActiveTab = "Layers"),
+	{ immediate: true },
+)
 
 const setActiveTab = (tab: LeftPanelOptions) => {
 	if (!store.studioLayout.showLeftPanel) {

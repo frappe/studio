@@ -20,7 +20,7 @@ export function useStudioEvents(saveFragmentMode: () => void) {
 	})
 
 	useEventListener(document, "cut", (e) => {
-		if (isTargetEditable(e)) return
+		if (isTargetEditable(e) || store.isReadOnly) return
 		copySelectedBlocks(e)
 		if (canvasStore.activeCanvas?.selectedBlocks.length) {
 			for (const block of canvasStore.activeCanvas?.selectedBlocks) {
@@ -31,7 +31,7 @@ export function useStudioEvents(saveFragmentMode: () => void) {
 	})
 
 	useEventListener(document, "paste", async (e) => {
-		if (isTargetEditable(e)) return
+		if (isTargetEditable(e) || store.isReadOnly) return
 		e.stopPropagation()
 
 		if (pasteBlocks(e) || pasteDataSource(e)) return
@@ -109,12 +109,14 @@ export function useStudioEvents(saveFragmentMode: () => void) {
 			combo,
 			description: "Delete Selected Blocks",
 			group: "Edit",
+			enabled: () => !store.isReadOnly,
 			handler: deleteSelection,
 		})),
 		{
 			combo: "C",
 			description: "Container Mode",
 			group: "Tools",
+			enabled: () => !store.isReadOnly,
 			handler: () => (store.mode = "container"),
 		},
 		{

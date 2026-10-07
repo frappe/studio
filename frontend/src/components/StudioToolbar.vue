@@ -41,6 +41,7 @@
 								label: 'App Settings',
 								icon: 'lucide-settings',
 								onClick: () => (store.showAppDialog = true),
+								condition: () => !store.isReadOnly,
 							},
 							{
 								label: 'Studio Settings',
@@ -63,6 +64,7 @@
 								icon: 'lucide-trash-2',
 								theme: 'red',
 								onClick: () => store.deleteApp(store.activeApp?.app_name!, store.activeApp?.app_title!),
+								condition: () => !store.isReadOnly,
 							},
 						],
 					},
@@ -84,7 +86,7 @@
 				</template>
 			</Dropdown>
 			<ExportAppDialog v-if="canExportApp" v-model:showDialog="showExportAppDialog" />
-			<div class="flex gap-2">
+			<div v-if="!store.isReadOnly" class="flex gap-2">
 				<Tooltip
 					:text="mode.description"
 					:hoverDelay="600"
@@ -151,6 +153,13 @@
 
 		<div class="absolute right-3 flex items-center gap-2">
 			<Tooltip
+				v-if="store.isReadOnly"
+				text="Standard apps can only be edited in developer mode"
+				:hoverDelay="300"
+			>
+				<Badge variant="subtle" theme="amber" label="Read Only" />
+			</Tooltip>
+			<Tooltip
 				:text="store.activeApp?.is_standard ? 'App Export is enabled' : 'App Export Settings'"
 				:hoverDelay="600"
 				v-if="canExportApp"
@@ -170,7 +179,7 @@
 			>
 				Preview
 			</Button>
-			<PublishButton :disabled="canvasStore.showFragmentCanvas" />
+			<PublishButton v-if="!store.isReadOnly" :disabled="canvasStore.showFragmentCanvas" />
 		</div>
 		<AppDialog
 			v-model:showDialog="store.showAppDialog"
@@ -183,7 +192,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue"
-import { Tooltip, Popover, Dropdown, Button } from "frappe-ui"
+import { Tooltip, Popover, Dropdown, Button, Badge } from "frappe-ui"
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
 

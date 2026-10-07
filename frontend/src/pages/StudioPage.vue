@@ -72,7 +72,13 @@
 								<template #prefix><span class="lucide-chevron-left !h-3 !w-3" /></template>
 								{{ parentFragmentName }}
 							</Button>
-							<Button variant="solid" class="text-xs" :loading="savingFragment" @click="saveFragmentMode">
+							<Button
+								v-if="!store.isReadOnly"
+								variant="solid"
+								class="text-xs"
+								:loading="savingFragment"
+								@click="saveFragmentMode"
+							>
 								{{ canvasStore.fragmentData.saveActionLabel || "Save" }}
 							</Button>
 						</div>
@@ -241,7 +247,7 @@ const savingFragment = ref(false)
 
 async function saveFragmentMode() {
 	const editedBlock = fragmentCanvas.value?.getRootBlock()
-	if (!editedBlock || savingFragment.value) return
+	if (!editedBlock || savingFragment.value || store.isReadOnly) return
 
 	savingFragment.value = true
 	try {
@@ -271,6 +277,7 @@ watch(
 	() => {
 		if (
 			store.selectedPage &&
+			!store.isReadOnly &&
 			!pageCanvas.value?.canvasProps?.settingCanvas &&
 			!store.settingPage &&
 			!store.savingPage &&
