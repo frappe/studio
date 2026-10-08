@@ -6,7 +6,7 @@
 			item-key="componentId"
 			:group="{ name: 'component-tree', pull: 'clone', put: true }"
 			@add="updateParent"
-			:disabled="blocks.length && blocks[0].isRoot()"
+			:disabled="store.isReadOnly || (blocks.length && blocks[0].isRoot())"
 			:force-fallback="true"
 			:fallback-class="'!hidden'"
 			:fallback-on-body="false"
@@ -62,7 +62,7 @@
 							}"
 							:contenteditable="element.editable"
 							:title="element.blockId"
-							@dblclick="element.editable = true"
+							@dblclick="element.editable = !store.isReadOnly"
 							@keydown.enter.stop.prevent="element.editable = false"
 							@blur="setBlockName($event, element)"
 						>
@@ -177,6 +177,7 @@ import Draggable from "vuedraggable"
 import ComponentLayers from "@/components/ComponentLayers.vue"
 
 import useCanvasStore from "@/stores/canvasStore"
+import useStudioStore from "@/stores/studioStore"
 import Block from "@/utils/block"
 import useComponentEditorStore from "@/stores/componentEditorStore"
 import SlotIcon from "@/components/Icons/SlotIcon.vue"
@@ -200,6 +201,7 @@ const props = withDefaults(
 )
 
 const canvasStore = useCanvasStore()
+const store = useStudioStore()
 const rootContainer = ref<HTMLElement | null>(null)
 const childLayers = new Map<string, LayerInstance>()
 const slotLayers = new Map<string, LayerInstance>()

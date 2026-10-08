@@ -69,6 +69,8 @@ const useStudioStore = defineStore("store", () => {
 		return pages
 	})
 	const customVueComponents = ref<CustomVueComponentMeta[]>([])
+	// standard apps are synced from code on migrate, so edits outside developer mode would be lost
+	const isReadOnly = computed(() => Boolean(activeApp.value?.is_standard) && !window.is_developer_mode)
 
 	// cross-panel navigation
 	const selectedVueFile = ref<string | null>(null)
@@ -136,6 +138,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function updateActiveApp(key: string, value: string) {
+		if (isReadOnly.value) return
 		return studioApps.setValue.submit(
 			{ name: activeApp.value?.name, [key]: value },
 			{
@@ -147,6 +150,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	async function deleteAppPage(appName: string, page: StudioPage) {
+		if (isReadOnly.value) return
 		const isHome = activeApp.value?.app_home === page.name
 		if (isHome) {
 			toast.error("Cannot delete this page because it is set as the App Home.")
@@ -166,6 +170,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	async function duplicateAppPage(appName: string, page: StudioPage) {
+		if (isReadOnly.value) return
 		toast.promise(
 			createResource({
 				url: "studio.studio.doctype.studio_page.copy_paste_handler.duplicate_page",
@@ -193,6 +198,7 @@ const useStudioStore = defineStore("store", () => {
 		copy: PageCopy & { blocks: BlockOptions[] } & Record<string, any>,
 		targetPage?: string,
 	) {
+		if (isReadOnly.value) return
 		const appName = activeApp.value!.name
 		const page: StudioPage = await call("studio.studio.doctype.studio_page.copy_paste_handler.paste_page", {
 			app_name: appName,
@@ -264,6 +270,10 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function savePage(rootBlock?: Block) {
+		if (isReadOnly.value) {
+			savingPage.value = false
+			return Promise.resolve()
+		}
 		if (rootBlock) {
 			pageBlocks.value = [rootBlock]
 		} else {
@@ -329,7 +339,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function updateActivePage(key: string, value: string | number) {
-		if (!activePage.value) return
+		if (!activePage.value || isReadOnly.value) return
 		const page = activePage.value
 		return studioPages.runDocMethod
 			.submit({
@@ -365,7 +375,7 @@ const useStudioStore = defineStore("store", () => {
 
 	async function publishPage() {
 		// the publish button and the command palette both publish; one at a time
-		if (!selectedPage.value || publishingPage.value) return
+		if (!selectedPage.value || publishingPage.value || isReadOnly.value) return
 		publishingPage.value = true
 
 		return studioPages.runDocMethod
@@ -411,7 +421,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	async function unpublishPage() {
-		if (!activePage.value) return
+		if (!activePage.value || isReadOnly.value) return
 		const page = activePage.value
 		const confirmed = await confirm(
 			`Are you sure you want to unpublish the page "${page.page_title}"? It will no longer be publicly accessible.`,
@@ -443,7 +453,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function revertPage() {
-		if (!activePage.value) return
+		if (!activePage.value || isReadOnly.value) return
 		dialog.confirm({
 			title: "Revert changes",
 			message:
@@ -474,7 +484,7 @@ const useStudioStore = defineStore("store", () => {
 
 	async function publishApp() {
 		// the publish button and the command palette both publish; one at a time
-		if (!activeApp.value || publishingApp.value) return
+		if (!activeApp.value || publishingApp.value || isReadOnly.value) return
 		publishingApp.value = true
 		return studioApps.runDocMethod.submit(
 			{
@@ -507,7 +517,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	async function unpublishApp() {
-		if (!activeApp.value) return
+		if (!activeApp.value || isReadOnly.value) return
 		const confirmed = await confirm(
 			`Are you sure you want to unpublish the app "${activeApp.value.app_name}"? It will no longer be publicly accessible.`,
 		)
@@ -757,6 +767,7 @@ const useStudioStore = defineStore("store", () => {
 		showPageOptions,
 		// studio app
 		activeApp,
+		isReadOnly,
 		setApp,
 		deleteApp,
 		updateActiveApp,

@@ -16,6 +16,7 @@
 					<ItemActions
 						class="-mt-1 self-start"
 						:menuOptions="getResourceMenu(resource_name)"
+						:editable="!store.isReadOnly"
 						@edit="openResource(resource_name)"
 					/>
 				</div>
@@ -23,7 +24,7 @@
 
 			<EmptyState v-else message="No resources added" />
 
-			<div class="mt-2 flex flex-col" v-if="store.activePage">
+			<div class="mt-2 flex flex-col" v-if="store.activePage && !store.isReadOnly">
 				<Button icon-left="lucide-plus" @click="showResourceDialog = true">Add Data Source</Button>
 				<ResourceDialog
 					v-model:showDialog="showResourceDialog"
@@ -58,6 +59,7 @@
 					<ItemActions
 						class="-mt-1 self-start"
 						:menuOptions="getVariableMenu(variable_name, value)"
+						:editable="!store.isReadOnly"
 						@edit="openVariable(variable_name)"
 					/>
 				</div>
@@ -65,7 +67,7 @@
 
 			<EmptyState v-else message="No variables added" />
 
-			<div class="mt-2 flex flex-col" v-if="store.activePage">
+			<div class="mt-2 flex flex-col" v-if="store.activePage && !store.isReadOnly">
 				<Button icon-left="lucide-plus" @click="showVariableDialog = true">Add Variable</Button>
 				<Dialog
 					v-model:open="showVariableDialog"
@@ -260,6 +262,7 @@ const getResourceMenu = (resource_name: string) => {
 			label: "Delete",
 			icon: "lucide-trash",
 			theme: "red",
+			condition: () => !store.isReadOnly,
 			onClick: () => deleteResource(resource_name),
 		},
 		{
@@ -384,6 +387,7 @@ const getVariableMenu = (variable_name: string, value: any) => {
 			label: "Delete",
 			icon: "lucide-trash",
 			theme: "red",
+			condition: () => !store.isReadOnly,
 			onClick: () => {
 				const variableConfig = store.variableConfigs[variable_name]
 				deleteVariable(variableConfig)

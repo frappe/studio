@@ -48,6 +48,7 @@
 			</div>
 
 			<ComponentProperties
+				:inert="store.isReadOnly"
 				v-show="
 					activeTab === 'Properties' ||
 					(activeTab === 'Styles' && combinePropsAndStylesTab && showPropertiesTab)
@@ -57,11 +58,13 @@
 				:block="canvasStore.activeCanvas?.selectedBlocks[0]"
 			/>
 			<ComponentStyles
+				:inert="store.isReadOnly"
 				v-show="activeTab === 'Styles'"
 				class="p-3"
 				:block="canvasStore.activeCanvas?.selectedBlocks[0]"
 			/>
 			<ComponentEvents
+				:inert="store.isReadOnly"
 				v-show="activeTab === 'Events'"
 				class="p-3"
 				:block="canvasStore.activeCanvas?.selectedBlocks[0]"

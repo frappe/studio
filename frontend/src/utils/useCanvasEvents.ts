@@ -23,7 +23,7 @@ export function useCanvasEvents(
 	useEventListener(container, "mousedown", (ev: MouseEvent) => {
 		const initialX = ev.clientX;
 		const initialY = ev.clientY;
-		if (store.mode === "select") {
+		if (store.mode === "select" || store.isReadOnly) {
 			return;
 		} else {
 			const pauseId = canvasHistory.value?.pause();

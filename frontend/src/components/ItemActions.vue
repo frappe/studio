@@ -3,6 +3,7 @@
 		class="invisible ml-auto flex items-center text-ink-gray-5 group-hover/item:visible has-[.active-item]:visible"
 	>
 		<button
+			v-if="editable"
 			class="flex cursor-pointer items-center rounded-1 p-1 text-ink-gray-6 hover:bg-surface-gray-4"
 			@click="$emit('edit')"
 		>
@@ -24,14 +25,19 @@
 <script setup lang="ts">
 import { Dropdown } from "frappe-ui"
 
-defineProps<{
-	menuOptions: Array<{
-		label: string
-		icon: string
-		theme?: string
-		onClick: () => void
-	}>
-}>()
+withDefaults(
+	defineProps<{
+		menuOptions: Array<{
+			label: string
+			icon: string
+			theme?: string
+			condition?: () => boolean
+			onClick: () => void
+		}>
+		editable?: boolean
+	}>(),
+	{ editable: true },
+)
 
 defineEmits<{
 	edit: []

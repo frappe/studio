@@ -26,6 +26,7 @@
 
 					<!-- Menu -->
 					<div
+						v-if="getPageMenu(page).length"
 						class="invisible ml-auto flex items-center gap-1.5 text-ink-gray-5 group-hover:visible has-[.active-item]:visible"
 					>
 						<Dropdown :options="getPageMenu(page)">
@@ -45,13 +46,13 @@
 
 		<div class="mt-4 flex-shrink-0">
 			<router-link
-				v-if="store.activeApp"
+				v-if="store.activeApp && !store.isReadOnly"
 				:to="{ name: 'StudioPage', params: { appID: store.activeApp?.name, pageID: 'new' } }"
 			>
 				<Button icon-left="lucide-plus" class="w-full">New Page</Button>
 			</router-link>
 		</div>
-		<RouterScript v-if="store.activeApp" />
+		<RouterScript v-if="store.activeApp && !store.isReadOnly" />
 	</div>
 </template>
 
@@ -72,6 +73,7 @@ const isAppHome = (page: StudioPage) => store.activeApp?.app_home === page.name
 
 const getPageMenu = (page: StudioPage) => {
 	if (isObjectEmpty(store.activeApp)) return []
+	if (store.isReadOnly) return getReadOnlyPageMenu(page)
 
 	const app = store.activeApp!
 
@@ -135,6 +137,11 @@ const getPageMenu = (page: StudioPage) => {
 			],
 		},
 	]
+}
+
+const getReadOnlyPageMenu = (page: StudioPage) => {
+	if (!isPageActive(page)) return []
+	return [{ label: "Copy Page", icon: "lucide-clipboard", onClick: () => copyEntirePage() }]
 }
 
 const openPage = (page: StudioPage) => {

@@ -102,7 +102,7 @@ commands.register({
 	icon: "lucide-globe",
 	group: "App",
 	// like the publish button: a fragment has to be saved or closed first
-	condition: () => Boolean(store.activePage) && !canvasStore.showFragmentCanvas,
+	condition: () => Boolean(store.activePage) && !canvasStore.showFragmentCanvas && !store.isReadOnly,
 	action: () => store.publishPage(),
 })
 
@@ -112,7 +112,7 @@ commands.register({
 	icon: "lucide-globe",
 	group: "App",
 	// like the publish button: a fragment has to be saved or closed first
-	condition: () => Boolean(store.activeApp) && !canvasStore.showFragmentCanvas,
+	condition: () => Boolean(store.activeApp) && !canvasStore.showFragmentCanvas && !store.isReadOnly,
 	action: () => store.publishApp(),
 })
 
@@ -194,7 +194,7 @@ commands.register({
 	title: "App Settings",
 	icon: "lucide-settings",
 	group: "General",
-	condition: () => Boolean(store.activeApp),
+	condition: () => Boolean(store.activeApp) && !store.isReadOnly,
 	action: () => (store.showAppDialog = true),
 })
 
@@ -224,6 +224,7 @@ commands.register({
 	group: "Edit",
 	inPalette: false,
 	keys: { combo: "Mod+D", description: "Duplicate Block" },
+	condition: () => !store.isReadOnly,
 	action: () => {
 		if (!blockController.isAnyBlockSelected() || blockController.multipleBlocksSelected()) return
 		blockController.getSelectedBlocks()[0].duplicateBlock()

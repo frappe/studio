@@ -7,6 +7,7 @@
 				variant="outline"
 				class="w-full"
 				:modelValue="pageTitle"
+				:disabled="store.isReadOnly"
 				@update:modelValue="(val: string) => store.updateActivePage('page_title', val)"
 			/>
 
@@ -19,6 +20,7 @@
 					class="w-full"
 					:hideClearButton="true"
 					:modelValue="pageRoute"
+					:disabled="store.isReadOnly"
 					@update:modelValue="
 						(val: string) => {
 							store.updateActivePage('route', val.startsWith('/') ? val : `/${val}`)
@@ -43,6 +45,7 @@
 				label="Allow Guest Access"
 				description="Anyone can access this page without logging in"
 				:modelValue="Boolean(page.allow_guest)"
+				:disabled="store.isReadOnly"
 				@update:modelValue="(val: boolean) => store.updateActivePage('allow_guest', val ? 1 : 0)"
 			/>
 

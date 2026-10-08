@@ -72,7 +72,13 @@
 								<template #prefix><span class="lucide-chevron-left !h-3 !w-3" /></template>
 								{{ parentFragmentName }}
 							</Button>
-							<Button variant="solid" class="text-xs" :loading="savingFragment" @click="saveFragmentMode">
+							<Button
+								v-if="!store.isReadOnly"
+								variant="solid"
+								class="text-xs"
+								:loading="savingFragment"
+								@click="saveFragmentMode"
+							>
 								{{ canvasStore.fragmentData.saveActionLabel || "Save" }}
 							</Button>
 						</div>
@@ -241,7 +247,7 @@ const savingFragment = ref(false)
 
 async function saveFragmentMode() {
 	const editedBlock = fragmentCanvas.value?.getRootBlock()
-	if (!editedBlock || savingFragment.value) return
+	if (!editedBlock || savingFragment.value || store.isReadOnly) return
 
 	savingFragment.value = true
 	try {
@@ -271,6 +277,7 @@ watch(
 	() => {
 		if (
 			store.selectedPage &&
+			!store.isReadOnly &&
 			!pageCanvas.value?.canvasProps?.settingCanvas &&
 			!store.settingPage &&
 			!store.savingPage &&
@@ -296,18 +303,28 @@ async function setPage() {
 	if (!pageID || pageID === store.selectedPage) return
 
 	if (pageID === "new") {
-		await studioPages.insert
-			.submit({
-				draft_blocks: [getRootBlock()],
-				studio_app: appID,
-			})
-			.then(async (data: StudioPage) => {
-				router.push({ name: "StudioPage", params: { appID: appID, pageID: data.name }, force: true })
-				await loadPage(appID, data.name)
-			})
+		await createPage(appID)
 	} else {
 		await loadPage(appID, pageID)
 	}
+}
+
+async function createPage(appID: string) {
+	// the New Page link is hidden for read-only apps, but the /new route can still be opened directly
+	if (store.activeApp?.name !== appID) await store.setApp(appID)
+	if (store.isReadOnly) {
+		toast.error("Standard apps can only be edited in developer mode")
+		const homePage = store.activeApp?.app_home
+		router.replace(homePage ? { name: "StudioPage", params: { appID, pageID: homePage } } : { name: "Home" })
+		return
+	}
+
+	const data: StudioPage = await studioPages.insert.submit({
+		draft_blocks: [getRootBlock()],
+		studio_app: appID,
+	})
+	router.push({ name: "StudioPage", params: { appID: appID, pageID: data.name }, force: true })
+	await loadPage(appID, data.name)
 }
 
 let loadingPageID: string | null = null
