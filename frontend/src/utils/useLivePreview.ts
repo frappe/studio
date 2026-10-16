@@ -18,7 +18,8 @@ export function useLivePreview() {
 		const { path, query, hash, meta } = router.currentRoute.value
 		if (meta.pageName !== pageName) return
 		const failure = await router.replace({ path, query, hash, force: true })
-		if (!failure) revision.value++
+		// an error page has no page to remount: the new route already mounted it
+		if (!failure && !meta.loadError) revision.value++
 	}, 300)
 
 	const onDocUpdate = (info: any) => {
