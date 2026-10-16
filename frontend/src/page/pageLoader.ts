@@ -1,4 +1,4 @@
-import { shallowRef, watch, type ShallowRef } from "vue"
+import { shallowReactive, shallowRef, watch, type ShallowRef } from "vue"
 import { useRouter, type Router, type RouteLocationNormalized } from "vue-router"
 import { fetchAppPage } from "@/utils/helpers"
 import { getBlockInstance } from "@/utils/serializer"
@@ -14,6 +14,7 @@ export type LoadedPage = {
 }
 
 const loadedPages = new Map<string, LoadedPage>()
+const pageLoadErrors = shallowReactive(new Map<string, unknown>())
 let latestNavigation = 0
 
 // beforeResolve guard: load the next page before the navigation completes. The page being left
@@ -23,15 +24,17 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 	const pageName = to.meta.pageName as string | undefined
 	if (!pageName) return
 	// same page, new params: the mounted page follows its route. A forced replace (preview reload) loads afresh.
-	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath) return
+	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath && !pageLoadErrors.has(from.fullPath)) return
 
-	const page = await fetchAppPage(window.app_name, pageName, Boolean(window.is_preview))
-	if (navigation !== latestNavigation) return
-	if (!page) return redirectToNotFound(router, to)
-
-	const pageRoute = shallowRef(to)
-	const scope = createPageScope(pageRoute, shallowRef(router))
+	pageLoadErrors.delete(to.fullPath)
+	let scope: PageScope | undefined
 	try {
+		const page = await fetchAppPage(window.app_name, pageName, Boolean(window.is_preview))
+		if (navigation !== latestNavigation) return
+		if (!page) return redirectToNotFound(router, to)
+
+		const pageRoute = shallowRef(to)
+		scope = createPageScope(pageRoute, shallowRef(router))
 		await scope.setPageVariables(page, page.variables)
 		await scope.setPageResources(page, false, page.resources)
 		if (navigation !== latestNavigation) return scope.teardownPage()
@@ -42,8 +45,9 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 		const root = getBlockInstance(JSON.parse(page.blocks)[0])
 		loadedPages.set(to.fullPath, { page, scope, pageRoute, root })
 	} catch (error) {
-		scope.teardownPage()
-		throw error
+		scope?.teardownPage()
+		// the navigation goes through and AppRenderer shows the error at the page's own URL
+		pageLoadErrors.set(to.fullPath, error)
 	}
 }
 
@@ -52,6 +56,11 @@ export function discardPage(to: RouteLocationNormalized, failure: unknown) {
 	if (!failure) return
 	loadedPages.get(to.fullPath)?.scope.teardownPage()
 	loadedPages.delete(to.fullPath)
+}
+
+// AppRenderer: the error that stopped the page at this path from loading
+export function getPageLoadError(fullPath: string) {
+	return pageLoadErrors.get(fullPath)
 }
 
 // AppPage setup: hand over the page loaded for the current route
