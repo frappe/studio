@@ -1,4 +1,4 @@
-import { shallowReactive, shallowRef, watch, type ShallowRef } from "vue"
+import { shallowRef, watch, type ShallowRef } from "vue"
 import { useRouter, type Router, type RouteLocationNormalized } from "vue-router"
 import { fetchAppPage } from "@/utils/helpers"
 import { getBlockInstance } from "@/utils/serializer"
@@ -14,7 +14,6 @@ export type LoadedPage = {
 }
 
 const loadedPages = new Map<string, LoadedPage>()
-const pageLoadErrors = shallowReactive(new Map<string, unknown>())
 let latestNavigation = 0
 
 // beforeResolve guard: load the next page before the navigation completes. The page being left
@@ -24,9 +23,8 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 	const pageName = to.meta.pageName as string | undefined
 	if (!pageName) return
 	// same page, new params: the mounted page follows its route. A forced replace (preview reload) loads afresh.
-	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath && !pageLoadErrors.has(from.fullPath)) return
+	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath && !from.meta.loadError) return
 
-	pageLoadErrors.delete(to.fullPath)
 	let scope: PageScope | undefined
 	try {
 		const page = await fetchAppPage(window.app_name, pageName, Boolean(window.is_preview))
@@ -46,8 +44,9 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 		loadedPages.set(to.fullPath, { page, scope, pageRoute, root })
 	} catch (error) {
 		scope?.teardownPage()
-		// the navigation goes through and AppRenderer shows the error at the page's own URL
-		pageLoadErrors.set(to.fullPath, error)
+		// the navigation goes through and AppRenderer shows the error at the page's own URL.
+		// meta is new for each navigation, so a retry or a superseded load never shows a stale error
+		to.meta.loadError = error
 	}
 }
 
@@ -56,11 +55,6 @@ export function discardPage(to: RouteLocationNormalized, failure: unknown) {
 	if (!failure) return
 	loadedPages.get(to.fullPath)?.scope.teardownPage()
 	loadedPages.delete(to.fullPath)
-}
-
-// AppRenderer: the error that stopped the page at this path from loading
-export function getPageLoadError(fullPath: string) {
-	return pageLoadErrors.get(fullPath)
 }
 
 // AppPage setup: hand over the page loaded for the current route
