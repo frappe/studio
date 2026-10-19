@@ -24,15 +24,16 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 	const pageName = to.meta.pageName as string | undefined
 	if (!pageName) return
 	// same page, new params: the mounted page follows its route. A forced replace (preview reload) loads afresh.
-	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath) return
+	if (pageName === from.meta.pageName && to.fullPath !== from.fullPath && !from.meta.loadError) return
 
-	const page = await fetchAppPage(window.app_name, pageName, Boolean(window.is_preview))
-	if (navigation !== latestNavigation) return
-	if (!page) return redirectToNotFound(router, to)
-
-	const pageRoute = shallowRef(to)
-	const scope = createPageScope(pageRoute, shallowRef(router))
+	let scope: PageScope | undefined
 	try {
+		const page = await fetchAppPage(window.app_name, pageName, Boolean(window.is_preview))
+		if (navigation !== latestNavigation) return
+		if (!page) return redirectToNotFound(router, to)
+
+		const pageRoute = shallowRef(to)
+		scope = createPageScope(pageRoute, shallowRef(router))
 		await scope.setPageVariables(page, page.variables)
 		await scope.setPageResources(page, false, page.resources)
 		if (navigation !== latestNavigation) return scope.teardownPage()
@@ -45,8 +46,10 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 		const root = getBlockInstance(JSON.parse(page.blocks)[0])
 		loadedPages.set(to.fullPath, { page, scope, pageRoute, root })
 	} catch (error) {
-		scope.teardownPage()
-		throw error
+		scope?.teardownPage()
+		// the navigation goes through and AppRenderer shows the error at the page's own URL.
+		// meta is new for each navigation, so a retry or a superseded load never shows a stale error
+		to.meta.loadError = error
 	}
 }
 
