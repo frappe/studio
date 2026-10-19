@@ -28,7 +28,12 @@
 			@blur="syncToParent"
 		/>
 
-		<span class="text-p-xs text-ink-gray-6" v-show="description" v-html="description"></span>
+		<span
+			class="text-p-sm text-ink-gray-6"
+			data-slot="description"
+			v-show="description"
+			v-html="description"
+		></span>
 		<Button
 			v-if="showSaveButton"
 			variant="solid"
@@ -58,6 +63,8 @@ import { EditorView, keymap, placeholder as placeholderExtension } from "@codemi
 import { indentMore, indentLess } from "@codemirror/commands"
 import { indentationMarkers } from "@replit/codemirror-indentation-markers"
 import { tomorrow } from "thememirror"
+import { tomorrowNight } from "@/utils/tomorrowNight"
+import useStudioStore from "@/stores/studioStore"
 import JSON5 from "json5"
 import { isPrivateKey } from "@/utils/helpers"
 import { normalizeCode } from "@/utils/code"
@@ -70,11 +77,13 @@ const props = withDefaults(
 	defineProps<{
 		language?: "json" | "javascript" | "html" | "css" | "vue"
 		modelValue?: string | object | Array<string | object> | null
+		valueMode?: "text" | "parsed"
 		height?: string
 		maxHeight?: string
 		autofocus?: boolean
 		showSaveButton?: boolean
 		showLineNumbers?: boolean
+		lineWrapping?: boolean
 		completions?: CompletionSource | CompletionSource[] | null
 		// when set, `completions` replaces ALL built-in sources (language snippets, window scope)
 		overrideCompletions?: boolean
@@ -95,6 +104,7 @@ const props = withDefaults(
 	{
 		language: "javascript",
 		modelValue: null,
+		valueMode: "parsed",
 		height: "auto",
 		maxHeight: "250px",
 		showLineNumbers: true,
@@ -104,6 +114,7 @@ const props = withDefaults(
 	},
 )
 const emit = defineEmits(["update:modelValue", "save"])
+const store = useStudioStore()
 
 const code = ref<string>("")
 const editorView = ref<EditorView | null>(null)
@@ -112,7 +123,7 @@ const editorView = ref<EditorView | null>(null)
 const syncToEditor = () => {
 	let value = props.modelValue ?? ""
 	try {
-		if (props.language === "json" || typeof value === "object") {
+		if (props.valueMode === "parsed" && (props.language === "json" || typeof value === "object")) {
 			value = JSON5.stringify(value, { replacer: jsonReplacer, space: 2, quote: '"' })
 			value = normalizeCode(value)
 		}
@@ -128,7 +139,7 @@ const syncToParent = () => {
 	try {
 		errorMessage.value = ""
 		let value = code.value || ""
-		if (value && !value.startsWith("{{")) {
+		if (value && props.valueMode === "parsed" && !value.startsWith("{{")) {
 			if (props.language === "json") {
 				value = JSON.parse(value)
 			} else if (props.language === "javascript" && isValidObjectString(value)) {
@@ -232,9 +243,9 @@ const extensions = computed(() => {
 		closeBrackets(),
 		indentationMarkers(),
 		getAutocompletionOptions(),
-		props.showLineNumbers ? EditorView.lineWrapping : [],
+		props.showLineNumbers || props.lineWrapping ? EditorView.lineWrapping : [],
 		isObjectLiteral.value ? customIndent : [],
-		tomorrow,
+		store.isDark ? tomorrowNight : tomorrow,
 		EditorView.theme({
 			"&": {
 				fontFamily: "monospace",

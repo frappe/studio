@@ -14,10 +14,8 @@
 		</div>
 
 		<div v-if="!isAIEnabled" class="flex flex-1 flex-col items-start gap-3 p-4">
-			<p class="text-p-xs text-ink-gray-6">
-				Configure an AI API key in Studio Settings to use the AI assistant.
-			</p>
-			<Button variant="subtle" label="Open Settings" @click="store.showStudioSettingsDialog = true" />
+			<p class="text-p-xs text-ink-gray-6">Add an AI API key in Settings to use the AI assistant.</p>
+			<Button variant="subtle" label="Open Settings" @click="store.openSettings('ai')" />
 		</div>
 
 		<div v-else ref="messagesEl" class="no-scrollbar flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -46,7 +44,7 @@
 				</div>
 				<div v-else class="flex w-full flex-col items-start gap-2">
 					<div
-						class="w-fit max-w-full break-words text-p-xs text-ink-gray-8 [&_a]:text-ink-blue-2 [&_a]:underline [&_code]:rounded-4 [&_code]:bg-surface-gray-2 [&_code]:px-1 [&_code]:py-0.5 [&_h1]:my-1.5 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:my-1.5 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-4 [&_pre]:bg-surface-gray-2 [&_pre]:p-2 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+						class="w-fit max-w-full break-words text-p-xs text-ink-gray-8 [&_a]:text-ink-blue-link [&_a]:underline [&_code]:rounded-4 [&_code]:bg-surface-gray-2 [&_code]:px-1 [&_code]:py-0.5 [&_h1]:my-1.5 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:my-1.5 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-4 [&_pre]:bg-surface-gray-2 [&_pre]:p-2 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
 						v-html="renderMarkdown(msg.content)"
 					/>
 
@@ -137,7 +135,7 @@
 						alt="Attached design"
 					/>
 					<button
-						class="text-ink-white absolute -right-1.5 -top-1.5 rounded-full bg-surface-gray-7 p-0.5 hover:bg-surface-gray-6"
+						class="absolute -right-1.5 -top-1.5 rounded-full bg-surface-gray-7 p-0.5 text-ink-base hover:bg-surface-gray-6"
 						title="Remove image"
 						@click="controller.clearImage()"
 					>
@@ -233,7 +231,7 @@ import { marked } from "marked"
 import DOMPurify from "dompurify"
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import { AIChatController } from "@/components/AIChatController"
 import { getBlockInstance, getBlockString } from "@/utils/serializer"
 import type { BlockOptions } from "@/types"
@@ -242,7 +240,7 @@ import LucideSparkle from "~icons/lucide/sparkle"
 
 const store = useStudioStore()
 const canvasStore = useCanvasStore()
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 const socket = inject<any>("socket")
 
 const isAIEnabled = computed(() => !!studioSettings.doc?.ai_api_key)
@@ -345,11 +343,13 @@ const controller = new AIChatController({
 	savePage: () => store.savePage(),
 	reloadSession,
 	scrollToBottom,
-	reloadPageData: ({ resources, variables, script, modified }) => {
+	reloadPageData: ({ resources, variables, script, router, modified }) => {
+		// the router editor opens from the app doc, so it must see what the agent saved
+		if (router) store.reloadActiveAppRouterScript()
 		const page = store.activePage
 		if (!page) return
-		if (resources) codeStore.setPageResources(page)
-		if (variables) codeStore.setPageVariables(page)
+		if (resources) pageScope.setPageResources(page)
+		if (variables) pageScope.setPageVariables(page)
 		if (script) store.reloadActivePageScript()
 		store.syncPageModified({ modified })
 	},

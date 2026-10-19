@@ -20,7 +20,7 @@ import frappeui from "frappe-ui/vite"
 import sharedDependencyResolver from "../../vite/sharedDependencyResolver.js"
 import studioRootAlias from "../../vite/studioRootAlias.js"
 import frameworkUIAlias from "../../vite/frameworkUIAlias.js"
-import frameworkUICodeEditorShim from "../../vite/frameworkUICodeEditorShim.js"
+import { mergeStudioAppConfigs } from "../../tailwind/studioAppConfigs.js"
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url))
 // bench apps folder (scripts -> src -> frontend -> studio -> apps)
@@ -79,7 +79,10 @@ const { values: argv } = parseArgs({
 		base: { type: "string" },
 		"custom-components": { type: "string" },
 		"page-scripts": { type: "string" },
+		"router-file": { type: "string" },
 		icons: { type: "string" },
+		"app-folder": { type: "string" },
+		"tailwind-content": { type: "string", multiple: true },
 	},
 	strict: false,
 })
@@ -97,6 +100,9 @@ await generateAppBuild(
 	argv["custom-components"],
 	argv["page-scripts"],
 	argv.icons,
+	argv["router-file"],
+	argv["app-folder"],
+	argv["tailwind-content"],
 )
 
 export async function generateAppBuild(
@@ -107,6 +113,9 @@ export async function generateAppBuild(
 	customComponentsJson,
 	pageScriptsJson,
 	icons,
+	routerFile,
+	appFolder,
+	tailwindContent = [],
 ) {
 	if (!appName) return
 
@@ -115,10 +124,10 @@ export async function generateAppBuild(
 	// pageScripts: [{ page_name, file_path }]
 	const pageScripts = pageScriptsJson ? JSON.parse(pageScriptsJson) : []
 	const componentSources = findComponentSources(componentList, customComponents)
-	const rendererContent = getRendererContent(componentSources, pageScripts)
+	const rendererContent = getRendererContent(componentSources, pageScripts, routerFile)
 	const tempRendererPath = writeRendererFile(appName, rendererContent)
 	const iconList = icons ? icons.split(",") : []
-	await buildWithVite(appName, tempRendererPath, outDir, base, iconList)
+	await buildWithVite(appName, tempRendererPath, outDir, base, iconList, appFolder, tailwindContent)
 	deleteRendererFile(tempRendererPath)
 }
 
@@ -167,7 +176,7 @@ function findComponentSources(appComponents, customComponents = {}) {
 	}
 }
 
-function getRendererContent(componentSources, pageScripts = []) {
+function getRendererContent(componentSources, pageScripts = [], routerFile = null) {
 	const {
 		frappeUIComponents,
 		frappeUIMolecules,
@@ -186,8 +195,6 @@ function getRendererContent(componentSources, pageScripts = []) {
 		frappeUIExperimentalComponents.length > 0
 			? `import { ${frappeUIExperimentalComponents.join(",\n ")} } from "frappe-ui/experimental";`
 			: ""
-	const frappeUIChartImports =
-		frappeUICharts.length > 0 ? `import { ${frappeUICharts.join(",\n ")} } from "frappe-ui/charts";` : ""
 	const frameworkUIImports = getFrameworkUIImports(frameworkUIComponents)
 	const studioImports = studioComponents
 		.map((comp) => `import ${comp} from "@/components/AppLayout/${comp}.vue"`)
@@ -201,7 +208,10 @@ function getRendererContent(componentSources, pageScripts = []) {
 		...frappeUIComponents.map((comp) => `app.component("${comp}", ${comp})`),
 		...frappeUIMolecules.map((comp) => `app.component("${comp}", ${comp})`),
 		...frappeUIExperimentalComponents.map((comp) => `app.component("${comp}", ${comp})`),
-		...frappeUICharts.map((comp) => `app.component("${comp}", ${comp})`),
+		...frappeUICharts.map(
+			(comp) =>
+				`app.component("${comp}", defineAsyncComponent(() => import("frappe-ui/charts").then((charts) => charts.${comp})))`,
+		),
 		...frameworkUIComponents.map((comp) => `app.component("${comp}", ${comp})`),
 		...studioComponents.map((comp) => `app.component("${comp}", ${comp})`),
 		...customComponentNames.map((comp) => `app.component("${comp}", ${comp})`),
@@ -221,18 +231,24 @@ ${pageScripts
 })`
 		: ""
 
+	// A standard app's studio/<app>/router.ts is compiled in; a custom app's router script is served with the page.
+	const routerImport = routerFile ? `import routerConfig from ${JSON.stringify(routerFile)}` : ""
+	const routerConfig = routerFile ? "routerConfig" : ""
+
 	const rendererContent = `import "@/index.css"
-import { createApp } from "vue"
+import { createApp, defineAsyncComponent } from "vue"
 import { createPinia } from "pinia"
 import "@/setupFrappeUIResource"
-import app_router from "@/router/app_router"
+import { createAppRouter } from "@/router/app_router"
+import ErrorPage from "@/pages/ErrorPage.vue"
 import AppRenderer from "@/AppRenderer.vue"
 import { resourcesPlugin } from "frappe-ui"
+import { initSocket } from "@/socket"
+${routerImport}
 
 ${frappeUIImports}
 ${frappeUIMoleculeImports}
 ${frappeUIExperimentalImports}
-${frappeUIChartImports}
 ${frameworkUIImports}
 ${studioImports}
 ${customImports}
@@ -241,15 +257,21 @@ ${pageScriptImport}
 const app = createApp(AppRenderer)
 const pinia = createPinia()
 
-app.use(app_router)
 app.use(pinia)
 app.use(resourcesPlugin)
+app.provide("socket", initSocket())
 
 ${componentRegistrations}
 window.__APP_COMPONENTS__ = app._context.components
 
 ${pageScriptSetup}
-app.mount("#app")`
+
+createAppRouter(${routerConfig})
+	.then((router) => app.use(router).mount("#app"))
+	.catch((error) => {
+		console.error(error)
+		createApp(ErrorPage, { error }).mount("#app")
+	})`
 	return rendererContent
 }
 
@@ -283,7 +305,15 @@ function writeRendererFile(appName, content) {
 	return rendererPath
 }
 
-async function buildWithVite(appName, entryFilePath, outDir, basePath, icons = []) {
+async function buildWithVite(
+	appName,
+	entryFilePath,
+	outDir,
+	basePath,
+	icons = [],
+	appFolder,
+	tailwindContent = [],
+) {
 	outDir = outDir || path.resolve(__dirname, `../../../studio/public/app_builds/${appName}`)
 	basePath = basePath || `/assets/studio/app_builds/${appName}/`
 
@@ -305,7 +335,6 @@ async function buildWithVite(appName, entryFilePath, outDir, basePath, icons = [
 				? [
 						// Resolves @framework/ui's own deps from studio's node_modules
 						(await import("@framework/ui/vite")).default(),
-						frameworkUICodeEditorShim(APPS_DIR, path.resolve(__dirname, "../../")),
 					]
 				: []),
 		],
@@ -331,7 +360,7 @@ async function buildWithVite(appName, entryFilePath, outDir, basePath, icons = [
 		},
 		css: {
 			postcss: {
-				plugins: [tailwindcss(getAppTailwindConfig(icons)), autoprefixer()],
+				plugins: [tailwindcss(getAppTailwindConfig(appFolder, icons, tailwindContent)), autoprefixer()],
 			},
 		},
 		build: {
@@ -355,15 +384,24 @@ async function buildWithVite(appName, entryFilePath, outDir, basePath, icons = [
 	console.log(`Vite build completed for ${appName}`)
 }
 
-function getAppTailwindConfig(appIconClasses) {
+function getAppTailwindConfig(appFolder, appIconClasses, appTailwindContent) {
 	const editorConfig = loadTailwindConfig(path.resolve(__dirname, "../../tailwind.config.js"))
+	// The editor scans every studio app; an app build scans only its own pages
+	const baseConfig = {
+		...editorConfig,
+		content: [
+			...editorConfig.content.filter((entry) => !entry.includes("/*/studio/")),
+			...appTailwindContent,
+		],
+	}
+	const config = mergeStudioAppConfigs(baseConfig, appFolder ? [appFolder] : [])
 
 	// The editor needs every icon for its picker. App builds replace that rule
 	// with the app's icon classes to avoid shipping CSS for the entire icon set.
-	const sharedSafelist = editorConfig.safelist.filter((entry) => entry.pattern?.source !== "^lucide-")
+	const sharedSafelist = config.safelist.filter((entry) => entry.pattern?.source !== "^lucide-")
 
 	return {
-		...editorConfig,
+		...config,
 		safelist: [...sharedSafelist, ...appIconClasses],
 	}
 }

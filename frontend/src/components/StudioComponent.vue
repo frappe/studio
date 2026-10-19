@@ -1,5 +1,9 @@
 <template>
-	<div v-if="error" class="border-ink-red-5 flex flex-col gap-2 border p-2 text-ink-red-5" ref="componentRef">
+	<div
+		v-if="error"
+		class="flex flex-col gap-2 border border-outline-red-3 p-2 text-ink-red-5"
+		ref="componentRef"
+	>
 		<p class="text-sm-semibold">An error occurred while rendering {{ block.componentName }}:</p>
 		<pre class="text-xs">{{ error }}</pre>
 	</div>
@@ -117,7 +121,7 @@ import StudioComponentWrapper from "@/components/StudioComponentWrapper.vue"
 import SlotScopeProvider from "@/components/SlotScopeProvider.vue"
 import ComponentEditor from "@/components/ComponentEditor.vue"
 import StudioComponentEditorWrapper from "@/components/StudioComponentEditorWrapper.vue"
-import { customVueComponentsRegistry } from "@/globals"
+import { customVueComponentsRegistry } from "@/utils/customVueComponents"
 
 import Block from "@/utils/block"
 import useCanvasStore from "@/stores/canvasStore"
@@ -130,7 +134,7 @@ import type { CanvasProps } from "@/types/StudioCanvas"
 import type { SlotScope } from "@/types"
 import type HTML from "@/components/AppLayout/HTML.vue"
 import MissingComponent from "@/components/MissingComponent.vue"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 
 const props = withDefaults(
 	defineProps<{
@@ -149,7 +153,7 @@ defineOptions({
 
 const store = useStudioStore()
 const canvasStore = useCanvasStore()
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 
 const isComponentReady = ref(false)
 const editor = ref<InstanceType<typeof ComponentEditor> | InstanceType<typeof HTML> | null>(null)
@@ -174,7 +178,7 @@ const styles = computed(() => {
 	Object.entries(_styles).forEach(([key, value]) => {
 		if (value) {
 			if (isDynamicValue(value.toString())) {
-				_styles[key] = codeStore.getDynamicValue(value.toString(), evaluationContext.value)
+				_styles[key] = pageScope.getDynamicValue(value.toString(), evaluationContext.value)
 			}
 		}
 	})
@@ -221,9 +225,9 @@ const getComponentProps = () => {
 	const propValues = props.block.getPropsAndAttributes()
 	Object.entries(propValues).forEach(([propName, propValue]) => {
 		if (propValue?.$type === "variable") {
-			propValues[propName] = codeStore.getValueFromVariable(propValue.name, evaluationContext.value)
+			propValues[propName] = pageScope.getValueFromVariable(propValue.name, evaluationContext.value)
 		} else {
-			propValues[propName] = codeStore.evaluateDynamicValues(propValue, evaluationContext.value)
+			propValues[propName] = pageScope.evaluateDynamicValues(propValue, evaluationContext.value)
 		}
 	})
 	return propValues
@@ -240,7 +244,7 @@ const vModelListeners = computed(() => {
 		if (propValue?.$type === "variable") {
 			const eventName = `update:${propName}`
 			listeners[eventName] = (newValue: any) => {
-				codeStore.setValueInVariable(propValue.name, newValue, evaluationContext.value)
+				pageScope.setValueInVariable(propValue.name, newValue, evaluationContext.value)
 			}
 		}
 	})
@@ -263,7 +267,7 @@ const componentRef = ref<ComponentPublicInstance | null>(null)
 // visibility
 const showComponent = computed(() => {
 	if (props.block.visibilityCondition) {
-		return codeStore.getDynamicValue(props.block.visibilityCondition, evaluationContext.value)
+		return pageScope.getDynamicValue(props.block.visibilityCondition, evaluationContext.value)
 	}
 	return true
 })
