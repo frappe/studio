@@ -70,13 +70,13 @@ workflows are not interchangeable.
 ## Page code and components
 
 - A custom (database-only) page uses a bare script body in
-  `Studio Page.script`: no imports or export. Page resources and variables
-  are already in scope; variables are refs.
+  `Studio Page.script`: no imports or export. Page resources, Vue reactivity
+  APIs, `route` and `router` are already in scope; declare page state as refs.
 - A standard page uses a sibling `.ts` module with
   `export default function setup(context) { ... }`. Import Vue and Frappe UI
-  APIs explicitly. `context` supplies page resources, variables, `route`,
-  `router`, `call`, `toast` and `socket` (the app's socket.io connection). Return every state value or handler used by bindings and events;
-  keep state in code rather than Studio variables. Never mix the two script
+  APIs explicitly. `context` supplies page resources, `route`, `router`,
+  `call`, `toast` and `socket` (the app's socket.io connection). Return every
+  state value or handler used by bindings and events. Never mix the two script
   forms.
 - Shared code for a standard app belongs under its Studio app folder and can
   be imported via `@app/...`.

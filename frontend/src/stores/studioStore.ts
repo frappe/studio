@@ -3,11 +3,10 @@ import { useDark, useDebounceFn, useStorage, useToggle } from "@vueuse/core"
 import router from "@/router/studio_router"
 import { defineStore } from "pinia"
 
-import { fetchApp, fetchPage, confirm, getInitialVariableValue, getRouteVariables } from "@/utils/helpers"
+import { fetchApp, fetchPage, confirm, getRouteVariables } from "@/utils/helpers"
 import { getBlockInstance, getRootBlock, getBlockCopyWithoutParent, jsToJson } from "@/utils/serializer"
 import { studioPages } from "@/data/studioPages"
 import { studioApps } from "@/data/studioApps"
-import { studioVariables } from "@/data/studioVariables"
 
 import Block from "@/utils/block"
 import useCanvasStore from "@/stores/canvasStore"
@@ -21,6 +20,7 @@ import type { StudioApp } from "@/types/Studio/StudioApp"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { PageCopy } from "@/utils/blockCopyPaste"
 import type {
+	BindingOption,
 	BlockOptions,
 	LeftPanelOptions,
 	RightPanelOptions,
@@ -30,7 +30,6 @@ import type {
 } from "@/types"
 import ComponentContextMenu from "@/components/ComponentContextMenu.vue"
 import type ComponentLayers from "@/components/ComponentLayers.vue"
-import type { Variable, VariableOption } from "@/types/Studio/StudioPageVariable"
 import { toast, dialog } from "frappe-ui"
 import { createResource, call } from "frappe-ui"
 
@@ -255,8 +254,7 @@ const useStudioStore = defineStore("store", () => {
 		}
 		activePage.value = page
 		loadRouteVariables(page)
-		await setPageData(page)
-		await pageScope.setPageScript(page, Boolean(page.is_standard))
+		await pageScope.initializePage(page)
 
 		const blocks = JSON.parse(page.draft_blocks || page.blocks || "[]")
 		if (blocks.length === 0) {
@@ -401,10 +399,11 @@ const useStudioStore = defineStore("store", () => {
 
 	async function reloadActivePageScript() {
 		if (!activePage.value) return
-		const page = await fetchPage(activePage.value.name)
-		if (!page) return
+		const pageName = activePage.value.name
+		const page = await fetchPage(pageName)
+		if (!page || activePage.value?.name !== pageName) return
 		activePage.value = page
-		await pageScope.setPageScript(page, Boolean(page.is_standard))
+		await pageScope.setPageScript(page)
 	}
 
 	async function publishPage() {
@@ -724,10 +723,7 @@ const useStudioStore = defineStore("store", () => {
 	const resetState = useDebounceFn(async () => {
 		const page = activePage.value
 		if (!page) return
-		// re-resolve data sources with the new value, then re-run the page script so bindings that
-		// derive from a resource (e.g. refs seeded from note.doc via a watcher) re-bind to the new doc.
-		await pageScope.setPageResources(page, true)
-		await pageScope.setPageScript(page, Boolean(page.is_standard))
+		await pageScope.initializePage(page)
 	}, 300)
 
 	const codeStore = useCodeStore()
@@ -735,51 +731,7 @@ const useStudioStore = defineStore("store", () => {
 	codeStore.setRouteObject(routeObject)
 	codeStore.setRouterObject(readonly(router))
 
-	// A page script (or a composable/util it imports) hot-updated. Re-run it in place when it's the
-	// active page so new refs/functions and changed dependency code show up on the canvas, in the
-	// value selectors and in completions — no reload. Non-active pages refresh lazily on navigation
-	// (studioPageScripts caches the latest setup).
-	async function setPageData(page: StudioPage) {
-		await pageScope.setPageVariables(page)
-		await pageScope.setPageResources(page, true)
-	}
-
-	const variableConfigs = computed<Record<string, Variable>>(() => {
-		const configs: Record<string, Variable> = {}
-		studioVariables.data.map((variable: Variable) => {
-			configs[variable.variable_name] = {
-				...variable,
-				initial_value: getInitialVariableValue(variable),
-			}
-		})
-		return configs
-	})
-
-	const variableOptions = computed(() => {
-		const options: VariableOption[] = []
-
-		function traverse(obj: any, path = "") {
-			for (const key in obj) {
-				const currentPath = path ? `${path}.${key}` : key
-				const variableType = path === "" ? variableConfigs.value[key]?.variable_type : typeof obj[key]
-				options.push({
-					value: currentPath,
-					label: currentPath,
-					type: variableType,
-				})
-
-				if (typeof obj[key] === "object" && obj[key] !== null) {
-					// add nested properties
-					traverse(obj[key], currentPath)
-				}
-			}
-		}
-
-		traverse(pageScope.variables)
-		return options
-	})
-
-	const pageScriptBindingOptions = computed<VariableOption[]>(() => {
+	const pageScriptBindingOptions = computed<BindingOption[]>(() => {
 		return Object.entries(pageScope.pageScriptTemplateBindings).map(([key, value]) => ({
 			value: key,
 			label: key,
@@ -857,9 +809,6 @@ const useStudioStore = defineStore("store", () => {
 		// styles
 		propertyFilter,
 		// data/code
-		variableConfigs,
-		setPageData,
-		variableOptions,
 		pageScriptBindingOptions,
 	}
 })

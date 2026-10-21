@@ -91,6 +91,8 @@ export type ComponentProps = Record<string, ComponentProp>
 
 // controls
 export type SelectOption = { value: string; label: string }
+// a pickable page-script binding / data path, tagged with its runtime type
+export type BindingOption = SelectOption & { type: string }
 
 // dynamic data
 export type ExpressionEvaluationContext = Record<string, any> | undefined

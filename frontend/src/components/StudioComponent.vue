@@ -225,7 +225,7 @@ const getComponentProps = () => {
 	const propValues = props.block.getPropsAndAttributes()
 	Object.entries(propValues).forEach(([propName, propValue]) => {
 		if (propValue?.$type === "variable") {
-			propValues[propName] = pageScope.getValueFromVariable(propValue.name, evaluationContext.value)
+			propValues[propName] = pageScope.getValueFromBinding(propValue.name, evaluationContext.value)
 		} else {
 			propValues[propName] = pageScope.evaluateDynamicValues(propValue, evaluationContext.value)
 		}
@@ -244,7 +244,7 @@ const vModelListeners = computed(() => {
 		if (propValue?.$type === "variable") {
 			const eventName = `update:${propName}`
 			listeners[eventName] = (newValue: any) => {
-				pageScope.setValueInVariable(propValue.name, newValue, evaluationContext.value)
+				pageScope.setValueInBinding(propValue.name, newValue, evaluationContext.value)
 			}
 		}
 	})

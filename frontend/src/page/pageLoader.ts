@@ -33,10 +33,7 @@ export async function loadPage(router: Router, to: RouteLocationNormalized, from
 	const pageRoute = shallowRef(to)
 	const scope = createPageScope(pageRoute, shallowRef(router))
 	try {
-		await scope.setPageVariables(page, page.variables)
-		await scope.setPageResources(page, false, page.resources)
-		if (navigation !== latestNavigation) return scope.teardownPage()
-		await scope.setPageScript(page, Boolean(page.is_standard))
+		await scope.initializePage(page, { preloadedResources: page.resources })
 		if (navigation !== latestNavigation) return scope.teardownPage()
 		// before the block tree, so no block fetches its component (Guests can't read Studio Component)
 		useComponentStore().setComponents(page.components || [])

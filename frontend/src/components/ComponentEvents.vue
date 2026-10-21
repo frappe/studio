@@ -270,10 +270,10 @@ const loadDoctypeFields = async (doctype: string) => {
 }
 
 const getDefaultFieldRows = () => {
-	const variables = Object.keys(pageScope.variables)
+	const bindings = pageScope.pageScriptTemplateBindings
 	return doctypeFields.value.map((field) => ({
 		field: field.value,
-		value: variables.includes(field.value) ? field.value : "",
+		value: field.value in bindings ? field.value : "",
 		name: field.value,
 	}))
 }
@@ -327,10 +327,10 @@ const actions: ActionConfigurations = {
 					columns: [
 						{ label: "Field", fieldname: "field", fieldtype: "select", options: doctypeFields.value },
 						{
-							label: "Variable",
+							label: "Value",
 							fieldname: "value",
 							fieldtype: "select",
-							options: [...store.variableOptions, ...store.pageScriptBindingOptions],
+							options: store.pageScriptBindingOptions,
 						},
 					],
 					rows: newEvent.value.fields,

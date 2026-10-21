@@ -6,12 +6,12 @@
 		side="left"
 		align="start"
 		:modelValue="null"
-		@update:modelValue="(value) => value != null && emit('update:modelValue', String(value), bindVariable)"
+		@update:modelValue="(value) => value != null && emit('update:modelValue', String(value), syncState)"
 	>
 		<template #trigger>
 			<IconButton
-				:icon="bindVariable ? Link2 : LucideCirclePlus"
-				:label="bindVariable ? 'Synced with variable. Click to change.' : 'Click to set dynamic value'"
+				:icon="syncState ? Link2 : LucideCirclePlus"
+				:label="syncState ? 'Synced with page state. Click to change.' : 'Click to set dynamic value'"
 				tooltipPlacement="left"
 				class="mr-1"
 				:class="attrs.class"
@@ -25,10 +25,10 @@
 				class="flex items-center gap-1 border-t border-outline-gray-1 px-2 py-1 text-base"
 				@mousedown.prevent
 			>
-				<Tooltip text="Changing the selected variable value will change the prop value and vice versa">
+				<Tooltip text="Changing the selected value will change the prop value and vice versa">
 					<span class="lucide-info size-3 text-ink-gray-5" />
 				</Tooltip>
-				<Switch v-model="bindVariable" label="Sync with variable" class="w-full hover:bg-transparent" />
+				<Switch v-model="syncState" label="Sync with state" class="w-full hover:bg-transparent" />
 			</div>
 		</template>
 	</Combobox>
@@ -42,9 +42,8 @@ import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
 import useComponentEditorStore from "@/stores/componentEditorStore"
 import Block from "@/utils/block"
-import type { VariableOption } from "@/types/Studio/StudioPageVariable"
 import type { ComponentInput } from "@/types/Studio/StudioComponent"
-import type { SlotScope } from "@/types"
+import type { BindingOption, SlotScope } from "@/types"
 import { isObjectEmpty } from "@/utils/helpers"
 import { getBindingType } from "@/utils/parseCode"
 import { usePageScope } from "@/stores/codeStore"
@@ -55,16 +54,16 @@ import LucideCirclePlus from "~icons/lucide/circle-plus"
 defineOptions({ inheritAttrs: false })
 const attrs = useAttrs()
 
-const props = defineProps<{ block?: Block; isVariableBound?: string | null }>()
+const props = defineProps<{ block?: Block; boundStateName?: string | null }>()
 const emit = defineEmits<{
-	(event: "update:modelValue", value: string, bindVariable: boolean): void
+	(event: "update:modelValue", value: string, syncState: boolean): void
 }>()
-const bindVariable = ref(!!props.isVariableBound)
+const syncState = ref(!!props.boundStateName)
 
 watch(
-	() => props.isVariableBound,
+	() => props.boundStateName,
 	(newValue) => {
-		bindVariable.value = !!newValue
+		syncState.value = !!newValue
 	},
 )
 
@@ -79,7 +78,7 @@ const dynamicValueOptions = computed(() => {
 		// Component context
 		const componentInputs = useComponentEditorStore().componentInputs
 		if (!isObjectEmpty(componentInputs)) {
-			const componentContext: VariableOption[] = []
+			const componentContext: BindingOption[] = []
 			componentInputs.map?.((input: ComponentInput) => {
 				componentContext.push({
 					value: `inputs.${input.input_name}`,
@@ -93,14 +92,6 @@ const dynamicValueOptions = computed(() => {
 			})
 		}
 	} else {
-		// Variables group
-		if (store.variableOptions.length > 0) {
-			groups.push({
-				group: "Variables",
-				options: store.variableOptions,
-			})
-		}
-
 		// Scoped slot props exposed by the enclosing component (Repeater's dataItem, List's item, ...)
 		const slotScopeOptions = getSlotScopeOptions(props.block?.slotScope)
 		if (slotScopeOptions.length) {
@@ -113,9 +104,7 @@ const dynamicValueOptions = computed(() => {
 		// Data Sources group
 		const dataSourceOptions = Object.keys(pageScope.resources).map((resourceName) => {
 			const completion =
-				pageScope.resources[resourceName]?.resource_type === "Document"
-					? `${resourceName}.doc`
-					: `${resourceName}.data`
+				"doc" in (pageScope.resources[resourceName] ?? {}) ? `${resourceName}.doc` : `${resourceName}.data`
 			return {
 				value: completion,
 				label: resourceName,
@@ -158,7 +147,7 @@ const comboboxOptions = computed(() =>
 	})),
 )
 
-function getSlotScopeOptions(slotScope?: SlotScope | null): VariableOption[] {
+function getSlotScopeOptions(slotScope?: SlotScope | null): BindingOption[] {
 	return Object.entries(slotScope || {}).flatMap(([name, value]) => {
 		if (value && typeof value === "object" && !Array.isArray(value)) {
 			return Object.keys(value).map((key) => ({

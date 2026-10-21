@@ -31,9 +31,9 @@
 			>
 				<DynamicValueSelector
 					:block="block"
-					:isVariableBound="prop.value?.$type === 'variable' ? prop.value.name : null"
+					:boundStateName="prop.value?.$type === 'variable' ? prop.value.name : null"
 					:class="['opacity-50', { 'mt-1 self-start': prop.inputType === 'code' }]"
-					@update:modelValue="(varName, bindVariable) => setDynamicValue(prop.name, varName, bindVariable)"
+					@update:modelValue="(bindingName, syncState) => setDynamicValue(prop.name, bindingName, syncState)"
 				/>
 				<Code
 					v-if="prop.inputType === 'code'"
@@ -105,8 +105,9 @@ function removeDeprecatedProps() {
 	deprecatedProps.value.forEach((prop) => props.block.removeProp(prop.name))
 }
 
-function setDynamicValue(propName: string, varName: string, bindVariable: boolean) {
-	props.block.setProp(propName, bindVariable ? { $type: "variable", name: varName } : `{{ ${varName} }}`)
+function setDynamicValue(propName: string, bindingName: string, syncState: boolean) {
+	// two-way (v-model) binding; `$type: "variable"` is the stored tag for it
+	props.block.setProp(propName, syncState ? { $type: "variable", name: bindingName } : `{{ ${bindingName} }}`)
 }
 
 function formatValue(value: any) {

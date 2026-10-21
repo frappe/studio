@@ -109,12 +109,11 @@ def _build_shared_registry() -> ToolRegistry:
 
 
 def build_custom_page_registry() -> ToolRegistry:
-	"""Non-exported (visual/DB) app: reactive state as Studio Page variables, page logic as a bare
-	interpreted script. No file surface — the app lives in the DB."""
-	from studio.ai.agent.tools import router, scripts, variables
+	"""Non-exported (visual/DB) app: reactive state and page logic both live in a bare interpreted
+	page script. No file surface — the app lives in the DB."""
+	from studio.ai.agent.tools import router, scripts
 
 	registry = _build_shared_registry()
-	registry.extend(variables.TOOLS)
 	registry.extend(scripts.build_tools(is_standard=False))
 	registry.extend(router.TOOLS)
 	return registry
@@ -122,8 +121,7 @@ def build_custom_page_registry() -> ToolRegistry:
 
 def build_standard_page_registry() -> ToolRegistry:
 	"""Standard (exported) app: a real TypeScript codebase. State/logic live in setup() modules,
-	stores and composables edited as files — so it gets the file tools and the module script form, and
-	NO variable-doctype tools (state is declared in code instead)."""
+	stores and composables edited as files — so it gets the file tools and the module script form."""
 	from studio.ai.agent.tools import files, scripts
 
 	registry = _build_shared_registry()

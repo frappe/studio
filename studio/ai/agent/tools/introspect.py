@@ -20,9 +20,9 @@ _MAX_FIELDS = 80
 
 
 def describe_page_data(page) -> dict:
-	"""The page's data sources (with the fields each fetches) + variables — the exact
-	set the model may bind to. Shared by get_page_state and the generate_page generator
-	so both see the same available data."""
+	"""The page's data sources (with the fields each fetches) — the exact set the model may bind to.
+	Shared by get_page_state and the generate_page generator so both see the same available data.
+	Reactive state lives in the page script; read it with get_page_script."""
 	sources = []
 	for r in page.resources or []:
 		src = {"name": r.resource_name, "type": r.resource_type}
@@ -31,8 +31,7 @@ def describe_page_data(page) -> dict:
 		if fields := _resource_fields(r):
 			src["fields"] = fields
 		sources.append(src)
-	variables = [{"name": v.variable_name, "type": v.variable_type} for v in (page.variables or [])]
-	return {"data_sources": sources, "variables": variables}
+	return {"data_sources": sources}
 
 
 def _resource_fields(r) -> list:
@@ -47,9 +46,9 @@ def _resource_fields(r) -> list:
 
 
 def run_get_page_state(ctx, args: dict) -> str:
-	"""A compact snapshot of the page's DATA wiring — existing data sources,
-	variables, and whether a page script is set. The block tree itself is already
-	in the conversation context, so it is not repeated here."""
+	"""A compact snapshot of the page's DATA wiring — existing data sources and whether
+	a page script is set. The block tree itself is already in the conversation context,
+	so it is not repeated here."""
 	page = frappe.get_doc("Studio Page", ctx.page_id) if ctx.page_id else None
 	if page is None:
 		return "No page in context."
@@ -127,9 +126,10 @@ get_page_state = Tool(
 	handler=run_get_page_state,
 	description=(
 		"Read the page's current DATA wiring: the data sources already defined (name, type, "
-		"doctype), the variables, and whether a page script exists. Call this first when a request "
-		"involves showing or binding data, so you don't recreate a source that already exists. The "
-		"block tree is already in your context — this covers only the data layer."
+		"doctype) and whether a page script exists. Call this first when a request involves showing "
+		"or binding data, so you don't recreate a source that already exists. Reactive state lives "
+		"in the page script — read it with get_page_script. The block tree is already in your "
+		"context — this covers only the data layer."
 	),
 	parameters={"type": "object", "properties": {}},
 )

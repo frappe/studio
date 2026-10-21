@@ -217,7 +217,7 @@ describe("data source editor", () => {
 		// after the test's queued saves, so the panel loads the data sources they added
 		cy.then(() => {
 			useStudioStore().activePage = page
-			return usePageScope().setPageResources(page, true)
+			return usePageScope().setPageResources(page)
 		})
 		cy.mount(DataPanel, { global: { plugins: [pinia, resourcesPlugin] } })
 	}

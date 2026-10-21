@@ -343,13 +343,12 @@ const controller = new AIChatController({
 	savePage: () => store.savePage(),
 	reloadSession,
 	scrollToBottom,
-	reloadPageData: ({ resources, variables, script, router, modified }) => {
+	reloadPageData: ({ resources, script, router, modified }) => {
 		// the router editor opens from the app doc, so it must see what the agent saved
 		if (router) store.reloadActiveAppRouterScript()
 		const page = store.activePage
 		if (!page) return
 		if (resources) pageScope.setPageResources(page)
-		if (variables) pageScope.setPageVariables(page)
 		if (script) store.reloadActivePageScript()
 		store.syncPageModified({ modified })
 	},

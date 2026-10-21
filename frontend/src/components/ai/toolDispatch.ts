@@ -163,7 +163,7 @@ export class ToolDispatcher {
 		if (args.data_key) block.setProp("dataKey", args.data_key)
 	}
 
-	/** Two-way bind an input's value to a variable (v-model): prop = {$type:variable}. */
+	/** Two-way bind an input's value to a page-script ref (v-model): prop = {$type:variable}. */
 	private syncVariable(args: Record<string, any>) {
 		const block = this.ctx.getCanvas()?.findBlock(args.component_id)
 		if (block && args.variable_name) {

@@ -85,7 +85,7 @@
 <script lang="ts">
 import { reactive } from "vue"
 
-export type PasteConflictKind = "components" | "resources" | "variables"
+export type PasteConflictKind = "components" | "resources"
 export type PasteConflictResolution = "existing" | "copied"
 
 export interface PasteConflictChoice {
@@ -161,7 +161,6 @@ import { List, ListCell, ListHeader, ListHeaderCell, ListRow, ListRows } from "f
 const typeLabels: Record<PasteConflictKind, string> = {
 	components: "Component",
 	resources: "Data source",
-	variables: "Variable",
 }
 
 const resolutionOptions = [

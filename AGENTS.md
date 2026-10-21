@@ -2,7 +2,7 @@
 
 ## Overview
 
-Studio is a visual app builder for the Frappe Framework. It allows developers to build modern web applications using a drag & drop layout builder, wire Frappe Framework data sources, edit component props and slots, and create reactive apps with dynamic variables and scripts.
+Studio is a visual app builder for the Frappe Framework. It allows developers to build modern web applications using a drag & drop layout builder, wire Frappe Framework data sources, edit component props and slots, and create reactive apps with page scripts.
 
 ## Agent Guidelines & Code Conventions
 
@@ -56,3 +56,7 @@ Studio is a visual app builder for the Frappe Framework. It allows developers to
    - Agent skill files must be lean. Add only what an agent cannot learn from the code.
    - When the user asks a question ("why", "should we", "just answer"), answer it. Do not change code until they ask.
    - When you check review comments, fix only real problems. Skip ones that are invalid or lead to overengineering, and say why.
+
+## Legacy page variable migration
+
+When migrating existing page variables to scripts, follow [Legacy variable migration](studio/studio/doctype/studio_page/patches/migrate_variables_to_page_script.md).

@@ -105,7 +105,7 @@ def _app_ref(ctx) -> tuple[str, str] | str:
 	if page is None:
 		return "FAILED: no page in context."
 	if not page.is_standard:
-		return "FAILED: this app isn't exported — it has no code files. Use variables and set_page_script instead."
+		return "FAILED: this app isn't exported — it has no code files. Use set_page_script instead."
 	return page.frappe_app, page.studio_app
 
 

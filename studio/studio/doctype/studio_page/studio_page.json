@@ -19,7 +19,6 @@
   "draft_blocks",
   "data_tab",
   "resources",
-  "variables",
   "scripts_tab",
   "script",
   "export_tab",
@@ -101,12 +100,6 @@
    "fieldtype": "Table",
    "label": "Resources",
    "options": "Studio Page Resource"
-  },
-  {
-   "fieldname": "variables",
-   "fieldtype": "Table",
-   "label": "Variables",
-   "options": "Studio Page Variable"
   },
   {
    "fieldname": "studio_app",

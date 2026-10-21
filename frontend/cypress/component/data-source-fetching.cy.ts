@@ -7,7 +7,6 @@ import "@/setupFrappeUIResource"
 import { usePageScope } from "@/stores/codeStore"
 import type { Resource } from "@/types/Studio/StudioResource"
 import type { StudioPage } from "@/types/Studio/StudioPage"
-import type { Variable } from "@/types/Studio/StudioPageVariable"
 
 // Assertions only rely on the Administrator and Guest users every site has
 const page = { name: "page-1" } as StudioPage
@@ -39,14 +38,10 @@ function documentResource(overrides: Record<string, any>): Resource {
 	} as Resource
 }
 
-function variable(variable_name: string, variable_type: string, initial_value: any): Variable {
-	return { name: variable_name, variable_name, variable_type, initial_value }
-}
-
-async function loadPage(resources: Resource[], variables: Variable[] = []) {
+// page state the resources' {{ }} inputs read comes from the page script
+async function loadPage(resources: Resource[], script = "") {
 	const pageScope = usePageScope()
-	await pageScope.setPageVariables(page, variables)
-	await pageScope.setPageResources(page, false, resources)
+	await pageScope.initializePage({ ...page, script }, { preloadedResources: resources })
 	return pageScope
 }
 
@@ -108,19 +103,19 @@ describe("data source fetching", () => {
 			})
 		})
 
-		it("evaluates dynamic filters and refetches when a variable changes", () => {
+		it("evaluates dynamic filters and refetches when page state changes", () => {
 			const filters = JSON.stringify({
 				name: ["in", ["Administrator", "Guest"]],
 				user_type: "{{ userType }}",
 			})
-			const variables = [variable("userType", "String", '"System User"')]
+			const script = 'const userType = ref("System User")'
 
-			cy.wrap(loadPage([listResource({ filters })], variables)).then((pageScope: any) => {
+			cy.wrap(loadPage([listResource({ filters })], script)).then((pageScope: any) => {
 				requestBody("@getList").its("filters.user_type").should("equal", "System User")
 				cy.wrap(pageScope.resources).its("users.data").should("deep.equal", [ADMINISTRATOR])
 
 				cy.then(() => {
-					pageScope.variables.userType = "Website User"
+					pageScope.pageScriptBindings.userType.value = "Website User"
 					return nextTick()
 				})
 				requestBody("@getList").its("filters.user_type").should("equal", "Website User")
@@ -132,7 +127,7 @@ describe("data source fetching", () => {
 
 		it("drops a dynamic filter whose value is empty", () => {
 			const filters = JSON.stringify({ name: "Administrator", user_type: "{{ userType }}" })
-			cy.wrap(loadPage([listResource({ filters })], [variable("userType", "Object", "null")]))
+			cy.wrap(loadPage([listResource({ filters })], "const userType = ref(null)"))
 			requestBody("@getList").its("filters").should("deep.equal", { name: "Administrator" })
 		})
 	})
@@ -150,7 +145,7 @@ describe("data source fetching", () => {
 				auto: true,
 			} as Resource
 
-			cy.wrap(loadPage([resource], [variable("doctypeName", "String", '"User"')])).then((pageScope: any) => {
+			cy.wrap(loadPage([resource], 'const doctypeName = ref("User")')).then((pageScope: any) => {
 				requestBody("@getCount").should("deep.equal", {
 					doctype: "User",
 					filters: { name: "Administrator" },
@@ -174,7 +169,7 @@ describe("data source fetching", () => {
 				filters: JSON.stringify({ name: "{{ userId }}" }),
 			})
 
-			cy.wrap(loadPage([resource], [variable("userId", "String", '"Guest"')])).then((pageScope: any) => {
+			cy.wrap(loadPage([resource], 'const userId = ref("Guest")')).then((pageScope: any) => {
 				requestQuery("@getDoc").its("name").should("equal", "Guest")
 				cy.wrap(pageScope.resources).its("user.doc.user_type").should("equal", "Website User")
 				cy.get("@getValue.all").should("have.length", 0)
@@ -192,7 +187,7 @@ describe("data source fetching", () => {
 			requestQuery("@getDoc").its("name").should("equal", "Guest")
 		})
 
-		it("leaves the resource empty when no document matches the filters", () => {
+		it("leaves the document empty when no document matches the filters", () => {
 			const resource = documentResource({
 				fetch_document_using_filters: true,
 				filters: JSON.stringify({ first_name: "No Such User" }),
@@ -200,7 +195,7 @@ describe("data source fetching", () => {
 
 			cy.wrap(loadPage([resource])).then((pageScope: any) => {
 				waitForResponse("@getValue")
-				cy.wrap(pageScope.resources).should("have.property", "user", undefined)
+				cy.wrap(pageScope.resources).its("user").should("have.property", "doc", null)
 			})
 		})
 	})

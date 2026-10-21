@@ -165,9 +165,7 @@ class WorkingTree:
 			return f"Bound block {component_id} to repeat over {{{{ {source}.data }}}}."
 		if tool_name == "sync_variable":
 			prop = args.get("prop") or "modelValue"
-			return (
-				f"Synced {prop} of block {component_id} two-way with variable '{args.get('variable_name')}'."
-			)
+			return f"Synced {prop} of block {component_id} two-way with page-script ref '{args.get('variable_name')}'."
 		return (
 			f"Bound prop '{args.get('prop')}' of block {component_id} to {{{{ {args.get('expression')} }}}}."
 		)

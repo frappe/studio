@@ -106,11 +106,11 @@ propose_plan = Tool(
 	side="terminal",
 	description=(
 		"Before building a NEW page or doing a major redesign, present a short plan — a DATA PLAN "
-		"(sources + variables to create first) and a LAYOUT PLAN (the sections) — and wait for the "
-		"user to approve or refine it. Ends your turn. On approval, BUILD IN ORDER: create the data "
-		"plan's sources/variables first, then generate the layout. Never call this twice in a row: if "
-		"a plan is already pending and the user approved it, proceed to build. Only re-propose when "
-		"the user asked for changes."
+		"(data sources + page-script state to create first) and a LAYOUT PLAN (the sections) — and wait "
+		"for the user to approve or refine it. Ends your turn. On approval, BUILD IN ORDER: create the "
+		"data plan's sources and page script first, then generate the layout. Never call this twice in a "
+		"row: if a plan is already pending and the user approved it, proceed to build. Only re-propose "
+		"when the user asked for changes."
 	),
 	parameters={
 		"type": "object",
@@ -123,9 +123,9 @@ propose_plan = Tool(
 				"type": "string",
 				"description": (
 					"The DATA to create FIRST, one item per LINE (newline-separated) — omit for a page "
-					"with no live data. Each line is a data source or variable with enough to build it: "
-					'e.g. "todos — Document List on ToDo, fields subject/status/priority, filter status=Open" '
-					'or "counter — Number variable starting at 0".'
+					"with no live data. Each line is a data source or a piece of page-script state with enough "
+					'to build it: e.g. "todos — Document List on ToDo, fields subject/status/priority, filter '
+					'status=Open" or "counter — ref(0) in the page script".'
 				),
 			},
 			"layout_plan": {
@@ -133,7 +133,7 @@ propose_plan = Tool(
 				"description": (
 					"The LAYOUT — 3–5 sections as ONE string, each on its OWN LINE (not a JSON array). Make "
 					"each line decision-useful: the real headline/key copy (in 'single quotes'), what's in "
-					"it, the layout, and which data_plan source/variable it binds to."
+					"it, the layout, and which data_plan item it binds to."
 				),
 			},
 			"palette": {"type": "string", "description": "Palette description with hex codes."},

@@ -3,8 +3,8 @@
 Both are client-side: the loop validates the ref against the WorkingTree, then
 emits the op for the canvas to apply on the block tree. The expression contract
 is Studio's: a prop value of "{{ <expr> }}" is evaluated against the page's
-data context — variables, resources (`<data_source>.data`), page-script
-bindings, route/router, and globalUtils.
+data context — resources (`<data_source>.data`), page-script bindings,
+route/router, and globalUtils.
 """
 
 from studio.ai.agent.registry import Tool
@@ -16,9 +16,9 @@ bind_prop = Tool(
 		"Add a {{ }} binding to a prop of a block that ALREADY EXISTS on the page. For a block you are "
 		"creating this turn, put the binding in its props via add_block instead, since you cannot "
 		"reference a new block's id. The expression is "
-		"evaluated against the page's data context: data sources (as <data_source>.data), variables, "
-		"page-script bindings, and route/router. Pass the raw expression WITHOUT braces — e.g. "
-		"prop='value', expression='counter' binds to the counter variable; "
+		"evaluated against the page's data context: data sources (as <data_source>.data), the page "
+		"script's bindings, and route/router. Pass the raw expression WITHOUT braces — e.g. "
+		"prop='value', expression='counter' binds to a `counter` ref declared in the page script; "
 		"expression='todos.data.length' shows a count. Inside a Repeater, bind to the current row "
 		"with `dataItem.<field>` (e.g. expression='dataItem.title') — NOT `<source>.data.<field>`. "
 		"Use this for scalar/text props; use set_repeater_data to feed a list into a Repeater."
@@ -74,12 +74,13 @@ sync_variable = Tool(
 	name="sync_variable",
 	side="client",
 	description=(
-		"Two-way bind an input's value to a variable (v-model — the UI's 'sync with variable'). Typing "
-		"in the input updates the variable, and changing the variable updates the input. Use this for "
+		"Two-way bind an input's value to a page-script ref (v-model — the UI's 'sync with state'). "
+		"Typing in the input updates the ref, and changing the ref updates the input. Use this for "
 		"form inputs (TextInput, FormControl, Select, Checkbox, Switch, DatePicker, Slider, …) whose "
-		"modelValue should mirror a variable — NOT bind_prop, which is a one-way read. The variable "
-		"must already exist (add_variable first). For a block you are ADDING this turn, bake the same "
-		'into its props instead: {"modelValue":{"$type":"variable","name":"<variable>"}}.'
+		"modelValue should mirror page state — NOT bind_prop, which is a one-way read. The ref must "
+		"be declared in the page script (set_page_script in the SAME turn). For a block you are "
+		"ADDING this turn, bake the same into its props instead: "
+		'{"modelValue":{"$type":"variable","name":"<ref>"}}.'
 	),
 	parameters={
 		"type": "object",
@@ -87,7 +88,7 @@ sync_variable = Tool(
 			"component_id": {"type": "string", "description": "The input block's id (must already exist)."},
 			"variable_name": {
 				"type": "string",
-				"description": "The variable to sync the input with (must already exist).",
+				"description": "Name of the page-script ref to sync the input with.",
 			},
 			"prop": {
 				"type": "string",

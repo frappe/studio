@@ -16,24 +16,6 @@ export const useStudioCompletions = (canEditValues: boolean = false, includeVueA
 
 	const completionSources = computed(() => {
 		const sources: CompletionSource[] = []
-		Object.entries(pageScope.variables || {}).forEach(([variable, item]) => {
-			// When canEditValues is true, variables are refs (toRefs)
-			const wrappedItem = canEditValues ? { value: item } : item
-			sources.push({
-				item: wrappedItem,
-				completion: {
-					label: variable,
-					type: "variable",
-					detail: "Variable",
-					apply(view, completion, from, to) {
-						let insertText = canEditValues ? `${completion.label}.value` : `${completion.label}`
-						view.dispatch({
-							changes: { from, to, insert: insertText },
-						})
-					},
-				}
-			})
-		})
 
 		Object.entries(pageScope.resources || {}).forEach(([resource, item]) => {
 			sources.push({

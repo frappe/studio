@@ -48,7 +48,6 @@ def component_ref(component) -> dict:
 def make_page_with_data(app_name: str):
 	page = make_studio_page(app_name, page_title="Board", route="/board", published=0)
 	page.append("resources", TODO_RESOURCE)
-	page.append("variables", {"variable_name": "count", "variable_type": "Number"})
 	page.script = PAGE_SCRIPT
 	page.tab_title = "{{ todos.data?.length }} todos"
 	page.save()
@@ -152,7 +151,6 @@ class TestStudioPage(IntegrationTestCase):
 		self.assertNotEqual(copy.route, page.route)
 		self.assertFalse(copy.published)
 		self.assertEqual([r.resource_name for r in copy.resources], ["todos"])
-		self.assertEqual([v.variable_name for v in copy.variables], ["count"])
 		self.assertEqual(copy.script, PAGE_SCRIPT)
 
 		second_copy = duplicate_page(page.name, app.name)
@@ -302,33 +300,27 @@ class TestStudioPage(IntegrationTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				app.collect_files('import "@app/stores/secret.ts"', "", [])
 
-	def test_pasted_blocks_bring_the_data_sources_and_variables_they_use(self):
+	def test_pasted_blocks_bring_the_data_sources_they_use(self):
 		app = make_studio_app(app_name="deps-" + frappe.generate_hash(length=10))
 		source = make_page_with_data(app.name)
 		target = make_studio_page(app.name, page_title="Target", route="/target")
-		blocks = [{"componentName": "div", "innerHTML": "{{ todos.data.length }} / {{ count }}"}]
+		blocks = [{"componentName": "div", "innerHTML": "{{ todos.data.length }} todos"}]
 
 		deps = source.get_dependencies(blocks)
 		self.assertEqual([r["resource_name"] for r in deps["resources"]], ["todos"])
-		self.assertEqual([v["variable_name"] for v in deps["variables"]], ["count"])
 
-		first_result = create_missing_dependencies(
-			app.name, page_name=target.name, resources=deps["resources"], variables=deps["variables"]
-		)
+		first_result = create_missing_dependencies(app.name, page_name=target.name, resources=deps["resources"])
 		target.reload()
 		first_modified = target.modified
 		self.assertEqual(first_result["modified"], str(first_modified))
 		equivalent_resources = [{**deps["resources"][0], "fields": ["name"]}]
-		second_result = create_missing_dependencies(
-			app.name, page_name=target.name, resources=equivalent_resources, variables=deps["variables"]
-		)
+		second_result = create_missing_dependencies(app.name, page_name=target.name, resources=equivalent_resources)
 
 		target.reload()
 		self.assertEqual([r.resource_name for r in target.resources], ["todos"])
-		self.assertEqual([v.variable_name for v in target.variables], ["count"])
 		self.assertEqual(target.modified, first_modified)
 		self.assertEqual(str(second_result["modified"]), str(first_modified))
-		no_conflicts = {"components": [], "resources": [], "variables": []}
+		no_conflicts = {"components": [], "resources": []}
 		self.assertEqual(second_result["conflicts"], no_conflicts)
 
 	def test_pasted_blocks_report_conflicting_page_data(self):
@@ -336,32 +328,22 @@ class TestStudioPage(IntegrationTestCase):
 		source = make_page_with_data(app.name)
 		target = make_studio_page(app.name, page_title="Target", route="/target")
 		target.append("resources", {**TODO_RESOURCE, "fields": '["description"]'})
-		target.append(
-			"variables", {"variable_name": "count", "variable_type": "String", "initial_value": "zero"}
-		)
 		target.save()
-		dependencies = source.get_dependencies([{"innerHTML": "{{ todos.data }} {{ count }}"}])
+		dependencies = source.get_dependencies([{"innerHTML": "{{ todos.data }}"}])
 
 		result = create_missing_dependencies(
 			app.name,
 			page_name=target.name,
 			resources=dependencies["resources"],
-			variables=dependencies["variables"],
 		)
 
 		target.reload()
 		self.assertEqual(len(target.resources), 1)
 		self.assertEqual(target.resources[0].fields, '["description"]')
-		self.assertEqual(len(target.variables), 1)
-		self.assertEqual(target.variables[0].variable_type, "String")
 		resource_conflict = result["conflicts"]["resources"][0]
-		variable_conflict = result["conflicts"]["variables"][0]
 		self.assertEqual(resource_conflict["name"], "todos")
 		self.assertEqual(resource_conflict["existing"]["fields"], '["description"]')
 		self.assertEqual(resource_conflict["copied"]["fields"], '["name"]')
-		self.assertEqual(variable_conflict["name"], "count")
-		self.assertEqual(variable_conflict["existing"]["variable_type"], "String")
-		self.assertEqual(variable_conflict["copied"]["variable_type"], "Number")
 
 		create_missing_dependencies(
 			app.name,
@@ -371,16 +353,6 @@ class TestStudioPage(IntegrationTestCase):
 		)
 		target.reload()
 		self.assertEqual(target.resources[0].fields, '["name"]')
-		self.assertEqual(target.variables[0].variable_type, "String")
-
-		create_missing_dependencies(
-			app.name,
-			page_name=target.name,
-			variables=dependencies["variables"],
-			overwrite_conflicts=True,
-		)
-		target.reload()
-		self.assertEqual(target.variables[0].variable_type, "Number")
 
 	def test_unused_component_files_are_removed(self):
 		with exports_in_tempdir():
