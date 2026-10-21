@@ -29,7 +29,6 @@ PAGE_RESOURCE_FIELDS = (
 	"on_success",
 	"on_error",
 )
-PAGE_VARIABLE_FIELDS = ("variable_name", "variable_type", "initial_value")
 PAGE_RESOURCE_INT_FIELDS = {"auto", "limit", "fetch_document_using_filters"}
 PAGE_RESOURCE_JSON_FIELDS = {"fields", "filters", "params", "whitelisted_methods"}
 COMPONENT_INPUT_FIELDS = ("input_name", "type", "required", "default", "description", "options")
@@ -53,7 +52,6 @@ def paste_page(app_name: str, page: dict | str, target_page: str | None = None):
 	app = get_writable_app(app_name)
 	blocks = parse_dict_list(copy.get("blocks"), "blocks")
 	resources = parse_dict_list(copy.get("resources"), "resources")
-	variables = parse_dict_list(copy.get("variables"), "variables")
 	validate_page_copy(copy)
 	if target_page:
 		doc = get_writable_page(target_page, app.name)
@@ -63,7 +61,6 @@ def paste_page(app_name: str, page: dict | str, target_page: str | None = None):
 	install_dependencies(app, copy.get("components"), copy.get("files"))
 	doc.draft_blocks = blocks
 	doc.set("resources", [pick(row, PAGE_RESOURCE_FIELDS) for row in resources])
-	doc.set("variables", [pick(row, PAGE_VARIABLE_FIELDS) for row in variables])
 	doc.script = copy.get("script")
 	doc.save()
 	if can_export(doc):
@@ -78,19 +75,17 @@ def create_missing_dependencies(
 	files=None,
 	page_name: str | None = None,
 	resources=None,
-	variables=None,
 	overwrite_conflicts: bool = False,
 ):
 	"""Install missing paste dependencies and report names whose target definitions differ."""
 	app = get_writable_app(app_name)
 	page = get_writable_page(page_name, app.name) if page_name else None
 	resources = parse_dict_list(resources, "resources")
-	variables = parse_dict_list(variables, "variables")
 	conflicts = {
 		"components": install_dependencies(app, components, files, overwrite_conflicts=overwrite_conflicts)
 	}
 	if page_name:
-		conflicts.update(add_page_data(page, resources, variables, overwrite_conflicts=overwrite_conflicts))
+		conflicts.update(add_page_data(page, resources, overwrite_conflicts=overwrite_conflicts))
 	return {"conflicts": conflicts, "modified": page.modified if page else None}
 
 
@@ -161,13 +156,15 @@ def parse_dict_list(value, label: str) -> list[dict]:
 def validate_page_copy(copy: dict):
 	if copy.get("page_title") is not None and not isinstance(copy["page_title"], str):
 		frappe.throw(_("Invalid page title in copied content."))
+	if copy.get("tab_title") is not None and not isinstance(copy["tab_title"], str):
+		frappe.throw(_("Invalid tab title in copied content."))
 	if copy.get("script") is not None and not isinstance(copy["script"], str):
 		frappe.throw(_("Invalid script in copied content."))
 	if copy.get("allow_guest") not in (None, 0, 1, False, True):
 		frappe.throw(_("Invalid guest access setting in copied content."))
 
 
-def add_page_data(page, resources: list[dict], variables: list[dict], *, overwrite_conflicts=False):
+def add_page_data(page, resources: list[dict], *, overwrite_conflicts=False):
 	conflicts = {}
 	conflicts["resources"], resources_changed = append_missing_rows(
 		page,
@@ -179,15 +176,7 @@ def add_page_data(page, resources: list[dict], variables: list[dict], *, overwri
 		json_fields=PAGE_RESOURCE_JSON_FIELDS,
 		overwrite_conflicts=overwrite_conflicts,
 	)
-	conflicts["variables"], variables_changed = append_missing_rows(
-		page,
-		"variables",
-		variables,
-		"variable_name",
-		PAGE_VARIABLE_FIELDS,
-		overwrite_conflicts=overwrite_conflicts,
-	)
-	if resources_changed or variables_changed:
+	if resources_changed:
 		page.save()
 	return conflicts
 
@@ -352,6 +341,7 @@ def new_page_from_copy(app, copy: dict):
 		doctype="Studio Page",
 		studio_app=app.name,
 		page_title=title,
+		tab_title=copy.get("tab_title"),
 		allow_guest=cint(copy.get("allow_guest")),
 		is_standard=app.is_standard,
 		frappe_app=app.frappe_app,

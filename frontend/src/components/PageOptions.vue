@@ -1,56 +1,46 @@
 <template>
-	<div>
+	<div class="[&_[data-slot=description]]:text-ink-gray-5">
 		<div class="flex flex-row flex-wrap gap-4">
-			<Input
-				label="Page Title"
-				type="text"
-				variant="outline"
-				class="w-full"
-				:modelValue="pageTitle"
-				@update:modelValue="(val: string) => store.updateActivePage('page_title', val)"
-			/>
-
-			<div class="relative flex w-full items-stretch">
-				<Input
-					ref="inputRef"
-					label="Page Route"
-					type="text"
-					variant="outline"
-					class="w-full"
-					:hideClearButton="true"
-					:modelValue="pageRoute"
-					@update:modelValue="
-						(val: string) => {
-							store.updateActivePage('route', val.startsWith('/') ? val : `/${val}`)
-						}
-					"
+			<PageMetaFields
+				:appRoute="app?.route"
+				:title="page.page_title || ''"
+				:route="page.route"
+				:allowGuest="Boolean(page.allow_guest)"
+				@update:title="(value: string) => store.updateActivePage('page_title', value)"
+				@update:route="(value: string) => store.updateActivePage('route', value)"
+				@update:allowGuest="(value: boolean) => store.updateActivePage('allow_guest', value ? 1 : 0)"
+			>
+				<Code
+					v-if="showTabTitle"
+					:autofocus="!page.tab_title"
+					v-model="tabTitle"
+					label="Tab Title"
+					isFormInput
+					valueMode="text"
+					:emitOnChange="true"
+					:showLineNumbers="false"
+					:lineWrapping="true"
+					class="inline-expression"
+					:placeholder="page.page_title"
+					description="Defaults to the page title. Use {{ }} for dynamic data"
+					:completions="dynamicValueCompletions"
+					:overrideCompletions="true"
 				/>
-
-				<!-- App Route Prefix -->
-				<div
-					ref="prefixElement"
-					class="absolute bottom-[1px] left-[1px] flex items-center rounded-l-[0.4rem] bg-surface-gray-2 text-ink-gray-6"
+				<button
+					v-else
+					class="-mt-2 flex items-center gap-1 self-start text-sm text-ink-gray-5 hover:text-ink-gray-7"
+					@click="showTabTitle = true"
 				>
-					<span class="flex h-[1.6rem] items-center text-nowrap px-2 py-0 text-base">
-						{{ `${app?.route}/` }}
-					</span>
-				</div>
-			</div>
-
-			<Switch
-				size="sm"
-				class="w-full"
-				label="Allow Guest Access"
-				description="Anyone can access this page without logging in"
-				:modelValue="Boolean(page.allow_guest)"
-				@update:modelValue="(val: boolean) => store.updateActivePage('allow_guest', val ? 1 : 0)"
-			/>
+					<span class="lucide-plus h-3 w-3" />
+					Use a different tab title
+				</button>
+			</PageMetaFields>
 
 			<!-- Dynamic Route Variables: design-time test values for params like /articles/:category -->
 			<CollapsibleSection
 				v-if="routeVariableNames.length"
 				sectionName="Route Variables"
-				class="mt-2 w-full [&>div>h3]:!text-base [&>div>h3]:!text-ink-gray-5"
+				class="w-full [&>div>div]:!mb-0 [&>div>h3]:!text-sm [&>div>h3]:!text-ink-gray-7"
 			>
 				<div v-for="name in routeVariableNames" :key="name" class="w-full">
 					<Input
@@ -58,6 +48,7 @@
 						type="text"
 						variant="outline"
 						class="w-full"
+						:hideClearButton="true"
 						:placeholder="`Test value for :${name}`"
 						:modelValue="store.routeVariables[name] || ''"
 						@update:modelValue="(val: string) => store.setRouteVariable(name, val)"
@@ -69,58 +60,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed, ref } from "vue"
+import { watchDebounced } from "@vueuse/core"
 import useStudioStore from "@/stores/studioStore"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { StudioApp } from "@/types/Studio/StudioApp"
-import { Switch } from "frappe-ui"
 import Input from "@/components/Input.vue"
 import CollapsibleSection from "@/components/CollapsibleSection.vue"
+import PageMetaFields from "@/components/PageMetaFields.vue"
+import Code from "@/components/Code.vue"
 import { getRouteVariables } from "@/utils/helpers"
+import { useDynamicValueCompletions } from "@/utils/completions/useStudioCompletions"
 
 const store = useStudioStore()
 const props = defineProps<{
 	page: StudioPage
 	app: StudioApp
-	isOpen: boolean
 }>()
 
 const routeVariableNames = computed(() => getRouteVariables(props.page.route || ""))
 
-const inputRef = ref<InstanceType<typeof Input> | null>(null)
-
-const pageTitle = ref(props.page.page_title || "")
-const pageRoute = ref(props.page.route)
-const setPageRoute = () => {
-	// remove leading slash from route because app route prefix will be <app.route>/ so that user doesn't have to type the leading slash
-	pageRoute.value = props.page.route.replace(/^\//, "")
-}
-
-const prefixElement = ref<HTMLElement | null>(null)
-const dynamicPadding = computed(() => {
-	const prefixWidth = (prefixElement.value?.offsetWidth || 0) + 10 // adding 10px for extra space
-	return `${Math.round(prefixWidth)}px`
-})
-
-const applyDynamicPadding = () => {
-	if (inputRef.value) {
-		const inputElement = inputRef.value.$el.querySelector("input")
-		if (inputElement) {
-			inputElement.style.paddingLeft = dynamicPadding.value
-		}
-	}
-}
-
-watch(
-	() => props.isOpen,
-	() => {
-		nextTick(() => {
-			// apply dynamic padding to input element when the popover is opened
-			// to avoid overlapping with the prefix content
-			applyDynamicPadding()
-			setPageRoute()
-		})
+const getDynamicValueCompletions = useDynamicValueCompletions()
+const dynamicValueCompletions = getDynamicValueCompletions()
+// saved while typing: closing the popover unmounts the editor before it blurs
+const tabTitle = ref(props.page.tab_title || "")
+const showTabTitle = ref(Boolean(props.page.tab_title))
+const pageName = props.page.name
+watchDebounced(
+	tabTitle,
+	(value) => {
+		// a save that fires after another page opened must not land on it
+		if (store.activePage?.name === pageName) store.updateActivePage("tab_title", value)
 	},
-	{ immediate: true },
+	{ debounce: 500 },
 )
 </script>

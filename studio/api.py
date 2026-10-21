@@ -6,11 +6,18 @@ from typing import Literal
 
 import frappe
 from frappe import _
-from frappe.model import display_fieldtypes, no_value_fields, std_fields, table_fields
+from frappe.model import child_table_fields, display_fieldtypes, no_value_fields, std_fields, table_fields
 from frappe.utils import sbool
 
 from studio.constants import STANDARD_COMPONENT_NAMES
 from studio.utils import has_page_write_perm
+
+
+@frappe.whitelist()
+def get_app_boot(app_name: str) -> dict:
+	app = frappe.get_doc("Studio App", app_name)
+	app.check_permission("read")
+	return app.get_boot()
 
 
 @frappe.whitelist()
@@ -22,16 +29,19 @@ def get_doctype_fields(doctype: str, with_standard_fields: bool = False) -> list
 	]
 	standard_fields = [frappe._dict(fieldname="name", fieldtype="Data", label="ID")]
 	if sbool(with_standard_fields):
-		standard_fields += get_meta_fields()
+		standard_fields += get_meta_fields(doctype)
 
 	existing_fieldnames = {field.fieldname for field in fields}
 	fields += [field for field in standard_fields if field.fieldname not in existing_fieldnames]
 	return fields
 
 
-def get_meta_fields() -> list[frappe._dict]:
-	meta_fieldnames = ("owner", "creation", "modified", "modified_by")
-	return [frappe._dict(field) for field in std_fields if field["fieldname"] in meta_fieldnames]
+def get_meta_fields(doctype: str) -> list[frappe._dict]:
+	"""Standard columns every document table has, plus parent columns for child tables"""
+	fields = [frappe._dict(field) for field in std_fields if field["fieldname"] != "name"]
+	if frappe.get_meta(doctype).istable:
+		fields += [frappe._dict(fieldname=fieldname, fieldtype="Data") for fieldname in child_table_fields]
+	return fields
 
 
 @frappe.whitelist()
@@ -220,12 +230,14 @@ def list_studio_files(frappe_app: str, studio_app: str) -> list[dict]:
 
 
 @frappe.whitelist()
-def read_studio_file(frappe_app: str, studio_app: str, file_path: str) -> dict:
+def read_studio_file(frappe_app: str, studio_app: str, file_path: str, ignore_missing: bool = False) -> dict:
 	"""Return a file's content plus a hash callers pass back to write_studio_file for conflict checks."""
 	_validate_studio_file_access()
 	_validate_allowed_extension(file_path)
 	target = _resolve_studio_file(frappe_app, studio_app, file_path)
 	if not os.path.isfile(target):
+		if frappe.utils.sbool(ignore_missing):
+			return {"path": file_path, "content": None, "hash": None}
 		frappe.throw(_("File not found: {0}").format(file_path))
 
 	with open(target, encoding="utf-8") as f:

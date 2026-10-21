@@ -47,7 +47,7 @@ import Code from "@/components/Code.vue"
 import IconButton from "@/components/IconButton.vue"
 import DraggablePopup from "@/components/DraggablePopup.vue"
 import Block from "@/utils/block"
-import { useStudioCompletions } from "@/utils/useStudioCompletions"
+import { useStudioCompletions } from "@/utils/completions/useStudioCompletions"
 import { getExpressionError } from "@/utils/parseCode"
 import type { CompletionContext } from "@codemirror/autocomplete"
 import type { BlockProperty } from "@/components/ComponentStyles.vue"
@@ -85,7 +85,7 @@ const error = ref("")
 watch(dynamicValue, () => (error.value = ""))
 
 const setStyle = () => {
-	// CSS values like var(--ink-red-5) must be quoted to be valid JS, flag them before saving
+	// CSS values like var(--ink-red-4) must be quoted to be valid JS, flag them before saving
 	error.value = getExpressionError(dynamicValue.value) || ""
 	if (error.value) return
 

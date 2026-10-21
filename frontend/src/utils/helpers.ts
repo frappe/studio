@@ -4,6 +4,7 @@ import { toast } from "frappe-ui"
 
 import type { ObjectLiteral, StyleValue, SelectOption, HashString, RGBString } from "@/types"
 import type { StudioApp } from "@/types/Studio/StudioApp"
+import type { StudioPage } from "@/types/Studio/StudioPage"
 import DOMPurify from "dompurify"
 
 function isEditor() {
@@ -271,8 +272,12 @@ async function fetchApp(appName: string) {
 	return appResource.doc
 }
 
-function openInDesk(app: StudioApp) {
+function openAppInDesk(app: StudioApp) {
 	window.open(`/app/studio-app/${app.name}`, "_blank")
+}
+
+function openPageInDesk(page: StudioPage) {
+	window.open(`/app/studio-page/${page.name}`, "_blank")
 }
 
 // page
@@ -288,12 +293,19 @@ async function fetchPage(pageName: string) {
 
 // Fetches the page definition (blocks + resources + variables) in one unprivileged call.
 // Data the page renders stays permission-checked by the endpoints its resources call.
-async function findPageWithRoute(appName: string, pageRoute: string, preview: boolean = false) {
+async function fetchAppPage(appName: string, pageName: string, preview: boolean = false) {
 	const page = createResource({
 		url: "studio.studio.doctype.studio_page.studio_page.get_page",
 		method: "GET",
-		params: { app_name: appName, page_route: pageRoute, preview },
+		params: { app_name: appName, page_name: pageName, preview },
+		// a published page changes only on publish; the preview must see every draft save
+		cache: preview ? undefined : ["studio-page", pageName],
 	})
+	// a cached definition mounts at once and refreshes in the background for the next visit
+	if (page.fetched) {
+		page.reload().catch(() => {})
+		return page.data
+	}
 	try {
 		await page.fetch()
 	} catch (error) {
@@ -543,7 +555,7 @@ function scrub(txt: string | null | undefined) {
 }
 
 function sanitizeHTML(html?: string): string {
-	return DOMPurify.sanitize(html ?? "")
+	return DOMPurify.sanitize(html ?? "", { ADD_TAGS: ["use"] })
 }
 
 
@@ -575,10 +587,11 @@ export {
 	isHTML,
 	// app
 	fetchApp,
-	openInDesk,
+	openAppInDesk,
+	openPageInDesk,
 	// page
 	fetchPage,
-	findPageWithRoute,
+	fetchAppPage,
 	getRouteVariables,
 	// data
 	getAutocompleteValues,

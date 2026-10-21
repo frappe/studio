@@ -22,9 +22,9 @@
 					:data-component-layer-id="element.componentId"
 					:data-indent="indent"
 					:title="element.componentId"
-					class="component-layer-item relative min-w-24 cursor-pointer select-none rounded border border-transparent bg-surface-base bg-opacity-50 text-base text-ink-gray-6"
+					class="component-layer-item relative min-w-24 cursor-pointer select-none rounded-4 border border-transparent bg-surface-base bg-opacity-50 text-base text-ink-gray-6"
 					:class="{
-						'border-outline-blue-5 !bg-surface-blue-2 dark:!bg-surface-blue-10':
+						'border-outline-blue-5 !bg-surface-blue-2':
 							canvasStore.layerDraggingOverBlock === element.componentId,
 					}"
 					@click.stop="openBlockEditor(element, $event)"
@@ -40,9 +40,9 @@
 							'!opacity-50': !element.isVisible() || isParentHidden,
 						}"
 					>
-						<FeatherIcon
+						<span
 							v-if="isExpandable(element)"
-							:name="isExpanded(element) ? 'chevron-down' : 'chevron-right'"
+							:class="isExpanded(element) ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 							class="h-3 w-3"
 							@click.stop="toggleExpanded(element)"
 						/>
@@ -50,15 +50,13 @@
 							:is="element.getIcon()"
 							class="h-3 w-3"
 							:class="{
-								'text-ink-purple-6 opacity-80 dark:opacity-100 dark:brightness-125 dark:saturate-[0.3]':
-									element.isStudioComponent,
+								'text-ink-purple-5 opacity-80': element.isStudioComponent,
 							}"
 						/>
 						<span
 							class="layer-label min-h-[1em] min-w-[2em] max-w-64 scroll-my-16 truncate"
 							:class="{
-								'text-ink-purple-6 opacity-80 dark:opacity-100 dark:brightness-125 dark:saturate-[0.3]':
-									element.isStudioComponent,
+								'text-ink-purple-5 opacity-80': element.isStudioComponent,
 							}"
 							:contenteditable="element.editable"
 							:title="element.blockId"
@@ -91,11 +89,14 @@
 								class="invisible cursor-pointer group-hover:visible"
 								@click.stop="element.toggleVisibilityCondition()"
 							>
-								<FeatherIcon :name="element.visibilityCondition ? 'zap' : 'zap-off'" class="h-3 w-3" />
+								<span
+									:class="element.visibilityCondition ? 'lucide-zap' : 'lucide-zap-off'"
+									class="h-3 w-3"
+								/>
 							</div>
-							<FeatherIcon
+							<span
 								v-if="!element.isRoot() && !isParentHidden"
-								:name="element.isVisible() ? 'eye' : 'eye-off'"
+								:class="element.isVisible() ? 'lucide-eye' : 'lucide-eye-off'"
 								class="invisible mr-2 h-3 w-3 cursor-pointer group-hover:visible"
 								@click.stop="element.toggleVisibility()"
 							/>
@@ -108,7 +109,7 @@
 						<ComponentLayers
 							:blocks="element.children"
 							:is-parent-hidden="isParentHidden || !element.isVisible()"
-							:ref="childLayer"
+							:ref="(el: unknown) => trackLayer(childLayers, element.componentId, el)"
 							:indent="childIndent"
 						/>
 					</div>
@@ -121,10 +122,9 @@
 							:data-slot-name="slotName"
 							:data-slot-parent-id="slot.parentBlockId"
 							:title="slot.slotName"
-							class="relative min-w-24 cursor-pointer select-none rounded border border-transparent bg-surface-base bg-opacity-50 text-base text-ink-gray-6"
+							class="relative min-w-24 cursor-pointer select-none rounded-4 border border-transparent bg-surface-base bg-opacity-50 text-base text-ink-gray-6"
 							:class="{
-								'border-outline-blue-5 !bg-surface-blue-2 dark:!bg-surface-blue-10':
-									canvasStore.layerDraggingOverSlot === slot.slotId,
+								'border-outline-blue-5 !bg-surface-blue-2': canvasStore.layerDraggingOverSlot === slot.slotId,
 							}"
 							@click.stop="canvasStore.activeCanvas?.selectSlot(slot)"
 						>
@@ -132,9 +132,9 @@
 								class="group my-[7px] flex items-center gap-1.5 pr-[2px] font-medium"
 								:style="{ paddingLeft: `${childIndent}px` }"
 							>
-								<FeatherIcon
+								<span
 									v-if="isSlotExpandable(slot)"
-									:name="isSlotExpanded(slot) ? 'chevron-down' : 'chevron-right'"
+									:class="isSlotExpanded(slot) ? 'lucide-chevron-down' : 'lucide-chevron-right'"
 									class="h-3 w-3"
 									@click.stop="toggleSlotExpanded(slot)"
 								/>
@@ -143,7 +143,11 @@
 							</div>
 
 							<div v-if="isSlotExpanded(slot)">
-								<ComponentLayers :blocks="slot.slotContent" ref="slotLayer" :indent="slotIndent" />
+								<ComponentLayers
+									:blocks="slot.slotContent"
+									:ref="(el: unknown) => trackLayer(slotLayers, slot.slotId, el)"
+									:indent="slotIndent"
+								/>
 							</div>
 						</div>
 					</div>
@@ -164,8 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue"
-import { FeatherIcon } from "frappe-ui"
+import { ref, watch, computed, nextTick } from "vue"
 import Draggable from "vuedraggable"
 
 import ComponentLayers from "@/components/ComponentLayers.vue"
@@ -195,10 +198,13 @@ const props = withDefaults(
 
 const canvasStore = useCanvasStore()
 const rootContainer = ref<HTMLElement | null>(null)
-const childLayers = ref<LayerInstance[]>([])
-const childLayer = (el: LayerInstance) => {
+const childLayers = new Map<string, LayerInstance>()
+const slotLayers = new Map<string, LayerInstance>()
+const trackLayer = (layers: Map<string, LayerInstance>, id: string, el: unknown) => {
 	if (el) {
-		childLayers.value.push(el)
+		layers.set(id, el as LayerInstance)
+	} else {
+		layers.delete(id)
 	}
 }
 
@@ -225,7 +231,7 @@ const toggleExpanded = (block: Block) => {
 		return
 	}
 	if (!blockExists(block)) {
-		const child = childLayers.value.find((layer) => layer.blockExistsInTree(block)) as LayerInstance
+		const child = [...childLayers.values()].find((layer) => layer.blockExistsInTree(block))
 		if (child) {
 			child.toggleExpanded(block)
 		}
@@ -245,7 +251,7 @@ const blockExistsInTree = (block: Block): boolean => {
 	if (blockExists(block)) {
 		return true
 	}
-	for (const layer of childLayers.value) {
+	for (const layer of childLayers.values()) {
 		if (layer.blockExistsInTree(block)) {
 			return true
 		}
@@ -533,8 +539,28 @@ watch(
 
 const slotIndent = computed(() => childIndent + 16)
 
+const expandAll = async () => {
+	for (const block of props.blocks) {
+		if (isExpandable(block)) expandedLayers.value.add(block.componentId)
+		for (const slot of Object.values(block.componentSlots || {})) {
+			if (isSlotExpandable(slot)) expandedSlots.value.add(slot.slotId)
+		}
+	}
+	// slot layers render only once their slot is expanded
+	await nextTick()
+	await Promise.all([...childLayers.values(), ...slotLayers.values()].map((layer) => layer.expandAll()))
+}
+
+const collapseAll = () => {
+	;[...childLayers.values(), ...slotLayers.values()].forEach((layer) => layer.collapseAll())
+	expandedLayers.value = new Set(["root"])
+	expandedSlots.value = new Set()
+}
+
 defineExpose({
 	toggleExpanded,
 	blockExistsInTree,
+	expandAll,
+	collapseAll,
 })
 </script>

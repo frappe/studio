@@ -1,36 +1,41 @@
 import { ref, nextTick, computed, toRaw, readonly } from "vue"
-import { useDebounceFn, useStorage } from "@vueuse/core"
+import { useDark, useDebounceFn, useStorage, useToggle } from "@vueuse/core"
 import router from "@/router/studio_router"
 import { defineStore } from "pinia"
 
-import {
-	fetchApp,
-	fetchPage,
-	confirm,
-	getRouteVariables,
-} from "@/utils/helpers"
+import { fetchApp, fetchPage, confirm, getRouteVariables } from "@/utils/helpers"
 import { getBlockInstance, getRootBlock, getBlockCopyWithoutParent, jsToJson } from "@/utils/serializer"
 import { studioPages } from "@/data/studioPages"
 import { studioApps } from "@/data/studioApps"
 
 import Block from "@/utils/block"
 import useCanvasStore from "@/stores/canvasStore"
-import useCodeStore from "@/stores/codeStore"
-import { reloadCustomVueComponents } from "@/globals"
-import {
-	registerStudioPageScripts,
-	unregisterStudioPageScripts,
-} from "@/data/studioPageScripts"
+import useCodeStore, { usePageScope } from "@/stores/codeStore"
+import { reloadCustomVueComponents } from "@/utils/customVueComponents"
+import { registerStudioPageScripts, unregisterStudioPageScripts } from "@/data/studioPageScripts"
 import { registerCustomComponentPaths } from "@/utils/components"
 import type { CustomVueComponentMeta } from "@/types/vue"
 
 import type { StudioApp } from "@/types/Studio/StudioApp"
 import type { StudioPage } from "@/types/Studio/StudioPage"
 import type { PageCopy } from "@/utils/blockCopyPaste"
-import type { BindingOption, LeftPanelOptions, RightPanelOptions, leftPanelComponentTabOptions, StudioMode } from "@/types"
+import type {
+	BindingOption,
+	BlockOptions,
+	LeftPanelOptions,
+	RightPanelOptions,
+	leftPanelComponentTabOptions,
+	SettingsTab,
+	StudioMode,
+} from "@/types"
 import ComponentContextMenu from "@/components/ComponentContextMenu.vue"
+import type ComponentLayers from "@/components/ComponentLayers.vue"
 import { toast, dialog } from "frappe-ui"
 import { createResource, call } from "frappe-ui"
+
+type PageFields = Partial<Pick<StudioPage, "page_title" | "tab_title" | "route" | "script" | "allow_guest">>
+
+const PAGE_CHANGED_MESSAGE = "This page was changed outside the editor. Refresh to load the latest version."
 
 const useStudioStore = defineStore("store", () => {
 	const studioLayout = useStorage(
@@ -47,19 +52,30 @@ const useStudioStore = defineStore("store", () => {
 		localStorage,
 		{ mergeDefaults: true },
 	)
+	const isDark = useDark({ attribute: "data-theme" })
+	const toggleTheme = useToggle(isDark)
+	const isCanvasDark = useStorage("studioCanvasDarkMode", false)
 	const mode = ref<StudioMode>("select")
 	const componentContextMenu = ref<InstanceType<typeof ComponentContextMenu> | null>(null)
+	const activeLayers = ref<InstanceType<typeof ComponentLayers> | null>(null)
 
 	// dialogs
 	const showSearchBlock = ref(false)
-	const showStudioSettingsDialog = ref(false)
+	const showSettingsDialog = ref(false)
+	const settingsTab = ref<SettingsTab>("app")
 	const showPageOptions = ref(false)
+	const showShortcutsDialog = ref(false)
+
+	function openSettings(tab: SettingsTab) {
+		settingsTab.value = tab
+		showSettingsDialog.value = true
+	}
 
 	// studio apps
 	const activeApp = ref<StudioApp | null>(null)
 	const appPages = computed<Record<string, StudioPage>>(() => {
 		const pages: Record<string, StudioPage> = {}
-		studioPages.data.map((page: StudioPage) => {
+		studioPages.data?.forEach((page: StudioPage) => {
 			pages[page.name] = page
 		})
 		return pages
@@ -83,13 +99,26 @@ const useStudioStore = defineStore("store", () => {
 		selectedVueComponent.value = componentName
 	}
 
+	const showRouterEditor = ref(false)
+
 	async function setApp(appName: string) {
 		const appDoc = await fetchApp(appName)
 		if (!appDoc) return
 		activeApp.value = appDoc
+		await setAppBoot(appName)
 		await setAppPages(appName)
 		await setCustomComponents()
 		await setupPageScripts()
+	}
+
+	// the canvas is not a rendered app page, so it asks for the app's studio_app_boot dict
+	async function setAppBoot(appName: string) {
+		try {
+			window.boot = await call("studio.api.get_app_boot", { app_name: appName })
+		} catch (error) {
+			console.error("Failed to load app boot", error)
+			window.boot = {}
+		}
 	}
 
 	async function deleteApp(appName: string, appTitle: string) {
@@ -101,11 +130,11 @@ const useStudioStore = defineStore("store", () => {
 					if (activeApp.value?.name === appName) {
 						router.replace({ name: "Home" })
 					}
-					toast.success(`App "${appTitle}" deleted successfully`)
+					toast.success(`App "${appTitle}" deleted`)
 				},
 				onError() {
 					toast.error("An unexpected error occurred while deleting the app.")
-				}
+				},
 			})
 		}
 	}
@@ -119,7 +148,7 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	function updateActiveApp(key: string, value: string) {
-		studioApps.setValue.submit(
+		return studioApps.setValue.submit(
 			{ name: activeApp.value?.name, [key]: value },
 			{
 				onSuccess() {
@@ -141,7 +170,7 @@ const useStudioStore = defineStore("store", () => {
 			try {
 				await studioPages.delete.submit(page.name)
 				await setApp(appName)
-				toast.success(`Page "${page.page_title}" deleted successfully`)
+				toast.success(`Page "${page.page_title}" deleted`)
 			} catch (error) {
 				toast.error("An unexpected error occurred while deleting the page.")
 			}
@@ -156,7 +185,7 @@ const useStudioStore = defineStore("store", () => {
 				params: {
 					page_name: page.name,
 					app_name: appName,
-				}
+				},
 			}).fetch(),
 			{
 				loading: "Duplicating page",
@@ -166,13 +195,16 @@ const useStudioStore = defineStore("store", () => {
 						name: "StudioPage",
 						params: { appID: appName, pageID: page.name },
 					})
-					return `Page "${page.page_title}" duplicated successfully`
+					return `Page "${page.page_title}" duplicated`
 				},
 			},
 		)
 	}
 
-	async function pastePage(copy: PageCopy & { blocks: BlockOptions[] } & Record<string, any>, targetPage?: string) {
+	async function pastePage(
+		copy: PageCopy & { blocks: BlockOptions[] } & Record<string, any>,
+		targetPage?: string,
+	) {
 		const appName = activeApp.value!.name
 		const page: StudioPage = await call("studio.studio.doctype.studio_page.copy_paste_handler.paste_page", {
 			app_name: appName,
@@ -199,6 +231,8 @@ const useStudioStore = defineStore("store", () => {
 	const pageBlocks = ref<Block[]>([])
 	const selectedPage = ref<string | null>(null)
 	const savingPage = ref(false)
+	const publishingPage = ref(false)
+	const publishingApp = ref(false)
 	const settingPage = ref(false)
 	// set when a save is rejected because the page moved on in the DB (a disk sync or an AI edit)
 	// after the editor loaded it. Autosave pauses until the user refreshes to the latest version.
@@ -211,7 +245,7 @@ const useStudioStore = defineStore("store", () => {
 		settingPage.value = true
 		pageConflict.value = false
 		savingPage.value = false
-		codeStore.teardownPage()
+		pageScope.teardownPage()
 
 		const page = await fetchPage(pageName)
 		if (!page) {
@@ -220,7 +254,7 @@ const useStudioStore = defineStore("store", () => {
 		}
 		activePage.value = page
 		loadRouteVariables(page)
-		await codeStore.initializePage(page)
+		await pageScope.initializePage(page)
 
 		const blocks = JSON.parse(page.draft_blocks || page.blocks || "[]")
 		if (blocks.length === 0) {
@@ -299,45 +333,83 @@ const useStudioStore = defineStore("store", () => {
 				message:
 					"This page was updated after you opened it. Refresh to load the latest version - your unsaved canvas changes will be replaced.",
 				confirmLabel: "Refresh",
-				theme: "yellow",
+				theme: "amber",
 				onConfirm: () => selectedPage.value && setPage(selectedPage.value),
 			})
-		}
-		else throw error
+		} else throw error
 	}
 
-	function updateActivePage(key: string, value: string | number) {
+	// resolves to false when the page changed elsewhere: the conflict prompt takes it from there
+	function updateActivePage(key: string, value: string | number): Promise<boolean> | undefined {
+		return saveActivePage({ [key]: value } as PageFields)
+	}
+
+	function saveActivePage(values: PageFields): Promise<boolean> | undefined {
 		if (!activePage.value) return
 		const page = activePage.value
-		return studioPages.runDocMethod
-			.submit({
-				name: page.name,
-				method: "save_page_field",
-				fieldname: key,
-				value: value,
-				known_modified: page.modified,
-			})
+		return savePageFields(page, values)
 			.then((response: any) => {
-				if (activePage.value?.name !== page.name) return
-				activePage.value[key] = value
+				if (activePage.value?.name !== page.name) return true
+				Object.assign(activePage.value, values)
 				syncPageModified(response)
+				return true
 			})
-			.catch(handlePageWriteConflict)
+			.catch((error: any) => {
+				handlePageWriteConflict(error)
+				return false
+			})
+	}
+
+	// saves the fields together, and rejects when the page changed after it was loaded instead of
+	// overwriting the newer version
+	async function updatePage(page: StudioPage, values: PageFields) {
+		if (activePage.value?.name === page.name) {
+			if (!(await saveActivePage(values))) throw new Error(PAGE_CHANGED_MESSAGE)
+		} else {
+			await savePageFields(page, values).catch(async (error: any) => {
+				await studioPages.reload()
+				throw error
+			})
+		}
+		await studioPages.reload()
+	}
+
+	function savePageFields(page: StudioPage, values: PageFields) {
+		return studioPages.runDocMethod.submit({
+			name: page.name,
+			method: "save_page_field",
+			fieldname: values,
+			known_modified: page.modified,
+		})
+	}
+
+	// the open page's flag can be newer than its row in the pages list
+	function pageAllowsGuests(page: StudioPage) {
+		const isActive = activePage.value?.name === page.name
+		return Boolean(isActive ? activePage.value?.allow_guest : page.allow_guest)
 	}
 
 	// A server tool (AI) wrote the page script straight to the DB / code file, so re-fetch the
 	// page and re-run setup() on the canvas. (Standard pages update only after their app rebuilds.)
+	async function reloadActiveAppRouterScript() {
+		if (!activeApp.value) return
+		const app = await fetchApp(activeApp.value.name)
+		if (app && activeApp.value?.name === app.name) activeApp.value.router_script = app.router_script
+	}
+
 	async function reloadActivePageScript() {
 		if (!activePage.value) return
 		const pageName = activePage.value.name
 		const page = await fetchPage(pageName)
 		if (!page || activePage.value?.name !== pageName) return
 		activePage.value = page
-		await codeStore.setPageScript(page)
+		await pageScope.setPageScript(page)
 	}
 
 	async function publishPage() {
-		if (!selectedPage.value) return
+		// the publish button and the command palette both publish; one at a time
+		if (!selectedPage.value || publishingPage.value) return
+		publishingPage.value = true
 
 		return studioPages.runDocMethod
 			.submit(
@@ -358,12 +430,12 @@ const useStudioStore = defineStore("store", () => {
 									label: "Edit Pages",
 									onClick: () => {
 										studioLayout.value.leftPanelActiveTab = "Pages"
-									}
-								}
+									},
+								},
 							})
 						}
 					},
-				}
+				},
 			)
 			.then(async () => {
 				const buildError = await generateAppBuild()
@@ -378,6 +450,7 @@ const useStudioStore = defineStore("store", () => {
 					openPageInBrowser(activeApp.value, activePage.value)
 				}
 			})
+			.finally(() => (publishingPage.value = false))
 	}
 
 	async function unpublishPage() {
@@ -408,7 +481,7 @@ const useStudioStore = defineStore("store", () => {
 						description: error.messages.join(", "),
 					})
 				},
-			}
+			},
 		)
 	}
 
@@ -419,7 +492,7 @@ const useStudioStore = defineStore("store", () => {
 			message:
 				"This will discard all changes made to the page since it was last published. Are you sure you want to continue?",
 			confirmLabel: "Revert",
-			theme: "yellow",
+			theme: "amber",
 			onConfirm: async () => {
 				try {
 					await studioPages.runDocMethod.submit({
@@ -443,7 +516,9 @@ const useStudioStore = defineStore("store", () => {
 	}
 
 	async function publishApp() {
-		if (!activeApp.value) return
+		// the publish button and the command palette both publish; one at a time
+		if (!activeApp.value || publishingApp.value) return
+		publishingApp.value = true
 		return studioApps.runDocMethod.submit(
 			{
 				name: activeApp.value.name,
@@ -461,7 +536,7 @@ const useStudioStore = defineStore("store", () => {
 						)
 					} else {
 						openPageInBrowser(activeApp.value!, activePage.value!)
-						toast.success(`App published successfully (${data?.message?.published_pages} pages)`)
+						toast.success(`App published (${data?.message?.published_pages} pages)`)
 					}
 				},
 				onError(error: any) {
@@ -471,6 +546,7 @@ const useStudioStore = defineStore("store", () => {
 				},
 			},
 		)
+		.finally(() => (publishingApp.value = false))
 	}
 
 	async function unpublishApp() {
@@ -500,6 +576,7 @@ const useStudioStore = defineStore("store", () => {
 		)
 	}
 
+	let previewTab: Window | null = null
 	function openPageInBrowser(app: StudioApp, page: StudioPage, preview: boolean = false) {
 		let route = `/${app.route}${resolveRouteVariables(page.route)}`
 		if (preview) {
@@ -509,13 +586,11 @@ const useStudioStore = defineStore("store", () => {
 			route = `${window.site_url}${route}`
 		}
 
-		const targetWindow = window.open(route, "studio-preview")
-		if (targetWindow?.location.pathname === route) {
-			targetWindow?.location.reload()
-		} else {
-			setTimeout(() => {
-				targetWindow?.location.reload()
-			}, 50)
+		// a fresh tab opens in front; navigating a reused named tab leaves it in the background
+		const nextTab = window.open(route, "_blank")
+		if (nextTab) {
+			previewTab?.close()
+			previewTab = nextTab
 		}
 	}
 
@@ -573,7 +648,7 @@ const useStudioStore = defineStore("store", () => {
 		dialog.confirm({
 			title: "App build failed",
 			message: `${message} Check the error log for the full build output.`,
-			theme: "yellow",
+			theme: "amber",
 			actions: [
 				{
 					label: "View Page",
@@ -607,10 +682,13 @@ const useStudioStore = defineStore("store", () => {
 		// Seed each dynamic param with its design-time test value (empty string when unset),
 		// e.g. "/hr/:employee/:id" -> { employee, id } filled from routeVariables
 		const paramNames = getRouteVariables(activePage.value.route)
-		newRoute.params = paramNames.reduce((params, name) => {
-			params[name] = routeVariables.value[name] ?? ""
-			return params
-		}, {} as Record<string, string>)
+		newRoute.params = paramNames.reduce(
+			(params, name) => {
+				params[name] = routeVariables.value[name] ?? ""
+				return params
+			},
+			{} as Record<string, string>,
+		)
 
 		return newRoute
 	})
@@ -638,25 +716,23 @@ const useStudioStore = defineStore("store", () => {
 	function setRouteVariable(name: string, value: string) {
 		if (!activePage.value) return
 		routeVariables.value[name] = value
-		localStorage.setItem(
-			`${activePage.value.name}:routeVariables`,
-			JSON.stringify(routeVariables.value),
-		)
+		localStorage.setItem(`${activePage.value.name}:routeVariables`, JSON.stringify(routeVariables.value))
 		resetState()
 	}
 
 	const resetState = useDebounceFn(async () => {
 		const page = activePage.value
 		if (!page) return
-		await codeStore.initializePage(page)
+		await pageScope.initializePage(page)
 	}, 300)
 
 	const codeStore = useCodeStore()
+	const pageScope = usePageScope()
 	codeStore.setRouteObject(routeObject)
 	codeStore.setRouterObject(readonly(router))
 
 	const pageScriptBindingOptions = computed<BindingOption[]>(() => {
-		return Object.entries(codeStore.pageScriptTemplateBindings).map(([key, value]) => ({
+		return Object.entries(pageScope.pageScriptTemplateBindings).map(([key, value]) => ({
 			value: key,
 			label: key,
 			type: typeof value,
@@ -666,11 +742,18 @@ const useStudioStore = defineStore("store", () => {
 	return {
 		// layout
 		studioLayout,
+		isDark,
+		toggleTheme,
+		isCanvasDark,
 		mode,
 		componentContextMenu,
+		activeLayers,
 		// dialogs
 		showSearchBlock,
-		showStudioSettingsDialog,
+		showSettingsDialog,
+		settingsTab,
+		openSettings,
+		showShortcutsDialog,
 		showPageOptions,
 		// studio app
 		activeApp,
@@ -692,19 +775,25 @@ const useStudioStore = defineStore("store", () => {
 		selectedVueComponent,
 		navigateToCodeFile,
 		navigateToVueComponent,
+		showRouterEditor,
 		// studio pages
 		pageBlocks,
 		selectedPage,
 		settingPage,
 		savingPage,
+		publishingPage,
+		publishingApp,
 		pageConflict,
 		activePage,
 		setPage,
 		savePage,
 		updateActivePage,
+		updatePage,
+		pageAllowsGuests,
 		syncPageModified,
 		refreshActivePageModified,
 		reloadActivePageScript,
+		reloadActiveAppRouterScript,
 		publishPage,
 		unpublishPage,
 		revertPage,

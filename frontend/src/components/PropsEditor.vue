@@ -6,9 +6,15 @@
 				<button class="cursor-pointer underline" @click="openComponentEditor">component editor</button>
 			</span>
 		</EmptyState>
-		<EmptyState v-else :message="`${block?.getBlockDescription()} has no editable properties`" />
+		<EmptyState
+			v-else
+			:message="`${block?.getBlockDescription()} ${block?.isUnregisteredComponent() ? 'is missing' : 'has no editable properties'}`"
+		/>
 	</template>
-	<div v-else class="mt-3 flex flex-col gap-3">
+	<div
+		v-if="!isObjectEmpty(componentProps) || block?.isUnregisteredComponent()"
+		class="mt-3 flex flex-col gap-3"
+	>
 		<div
 			v-for="(config, propName) in filteredComponentProps"
 			:key="propName"
@@ -113,6 +119,8 @@
 				v-bind="config.props"
 			/>
 		</div>
+
+		<DeprecatedProps v-if="!multiEdit && block" :block="block" :propConfigs="propConfigs" />
 	</div>
 </template>
 
@@ -126,7 +134,7 @@ import InlineInput from "@/components/InlineInput.vue"
 import ArrayInput from "@/components/ArrayInput.vue"
 import { isObjectEmpty } from "@/utils/helpers"
 import Code from "@/components/Code.vue"
-import { useStudioCompletions, useDynamicValueCompletions } from "@/utils/useStudioCompletions"
+import { useStudioCompletions, useDynamicValueCompletions } from "@/utils/completions/useStudioCompletions"
 import type { CompletionContext } from "@codemirror/autocomplete"
 import useComponentStore from "@/stores/componentStore"
 import { getComponentProps } from "@/utils/components"
@@ -137,6 +145,7 @@ import useComponentEditorStore from "@/stores/componentEditorStore"
 import type { ComponentProp, ComponentProps } from "@/types"
 import { ComponentInput } from "@/types/Studio/StudioComponent"
 import DynamicValueSelector from "@/components/DynamicValueSelector.vue"
+import DeprecatedProps from "@/components/DeprecatedProps.vue"
 import useStudioStore from "@/stores/studioStore"
 import useComponentInstance from "@/utils/useComponentInstance"
 

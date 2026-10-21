@@ -1,16 +1,16 @@
 <template>
 	<div class="flex flex-col gap-3 p-4">
 		<CollapsibleSection sectionName="Data Sources">
-			<div class="ml-3 flex flex-col gap-1" v-if="!isObjectEmpty(codeStore.resources)">
+			<div class="ml-3 flex flex-col gap-1" v-if="!isObjectEmpty(pageScope.resources)">
 				<div
-					v-for="(resource, resource_name) in codeStore.resources"
+					v-for="(resource, resource_name) in pageScope.resources"
 					:key="resource_name"
 					class="group/item flex flex-row items-center justify-between"
 				>
-					<div class="-ml-[0.9rem] flex items-center gap-1 overflow-hidden">
-						<ObjectBrowser :object="resource" :name="resource_name" />
+					<div class="-ml-[0.9rem] flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+						<ObjectBrowser :object="resource" :name="resource_name" class="min-w-0 flex-1" />
 						<Tooltip v-if="!resource" text="No matching document found for the current filters">
-							<span class="lucide-alert-circle h-[14px] w-[14px] cursor-pointer text-ink-amber-6" />
+							<span class="lucide-alert-circle h-[14px] w-[14px] cursor-pointer text-ink-amber-5" />
 						</Tooltip>
 					</div>
 					<ItemActions
@@ -24,7 +24,7 @@
 			<EmptyState v-else message="No resources added" />
 
 			<div class="mt-2 flex flex-col" v-if="store.activePage">
-				<Button icon-left="plus" @click="showResourceDialog = true">Add Data Source</Button>
+				<Button icon-left="lucide-plus" @click="showResourceDialog = true">Add Data Source</Button>
 				<ResourceDialog
 					v-model:showDialog="showResourceDialog"
 					:resource="existingResource"
@@ -40,7 +40,7 @@
 import { ref, watch } from "vue"
 import { Tooltip, Button } from "frappe-ui"
 import useStudioStore from "@/stores/studioStore"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import CollapsibleSection from "@/components/CollapsibleSection.vue"
 import ObjectBrowser from "@/components/ObjectBrowser.vue"
 import EmptyState from "@/components/EmptyState.vue"
@@ -60,7 +60,7 @@ import { copyDataSource } from "@/utils/blockCopyPaste"
  */
 
 const store = useStudioStore()
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 const showResourceDialog = ref(false)
 const existingResource = ref<Resource | null>()
 
@@ -71,7 +71,7 @@ watch(showResourceDialog, (show) => {
 })
 
 async function refreshResources() {
-	if (store.activePage) await codeStore.setPageResources(store.activePage)
+	if (store.activePage) await pageScope.setPageResources(store.activePage)
 }
 
 const addResource = (resource: Resource) => {
@@ -108,7 +108,7 @@ const deleteResource = async (resource_name: string) => {
 				await refreshResources()
 				await store.refreshActivePageModified()
 			}
-			toast.success(`Data Source ${resource_name} deleted successfully`)
+			toast.success(`Data Source ${resource_name} deleted`)
 		})
 		.catch(() => {
 			toast.error(`Failed to delete data source ${resource_name}`)
@@ -123,7 +123,7 @@ const editResource = async (resource: Resource) => {
 				await refreshResources()
 				store.syncPageModified(data)
 			}
-			toast.success(`Data Source ${resource.resource_name} updated successfully`)
+			toast.success(`Data Source ${resource.resource_name} updated`)
 			showResourceDialog.value = false
 		})
 		.catch(() => {

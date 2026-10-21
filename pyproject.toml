@@ -9,7 +9,7 @@ readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # "frappe~=15.0.0" # Installed and managed by bench.
-    "litellm==1.83.7",
+    "litellm==1.95.0",
     "json_repair>=0.59.10",
 ]
 

@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import Block from "@/utils/block"
-import { computed, onMounted, ref, useAttrs, inject, type ComputedRef, h } from "vue"
+import { computed, onMounted, ref, useAttrs, inject, type ComputedRef, h, getCurrentInstance } from "vue"
 import type { ComponentPublicInstance } from "vue"
 import { createResource } from "frappe-ui"
 import { getComponentRoot, isObjectEmpty } from "@/utils/helpers"
@@ -61,7 +61,7 @@ import { isDynamicValue } from "@/utils/code"
 import { resolveEventListener } from "@/utils/eventModifiers"
 import useComponentInstance from "@/utils/useComponentInstance"
 
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import { toast } from "frappe-ui"
 import type { SlotScope } from "@/types"
 import type { Field } from "@/types/ComponentEvent"
@@ -69,7 +69,7 @@ import type { DataResult } from "@/types/Studio/StudioResource"
 
 import StudioComponentRenderer from "@/components/StudioComponentRenderer.vue"
 import SlotScopeProvider from "@/components/SlotScopeProvider.vue"
-import { customVueComponentsRegistry } from "@/globals"
+import { customVueComponentsRegistry } from "@/utils/customVueComponents"
 import MissingComponent from "@/components/MissingComponent.vue"
 
 const props = defineProps<{
@@ -81,10 +81,18 @@ const componentName = computed(() => {
 	let name = props.block.componentName
 	if (window.is_preview && props.block.isCustomVueComponent) {
 		name = customVueComponentsRegistry.value[name]
-		if (!name) return h(MissingComponent, { componentName: props.block.componentName })
+	}
+	// the published app stays as it was: end users never see the banner
+	if (window.is_preview && (!name || isUnregistered(name))) {
+		return h(MissingComponent, { componentName: props.block.componentName })
 	}
 	return name
 })
+
+// e.g. a frappe-ui component that a later version removed: Vue would render it as an empty unknown element
+const registeredComponents = getCurrentInstance()?.appContext.components ?? {}
+const isUnregistered = (name: unknown) =>
+	typeof name === "string" && /^[A-Z]/.test(name) && !(name in registeredComponents)
 
 const componentRef = ref<ComponentPublicInstance | null>(null)
 
@@ -94,7 +102,7 @@ const styles = computed(() => {
 	Object.entries(_styles).forEach(([key, value]) => {
 		if (value) {
 			if (isDynamicValue(value.toString())) {
-				_styles[key] = codeStore.getDynamicValue(value.toString(), evaluationContext.value)
+				_styles[key] = pageScope.getDynamicValue(value.toString(), evaluationContext.value)
 			}
 		}
 	})
@@ -104,7 +112,7 @@ const classes = computed(() => {
 	return [attrs.class, ...props.block.getClasses()]
 })
 
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 const slotScope = inject<ComputedRef<SlotScope> | null>("slotScope", null)
 const componentContext = inject<ComputedRef | null>("componentContext", null)
 
@@ -121,9 +129,9 @@ const getComponentProps = () => {
 	const propValues = props.block.getPropsAndAttributes()
 	Object.entries(propValues).forEach(([propName, propValue]) => {
 		if (propValue?.$type === "variable") {
-			propValues[propName] = codeStore.getValueFromBinding(propValue.name, evaluationContext.value)
+			propValues[propName] = pageScope.getValueFromBinding(propValue.name, evaluationContext.value)
 		} else {
-			propValues[propName] = codeStore.evaluateDynamicValues(propValue, evaluationContext.value)
+			propValues[propName] = pageScope.evaluateDynamicValues(propValue, evaluationContext.value)
 		}
 	})
 	return propValues
@@ -140,7 +148,7 @@ const vModelListeners = computed(() => {
 		if (propValue?.$type === "variable") {
 			const eventName = `update:${propName}`
 			listeners[eventName] = (newValue: any) => {
-				codeStore.setValueInBinding(propValue.name, newValue, evaluationContext.value)
+				pageScope.setValueInBinding(propValue.name, newValue, evaluationContext.value)
 			}
 		}
 	})
@@ -158,7 +166,7 @@ const componentProps = computed(() => {
 // visibility
 const showComponent = computed(() => {
 	if (props.block.visibilityCondition) {
-		return codeStore.getDynamicValue(props.block.visibilityCondition, evaluationContext.value)
+		return pageScope.getDynamicValue(props.block.visibilityCondition, evaluationContext.value)
 	}
 	return true
 })
@@ -186,7 +194,7 @@ function getEventHandler(event: any): Listener | undefined {
 		return (...eventArgs: any[]) => {
 			const fields: Record<string, any> = {}
 			event.fields.forEach((field: Field) => {
-				fields[field.field] = codeStore.getValueFromBinding(field.value, evaluationContext.value)
+				fields[field.field] = pageScope.getValueFromBinding(field.value, evaluationContext.value)
 			})
 			event.eventArgs = eventArgs
 			createResource({
@@ -199,7 +207,7 @@ function getEventHandler(event: any): Listener | undefined {
 		}
 	} else if (event.action === "Run Script") {
 		return (...eventArgs: any[]) => {
-			codeStore.executeUserScript(event.script, slotScope?.value, componentContext?.value, eventArgs)
+			pageScope.executeUserScript(event.script, slotScope?.value, componentContext?.value, eventArgs)
 		}
 	}
 }
@@ -229,7 +237,7 @@ function addListener(map: ListenerMap, name: string, listener: Listener) {
 
 const handleSuccess = (event: any) => (data: DataResult) => {
 	if (event.on_success === "script" && event.on_success_script) {
-		return codeStore.handleSuccess(
+		return pageScope.handleSuccess(
 			event.on_success_script,
 			data,
 			slotScope?.value,
@@ -238,14 +246,14 @@ const handleSuccess = (event: any) => (data: DataResult) => {
 		)
 	} else {
 		if (event.action === "Insert a Document") {
-			toast.success(event.success_message || `${event.doctype} created successfully`)
+			toast.success(event.success_message || `${event.doctype} created`)
 		}
 	}
 }
 
 const handleError = (event: any) => (error: any) => {
 	if (event.on_error === "script" && event.on_error_script) {
-		return codeStore.handleError(
+		return pageScope.handleError(
 			event.on_error_script,
 			error,
 			slotScope?.value,

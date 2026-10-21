@@ -30,7 +30,7 @@
 
 		<button
 			v-if="activePage"
-			class="flex w-full items-center gap-2 rounded border border-outline-gray-2 px-2 py-1.5 text-left hover:bg-surface-gray-2"
+			class="flex w-full items-center gap-2 rounded-4 border border-outline-gray-2 px-2 py-1.5 text-left hover:bg-surface-gray-2"
 			:title="
 				activePageHasScript
 					? `Open ${activePage.page_title}'s script`
@@ -48,12 +48,12 @@
 			</span>
 		</button>
 
-		<div ref="treeContainer" class="overflow-auto rounded">
+		<div ref="treeContainer" class="overflow-auto rounded-4">
 			<EmptyState v-if="!loading && !tree.length" message="No code files yet" />
 			<Tree :nodes="tree" nodeKey="path" guides="none" :style="treeStyle">
 				<template #item="{ node, expanded, toggle }">
 					<div
-						class="flex h-7 flex-1 cursor-pointer select-none items-center gap-1 rounded px-1 outline-none"
+						class="flex h-7 flex-1 cursor-pointer select-none items-center gap-1 rounded-4 px-1 outline-none"
 						:class="
 							selectedNode?.path === node.path
 								? 'bg-surface-gray-3 text-ink-gray-9'
@@ -81,7 +81,7 @@
 						</div>
 						<div
 							:data-file-label="node.path"
-							class="min-w-0 flex-1 rounded text-sm outline-none"
+							class="min-w-0 flex-1 rounded-4 text-sm outline-none"
 							:class="[
 								node.path === activePagePaths?.folder ? 'font-medium text-ink-gray-9' : '',
 								editingPath === node.path
@@ -99,9 +99,9 @@
 						<Tooltip
 							v-if="node.path === activePagePaths?.folder"
 							text="Currently editing this page"
-							placement="right"
+							side="right"
 						>
-							<span class="ml-1 mt-0.5 shrink-0 text-[8px] text-ink-blue-6">●</span>
+							<span class="ml-1 mt-0.5 shrink-0 text-[8px] text-ink-blue-5">●</span>
 						</Tooltip>
 					</div>
 				</template>
@@ -146,30 +146,30 @@
 	>
 		<template #title>
 			<span
-				class="mt-1 shrink-0 font-mono text-[10px] font-bold leading-none"
+				class="mt-0.5 shrink-0 font-mono text-[10px] font-bold leading-none"
 				:class="getFileBadge(openFile!.path).colorClass"
 			>
 				{{ getFileBadge(openFile!.path).label }}
 			</span>
-			<span class="text-sm text-ink-gray-8" :title="openFile!.path">
+			<span class="truncate text-sm text-ink-gray-8" :title="openFile!.path">
 				{{ openFile!.path }}
-				<span v-if="dirty" class="text-ink-amber-6">•</span>
+				<span v-if="dirty" class="text-ink-amber-5">•</span>
 			</span>
 			<span v-if="openFileReadOnly" class="shrink-0 text-xs text-ink-gray-4">read-only</span>
 		</template>
 		<template #actions>
 			<template v-if="!openFileReadOnly">
-				<Button size="xs" variant="solid" :loading="saving" :disabled="!dirty" @click="save">Save</Button>
 				<Button size="xs" variant="ghost" icon="lucide-trash-2" @click="removeFile" title="Delete file" />
+				<Button size="xs" variant="solid" :loading="saving" :disabled="!dirty" @click="save">Save</Button>
 			</template>
 			<Button size="xs" variant="ghost" icon="lucide-x" @click="closeFile" title="Close editor" />
 		</template>
 
 		<template #banner>
 			<ErrorMessage
-				v-if="codeStore.pageScriptError && isEditingActivePageScript"
+				v-if="pageScope.pageScriptError && isEditingActivePageScript"
 				class="border-b border-outline-gray-2 px-3 py-2"
-				:message="`Error: ${codeStore.pageScriptError}`"
+				:message="`Error: ${pageScope.pageScriptError}`"
 			/>
 		</template>
 	</CodeEditorDock>
@@ -183,7 +183,7 @@ import CodeEditorDock from "@/components/CodeEditorDock.vue"
 import ContextMenu from "@/components/ContextMenu.vue"
 import EmptyState from "@/components/EmptyState.vue"
 import useStudioStore from "@/stores/studioStore"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import {
 	listStudioFiles,
 	readStudioFile,
@@ -196,11 +196,11 @@ import {
 	type StudioFileNode,
 } from "@/data/studioFiles"
 import { confirm } from "@/utils/helpers"
-import { pageScriptCompletions } from "@/utils/pageScriptCompletions"
+import { pageScriptCompletions } from "@/utils/completions/pageScriptCompletions"
 import type { ContextMenuOption } from "@/types"
 
 const store = useStudioStore()
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 const app = computed(() => store.activeApp)
 
 const treeStyle = {
@@ -265,14 +265,17 @@ const activePageHasScript = computed(() => Boolean(findNode(activePagePaths.valu
 
 function openActivePageScript() {
 	const scriptPath = activePagePaths.value?.script
-	if (!scriptPath) return
-	const scriptNode = findNode(scriptPath)
-	if (scriptNode) {
-		selectedNode.value = scriptNode
-		openNode(scriptNode)
+	if (scriptPath) openOrCreateFile(scriptPath)
+}
+
+function openOrCreateFile(path: string) {
+	const node = findNode(path)
+	if (node) {
+		selectedNode.value = node
+		openNode(node)
 	} else {
 		newEntryType.value = "file"
-		newEntryPath.value = scriptPath
+		newEntryPath.value = path
 		showNewEntryDialog.value = true
 		focusFormInput(pathInput)
 	}
@@ -305,21 +308,22 @@ function getFileBadge(path: string): { label: string; colorClass: string } {
 	const extension = path.slice(path.lastIndexOf(".")).toLowerCase()
 	switch (extension) {
 		case ".vue":
-			return { label: "V", colorClass: "text-ink-green-6" }
+			return { label: "V", colorClass: "text-ink-green-5" }
 		case ".js":
-			return { label: "JS", colorClass: "text-ink-orange-6" }
+			return { label: "JS", colorClass: "text-ink-orange-5" }
 		case ".ts":
-			return { label: "TS", colorClass: "text-ink-blue-7" }
+			return { label: "TS", colorClass: "text-ink-blue-6" }
 		case ".json":
 			return { label: "{}", colorClass: "text-ink-gray-5" }
 		case ".css":
-			return { label: "#", colorClass: "text-ink-red-6" }
+			return { label: "#", colorClass: "text-ink-red-5" }
 		default:
 			return { label: "•", colorClass: "text-ink-gray-4" }
 	}
 }
 
 async function openNode(node: StudioFileNode) {
+	if (node.path === "router.ts") return openRouterEditor()
 	if (dirty.value) {
 		const discard = await confirm("Discard unsaved changes?")
 		if (!discard) return
@@ -332,6 +336,12 @@ async function openNode(node: StudioFileNode) {
 	} catch (error: any) {
 		toast.error("Failed to open file", { description: error?.messages?.join(", ") })
 	}
+}
+
+// the router editor owns router.ts: its completions, page-name warning and help live there
+function openRouterEditor() {
+	store.studioLayout.leftPanelActiveTab = "Pages"
+	store.showRouterEditor = true
 }
 
 function onEditorChange(value: string) {
@@ -501,18 +511,10 @@ watch(
 			const stop = watch(loading, async (isLoading) => {
 				if (isLoading) return
 				stop()
-				const node = findNode(path)
-				if (node) {
-					selectedNode.value = node
-					await openNode(node)
-				}
+				openOrCreateFile(path)
 			})
 		} else {
-			const node = findNode(path)
-			if (node) {
-				selectedNode.value = node
-				await openNode(node)
-			}
+			openOrCreateFile(path)
 		}
 	},
 )

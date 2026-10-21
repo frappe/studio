@@ -1,51 +1,42 @@
 <template>
-	<Autocomplete
+	<Combobox
 		size="sm"
-		:options="dynamicValueOptions"
+		:options="comboboxOptions"
 		class="!w-auto"
-		placement="left-start"
-		modelValue=""
-		@update:modelValue="(option: BindingOption) => emit('update:modelValue', option.value, syncState)"
+		side="left"
+		align="start"
+		:modelValue="null"
+		@update:modelValue="(value) => value != null && emit('update:modelValue', String(value), syncState)"
 	>
-		<template #target="{ togglePopover }">
+		<template #trigger>
 			<IconButton
-				v-if="syncState"
-				:icon="Link2"
-				label="Synced with page state. Click to change."
-				placement="bottom"
+				:icon="syncState ? Link2 : LucideCirclePlus"
+				:label="syncState ? 'Synced with page state. Click to change.' : 'Click to set dynamic value'"
+				tooltipPlacement="left"
 				class="mr-1"
-				:tabIndex="-1"
-				@click="togglePopover"
-			/>
-			<IconButton
-				v-else
-				:icon="LucideCirclePlus"
-				label="Click to set dynamic value"
-				placement="left"
-				class="mr-1"
+				:class="attrs.class"
 				size="sm"
 				:tabIndex="-1"
-				@click="togglePopover"
 			/>
 		</template>
 
-		<template #item-suffix="{ option }">
-			<span class="text-ink-gray-4">{{ option.type?.toLowerCase() }}</span>
-		</template>
 		<template #footer v-if="dynamicValueOptions.length > 0">
-			<div class="flex items-center gap-1 px-2" @mousedown.prevent>
+			<div
+				class="flex items-center gap-1 border-t border-outline-gray-1 px-2 py-1 text-base"
+				@mousedown.prevent
+			>
 				<Tooltip text="Changing the selected value will change the prop value and vice versa">
-					<FeatherIcon name="info" class="size-3 text-ink-gray-5" />
+					<span class="lucide-info size-3 text-ink-gray-5" />
 				</Tooltip>
 				<Switch v-model="syncState" label="Sync with state" class="w-full hover:bg-transparent" />
 			</div>
 		</template>
-	</Autocomplete>
+	</Combobox>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-import { Autocomplete, Switch, Tooltip, FeatherIcon } from "frappe-ui"
+import { computed, ref, useAttrs, watch } from "vue"
+import { Combobox, Switch, Tooltip } from "frappe-ui"
 import IconButton from "@/components/IconButton.vue"
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
@@ -55,9 +46,13 @@ import type { ComponentInput } from "@/types/Studio/StudioComponent"
 import type { BindingOption, SlotScope } from "@/types"
 import { isObjectEmpty } from "@/utils/helpers"
 import { getBindingType } from "@/utils/parseCode"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import Link2 from "~icons/lucide/link-2"
 import LucideCirclePlus from "~icons/lucide/circle-plus"
+
+// Combobox drops `class` for a custom #trigger, so it goes on the trigger button itself
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
 
 const props = defineProps<{ block?: Block; boundStateName?: string | null }>()
 const emit = defineEmits<{
@@ -74,7 +69,7 @@ watch(
 
 const store = useStudioStore()
 const canvasStore = useCanvasStore()
-const codeStore = useCodeStore()
+const pageScope = usePageScope()
 
 const dynamicValueOptions = computed(() => {
 	const groups = []
@@ -93,7 +88,7 @@ const dynamicValueOptions = computed(() => {
 			})
 			groups.push({
 				group: "Component Inputs",
-				items: componentContext,
+				options: componentContext,
 			})
 		}
 	} else {
@@ -102,14 +97,14 @@ const dynamicValueOptions = computed(() => {
 		if (slotScopeOptions.length) {
 			groups.push({
 				group: props.block?.isRepeated() ? "Repeater Scope" : "Slot Scope",
-				items: slotScopeOptions,
+				options: slotScopeOptions,
 			})
 		}
 
 		// Data Sources group
-		const dataSourceOptions = Object.keys(codeStore.resources).map((resourceName) => {
+		const dataSourceOptions = Object.keys(pageScope.resources).map((resourceName) => {
 			const completion =
-				"doc" in (codeStore.resources[resourceName] ?? {}) ? `${resourceName}.doc` : `${resourceName}.data`
+				"doc" in (pageScope.resources[resourceName] ?? {}) ? `${resourceName}.doc` : `${resourceName}.data`
 			return {
 				value: completion,
 				label: resourceName,
@@ -119,12 +114,12 @@ const dynamicValueOptions = computed(() => {
 		if (dataSourceOptions.length > 0) {
 			groups.push({
 				group: "Data Sources",
-				items: dataSourceOptions,
+				options: dataSourceOptions,
 			})
 		}
 
 		// Page script bindings group (refs/reactive/computed/functions
-		const pageScriptOptions = Object.entries(codeStore.pageScriptBindings).map(([name, binding]) => {
+		const pageScriptOptions = Object.entries(pageScope.pageScriptBindings).map(([name, binding]) => {
 			const bindingType = getBindingType(binding)
 			const value = bindingType === "function" ? `${name}()` : name
 			return {
@@ -136,13 +131,21 @@ const dynamicValueOptions = computed(() => {
 		if (pageScriptOptions.length > 0) {
 			groups.push({
 				group: "Page Script",
-				items: pageScriptOptions,
+				options: pageScriptOptions,
 			})
 		}
 	}
 
 	return groups
 })
+
+// Combobox normalizes every option's `type` to "option", so the binding type goes in `description`
+const comboboxOptions = computed(() =>
+	dynamicValueOptions.value.map((group) => ({
+		...group,
+		options: group.options.map(({ type, ...option }) => ({ ...option, description: type?.toLowerCase() })),
+	})),
+)
 
 function getSlotScopeOptions(slotScope?: SlotScope | null): BindingOption[] {
 	return Object.entries(slotScope || {}).flatMap(([name, value]) => {

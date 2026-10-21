@@ -3,18 +3,21 @@ import shutil
 from pathlib import Path
 
 import frappe
+from frappe import _
 from frappe.modules import scrub
 from frappe.modules.export_file import strip_default_fields
 
 from studio.sync_json import cache_synced_file_hash
+
+PRESERVED_EMPTY_PROPERTIES = frozenset({"componentProps", "componentSlots"})
 
 
 def write_document_file(doc, folder=None, exclude_fields=None):
 	doc_export = doc.as_dict(no_nulls=True)
 	doc.run_method("before_export", doc_export)
 	doc_export = strip_default_fields(doc, doc_export)
-
 	# Fields written to a companion file (e.g. a Code field exported as .js) are dropped from JSON.
+	remove_empty_values(doc_export)
 	for field in exclude_fields or []:
 		doc_export.pop(field, None)
 
@@ -67,22 +70,60 @@ def can_export(doc) -> bool:
 	)
 
 
+def validate_standard_app_change(doc):
+	"""Block standard apps, pages and component edits outside developer mode.
+	Allow changes only during migration, installation, and patches (which sync app's files)."""
+	if frappe.conf.developer_mode:
+		return
+	previous = doc.get_doc_before_save()
+	# clearing is_standard changes a standard doc too
+	if not (doc.is_standard or (previous and previous.is_standard)):
+		return
+	sync_flags = ("in_import", "in_migrate", "in_install", "in_uninstall", "in_patch")
+	if any(frappe.flags.get(flag) for flag in sync_flags):
+		return
+	frappe.throw(
+		_("Standard apps can only be edited in developer mode."),
+		frappe.PermissionError,
+		title=_("Not Allowed"),
+	)
+
+
 def parse_json(field):
 	if field and isinstance(field, str):
 		return frappe.parse_json(field)
 	return
 
 
-def remove_null_fields(docdict):
-	"""remove null and empty fields"""
+def remove_empty_values(docdict):
+	"""Remove empty fields from documents, child rows, block children, and slot content."""
 	to_remove = []
 	for attr, value in docdict.items():
+		if attr == "componentSlots" and isinstance(value, dict):
+			remove_empty_values_from_slots(value)
+		if attr in PRESERVED_EMPTY_PROPERTIES:
+			continue
+
 		if isinstance(value, list):
-			for v in value:
-				if isinstance(v, dict):
-					remove_null_fields(v)
-		elif not value:
+			for item in value:
+				if isinstance(item, dict):
+					remove_empty_values(item)
+			if not value:
+				to_remove.append(attr)
+		elif isinstance(value, dict):
+			if not value:
+				to_remove.append(attr)
+		elif value is None or value == "":
 			to_remove.append(attr)
 
 	for attr in to_remove:
 		del docdict[attr]
+
+
+def remove_empty_values_from_slots(slots):
+	"""Prune blocks inside slot content; the slots themselves are kept as-is."""
+	for slot in slots.values():
+		if isinstance(slot, dict) and isinstance(slot.get("slotContent"), list):
+			for block in slot["slotContent"]:
+				if isinstance(block, dict):
+					remove_empty_values(block)

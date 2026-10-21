@@ -1,7 +1,14 @@
 <template>
 	<div ref="canvasContainer" @click="handleClick">
 		<slot name="header"></slot>
-		<div class="overlay absolute" :class="{ 'pointer-events-none': isOverDropZone }" ref="overlay" />
+		<div
+			class="overlay absolute"
+			:class="{ 'pointer-events-none': isOverDropZone }"
+			data-theme="light"
+			ref="overlay"
+		/>
+		<DropIndicator />
+		<BlockSnapGuides />
 		<Transition name="fade">
 			<div
 				class="absolute bottom-0 left-0 right-0 top-0 z-[19] grid w-full place-items-center bg-surface-gray-1"
@@ -19,7 +26,20 @@
 				transform: `scale(${canvasProps.scale}) translate(${canvasProps.translateX}px, ${canvasProps.translateY}px)`,
 			}"
 		>
-			<div class="dark:bg-zinc-900 absolute right-0 top-[-60px] flex rounded-md bg-surface-base px-3">
+			<div class="absolute right-0 top-[-60px] flex rounded-5 bg-surface-base px-3">
+				<Tooltip text="Toggle Canvas Theme" :hoverDelay="600">
+					<div
+						v-show="!canvasProps.scaling && !canvasProps.panning"
+						class="w-auto cursor-pointer p-2"
+						@click.stop="store.isCanvasDark = !store.isCanvasDark"
+					>
+						<span
+							class="h-8 w-6 text-ink-gray-6"
+							:class="store.isCanvasDark ? 'lucide-sun' : 'lucide-moon'"
+						/>
+					</div>
+				</Tooltip>
+				<div v-show="!canvasProps.scaling && !canvasProps.panning" class="m-2 my-3 w-px bg-surface-gray-3" />
 				<div
 					v-show="!canvasProps.scaling && !canvasProps.panning"
 					class="w-auto cursor-pointer p-2"
@@ -27,30 +47,33 @@
 					:key="breakpoint.device"
 					@click.stop="selectBreakpoint(breakpoint)"
 				>
-					<FeatherIcon
-						:name="breakpoint.icon"
+					<span
 						class="h-8 w-6"
-						:class="{
-							'dark:text-zinc-50 text-ink-gray-6': breakpoint.visible,
-							'dark:text-zinc-500 text-ink-gray-2': !breakpoint.visible,
-						}"
+						:class="[
+							breakpoint.icon,
+							{
+								'text-ink-gray-6': breakpoint.visible,
+								'text-ink-gray-2': !breakpoint.visible,
+							},
+						]"
 					/>
 				</div>
 			</div>
 			<div class="flex gap-40">
 				<div
 					class="canvas relative flex bg-surface-base shadow-2xl contain-layout"
+					:data-theme="store.isCanvasDark ? 'dark' : 'light'"
 					v-for="breakpoint in visibleBreakpoints"
 					:key="breakpoint.device"
 					:class="canvasStore.editingMode === 'page' ? 'min-h-[100dvh]' : ''"
 					:style="{
 						...canvasStyles,
-						background: canvasProps.background,
 						width: `${breakpoint.width}px`,
 					}"
 				>
 					<div
-						class="cursor dark:text-zinc-300 absolute left-0 select-none text-4xl text-ink-gray-6"
+						class="cursor absolute left-0 select-none text-4xl text-ink-gray-6"
+						:data-theme="store.isDark ? 'dark' : 'light'"
 						:style="{
 							fontSize: `calc(${12}px * 1/${canvasProps.scale})`,
 							top: `calc(${-20}px * 1/${canvasProps.scale})`,
@@ -74,7 +97,7 @@
 		</div>
 
 		<div
-			class="text-sm-semibold fixed bottom-12 left-[50%] z-40 flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-lg bg-surface-base px-3 py-2 text-center text-ink-gray-5 shadow-md"
+			class="text-sm-semibold fixed bottom-12 left-[50%] z-40 flex translate-x-[-50%] cursor-default items-center justify-center gap-2 rounded-6 bg-surface-base px-3 py-2 text-center text-ink-gray-5 shadow-md"
 			v-show="!canvasProps.panning"
 		>
 			{{ Math.round(canvasProps.scale * 100) + "%" }}
@@ -100,11 +123,13 @@
 
 <script setup lang="ts">
 import { Ref, ref, watch, reactive, computed, onMounted, provide } from "vue"
-import { LoadingIndicator, FeatherIcon } from "frappe-ui"
+import { LoadingIndicator, Tooltip } from "frappe-ui"
 import StudioComponent from "@/components/StudioComponent.vue"
 import FitScreenIcon from "@/components/Icons/FitScreenIcon.vue"
 import DraggablePopup from "@/components/DraggablePopup.vue"
 import SearchBlock from "@/components/SearchBlock.vue"
+import DropIndicator from "@/components/DropIndicator.vue"
+import BlockSnapGuides from "@/components/BlockSnapGuides.vue"
 
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
@@ -139,7 +164,6 @@ const showBlocks = ref(false)
 
 const canvasProps = reactive({
 	overlayElement: null,
-	background: "#fff",
 	scale: 1,
 	translateX: 0,
 	translateY: 0,
@@ -148,21 +172,21 @@ const canvasProps = reactive({
 	panning: false,
 	breakpoints: [
 		{
-			icon: "monitor",
+			icon: "lucide-monitor",
 			device: "desktop",
 			displayName: "Desktop",
 			width: 1400,
 			visible: true,
 		},
 		{
-			icon: "tablet",
+			icon: "lucide-tablet",
 			device: "tablet",
 			displayName: "Tablet",
 			width: 800,
 			visible: false,
 		},
 		{
-			icon: "smartphone",
+			icon: "lucide-smartphone",
 			device: "mobile",
 			displayName: "Mobile",
 			width: 420,
@@ -287,6 +311,7 @@ function selectBlockRange(block: Block) {
 }
 
 const handleClick = (ev: MouseEvent) => {
+	if (canvasStore.preventClick) return
 	const target = document.elementFromPoint(ev.clientX, ev.clientY)
 	// hack to ensure if click is on canvas-container
 	// TODO: Still clears selection if space handlers are dragged over canvas-container
@@ -413,10 +438,10 @@ defineExpose({
 
 <style>
 .hovered-block {
-	@apply border-outline-blue-3 text-ink-gray-6 dark:border-outline-blue-9 dark:text-ink-gray-4;
+	@apply border-outline-blue-3 text-ink-gray-6;
 }
 .block-selected {
-	@apply border-outline-blue-4 text-ink-gray-8 dark:border-outline-blue-7 dark:text-ink-gray-1;
+	@apply border-outline-blue-4 text-ink-gray-8;
 }
 .slot-selected {
 	@apply border-outline-purple-4 text-ink-gray-8;

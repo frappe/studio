@@ -1,5 +1,6 @@
-import frappeUIPreset from "frappe-ui/tailwind"
+import frappeUIPreset, { content as frappeUIContent } from "frappe-ui/tailwind"
 import plugin from "tailwindcss/plugin"
+import { cssVariables } from "frappe-ui/tailwind/tokens"
 
 export default {
 	presets: [frappeUIPreset],
@@ -33,27 +34,28 @@ export default {
 		"text-p-2xl",
 		"text-p-3xl",
 		"text-p-4xl",
+		// app builds replace this with only the icons their pages use (src/scripts/build.js)
+		{ pattern: /^lucide-/ },
 	],
 	content: [
 		"./index.html",
 		"./src/**/*.{vue,js,ts,jsx,tsx}",
-		"./node_modules/frappe-ui/src/components/**/*.{vue,js,ts,jsx,tsx}",
-		"../node_modules/frappe-ui/src/components/**/*.{vue,js,ts,jsx,tsx}",
-		"./node_modules/frappe-ui/src/molecules/**/*.{vue,js,ts,jsx,tsx}",
-		"../node_modules/frappe-ui/src/molecules/**/*.{vue,js,ts,jsx,tsx}",
-		"./node_modules/frappe-ui/experimental/**/*.{vue,js,ts,jsx,tsx}",
-		"../node_modules/frappe-ui/experimental/**/*.{vue,js,ts,jsx,tsx}",
-		"./node_modules/frappe-ui/frappe/**/*.{vue,js,ts,jsx,tsx}",
-		"../node_modules/frappe-ui/frappe/**/*.{vue,js,ts,jsx,tsx}",
+		...frappeUIContent,
 		"../../frappe/ui/src/**/*.{vue,js,ts,jsx,tsx}",
 		"../../*/studio/**/*.{vue,js,ts,jsx,tsx,json}",
 		"!../../*/studio/**/node_modules/**",
+		"!../../studio/studio/public/**",
 	],
 	theme: {
 		extend: {},
 	},
 	plugins: [
-		plugin(function ({ addUtilities }) {
+		plugin(function ({ addBase, addUtilities }) {
+			// the canvas has its own theme, so a light frame can sit inside the dark editor
+			addBase({
+				"[data-theme]": { color: "CanvasText" },
+				'[data-theme="dark"] [data-theme="light"]': { ...cssVariables.light, colorScheme: "light" },
+			})
 			addUtilities({
 				".hide-scrollbar": {
 					/* IE and Edge */

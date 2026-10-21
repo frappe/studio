@@ -2,15 +2,18 @@
 # See license.txt
 
 import os
-import tempfile
-from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from studio.studio.doctype.studio_app.studio_app import StudioApp, StudioAppRenderer
-from studio.studio.doctype.studio_app.test_studio_app import make_studio_app, make_studio_page
+from studio.export import remove_empty_values
+from studio.studio.doctype.studio_app.studio_app import StudioAppRenderer
+from studio.studio.doctype.studio_app.test_studio_app import (
+	exports_in_tempdir,
+	make_studio_app,
+	make_studio_page,
+)
 from studio.studio.doctype.studio_page.copy_paste_handler import (
 	create_missing_dependencies,
 	duplicate_page,
@@ -45,24 +48,87 @@ def component_ref(component) -> dict:
 def make_page_with_data(app_name: str):
 	page = make_studio_page(app_name, page_title="Board", route="/board", published=0)
 	page.append("resources", TODO_RESOURCE)
-	page.append("variables", {"variable_name": "count", "variable_type": "Number"})
 	page.script = PAGE_SCRIPT
+	page.tab_title = "{{ todos.data?.length }} todos"
 	page.save()
 	return page
 
 
-@contextmanager
-def exports_in_tempdir():
-	with (
-		tempfile.TemporaryDirectory() as tmpdir,
-		patch("frappe.get_app_source_path", side_effect=lambda app, *path: os.path.join(tmpdir, app, *path)),
-		patch.dict(frappe.conf, {"developer_mode": 1}),
-		patch.object(StudioApp, "add_to_studio_apps_txt"),
-	):
-		yield
-
-
 class TestStudioPage(IntegrationTestCase):
+	def test_remove_empty_values(self):
+		test_dict = {
+			"keep_this": "value",
+			"keep_false": False,
+			"keep_zero": 0,
+			"remove_this_null": None,
+			"remove_this_empty_list": [],
+			"remove_this_empty_dict": {},
+			"nested_config": {"empty_value": "", "empty_dict": {}},
+			"blocks": [
+				{
+					"componentName": "Button",
+					"remove_empty_string": "",
+					"remove_empty_list": [],
+					"remove_empty_dict": {},
+					"componentProps": {"empty_value": "", "false_value": False},
+					"componentSlots": {
+						"default": {
+							"slotName": "default",
+							"slotContent": [{"componentName": "TextBlock", "remove_empty_string": ""}],
+						},
+						"label": {"slotName": "label", "slotContent": ""},
+					},
+					"children": [
+						{"componentName": "TextBlock", "remove_empty_string": ""},
+					],
+				}
+			],
+		}
+		remove_empty_values(test_dict)
+		self.assertEqual(
+			test_dict,
+			{
+				"keep_this": "value",
+				"keep_false": False,
+				"keep_zero": 0,
+				"nested_config": {"empty_value": "", "empty_dict": {}},
+				"blocks": [
+					{
+						"componentName": "Button",
+						"componentProps": {"empty_value": "", "false_value": False},
+						"componentSlots": {
+							"default": {
+								"slotName": "default",
+								"slotContent": [{"componentName": "TextBlock"}],
+							},
+							"label": {"slotName": "label", "slotContent": ""},
+						},
+						"children": [{"componentName": "TextBlock"}],
+					}
+				],
+			},
+		)
+
+	def test_icon_bindings_are_rewritten_and_script_calls_are_reported(self):
+		from studio.studio.doctype.studio_page.patches import migrate_get_icon_calls
+
+		app = make_studio_app(app_name="get-icon-app", app_title="Get Icon App")
+		page = make_studio_page(
+			app.name,
+			blocks='[{"componentProps": {"icon": "{{ getIcon(\'sprout\') }}", "onClick": "() => getIcon(\'plus\')"}}]',
+			script="const icon = getIcon('check')",
+		)
+
+		with patch("builtins.print") as report:
+			migrate_get_icon_calls.execute()
+
+		page.reload()
+		self.assertEqual(page.script, "const icon = getIcon('check')")
+		self.assertIn('"icon": "lucide-sprout"', page.blocks)
+		self.assertIn("() => getIcon('plus')", page.blocks)
+		self.assertIn("getIcon('check')", str(report.call_args_list))
+		self.assertIn("getIcon('plus')", str(report.call_args_list))
+
 	def test_block_parsing(self):
 		app = make_studio_app(app_name="serialization-" + frappe.generate_hash(length=10))
 		blocks = [{"componentName": "div", "children": [{"componentName": "span"}]}]
@@ -81,10 +147,10 @@ class TestStudioPage(IntegrationTestCase):
 		copy = duplicate_page(page.name, app.name)
 
 		self.assertEqual(copy.page_title, "Board Copy")
+		self.assertEqual(copy.tab_title, "{{ todos.data?.length }} todos")
 		self.assertNotEqual(copy.route, page.route)
 		self.assertFalse(copy.published)
 		self.assertEqual([r.resource_name for r in copy.resources], ["todos"])
-		self.assertEqual([v.variable_name for v in copy.variables], ["count"])
 		self.assertEqual(copy.script, PAGE_SCRIPT)
 
 		second_copy = duplicate_page(page.name, app.name)
@@ -234,33 +300,27 @@ class TestStudioPage(IntegrationTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				app.collect_files('import "@app/stores/secret.ts"', "", [])
 
-	def test_pasted_blocks_bring_the_data_sources_and_variables_they_use(self):
+	def test_pasted_blocks_bring_the_data_sources_they_use(self):
 		app = make_studio_app(app_name="deps-" + frappe.generate_hash(length=10))
 		source = make_page_with_data(app.name)
 		target = make_studio_page(app.name, page_title="Target", route="/target")
-		blocks = [{"componentName": "div", "innerHTML": "{{ todos.data.length }} / {{ count }}"}]
+		blocks = [{"componentName": "div", "innerHTML": "{{ todos.data.length }} todos"}]
 
 		deps = source.get_dependencies(blocks)
 		self.assertEqual([r["resource_name"] for r in deps["resources"]], ["todos"])
-		self.assertEqual([v["variable_name"] for v in deps["variables"]], ["count"])
 
-		first_result = create_missing_dependencies(
-			app.name, page_name=target.name, resources=deps["resources"], variables=deps["variables"]
-		)
+		first_result = create_missing_dependencies(app.name, page_name=target.name, resources=deps["resources"])
 		target.reload()
 		first_modified = target.modified
 		self.assertEqual(first_result["modified"], str(first_modified))
 		equivalent_resources = [{**deps["resources"][0], "fields": ["name"]}]
-		second_result = create_missing_dependencies(
-			app.name, page_name=target.name, resources=equivalent_resources, variables=deps["variables"]
-		)
+		second_result = create_missing_dependencies(app.name, page_name=target.name, resources=equivalent_resources)
 
 		target.reload()
 		self.assertEqual([r.resource_name for r in target.resources], ["todos"])
-		self.assertEqual([v.variable_name for v in target.variables], ["count"])
 		self.assertEqual(target.modified, first_modified)
 		self.assertEqual(str(second_result["modified"]), str(first_modified))
-		no_conflicts = {"components": [], "resources": [], "variables": []}
+		no_conflicts = {"components": [], "resources": []}
 		self.assertEqual(second_result["conflicts"], no_conflicts)
 
 	def test_pasted_blocks_report_conflicting_page_data(self):
@@ -268,32 +328,22 @@ class TestStudioPage(IntegrationTestCase):
 		source = make_page_with_data(app.name)
 		target = make_studio_page(app.name, page_title="Target", route="/target")
 		target.append("resources", {**TODO_RESOURCE, "fields": '["description"]'})
-		target.append(
-			"variables", {"variable_name": "count", "variable_type": "String", "initial_value": "zero"}
-		)
 		target.save()
-		dependencies = source.get_dependencies([{"innerHTML": "{{ todos.data }} {{ count }}"}])
+		dependencies = source.get_dependencies([{"innerHTML": "{{ todos.data }}"}])
 
 		result = create_missing_dependencies(
 			app.name,
 			page_name=target.name,
 			resources=dependencies["resources"],
-			variables=dependencies["variables"],
 		)
 
 		target.reload()
 		self.assertEqual(len(target.resources), 1)
 		self.assertEqual(target.resources[0].fields, '["description"]')
-		self.assertEqual(len(target.variables), 1)
-		self.assertEqual(target.variables[0].variable_type, "String")
 		resource_conflict = result["conflicts"]["resources"][0]
-		variable_conflict = result["conflicts"]["variables"][0]
 		self.assertEqual(resource_conflict["name"], "todos")
 		self.assertEqual(resource_conflict["existing"]["fields"], '["description"]')
 		self.assertEqual(resource_conflict["copied"]["fields"], '["name"]')
-		self.assertEqual(variable_conflict["name"], "count")
-		self.assertEqual(variable_conflict["existing"]["variable_type"], "String")
-		self.assertEqual(variable_conflict["copied"]["variable_type"], "Number")
 
 		create_missing_dependencies(
 			app.name,
@@ -303,16 +353,40 @@ class TestStudioPage(IntegrationTestCase):
 		)
 		target.reload()
 		self.assertEqual(target.resources[0].fields, '["name"]')
-		self.assertEqual(target.variables[0].variable_type, "String")
 
-		create_missing_dependencies(
-			app.name,
-			page_name=target.name,
-			variables=dependencies["variables"],
-			overwrite_conflicts=True,
-		)
-		target.reload()
-		self.assertEqual(target.variables[0].variable_type, "Number")
+	def test_unused_component_files_are_removed(self):
+		with exports_in_tempdir():
+			app = make_studio_app(
+				app_name="cleanup-" + frappe.generate_hash(length=10), is_standard=1, frappe_app="studio"
+			)
+			component = make_component("Card")
+			page = make_studio_page(app.name, blocks=frappe.as_json([component_ref(component)]))
+			other = make_studio_page(
+				app.name,
+				page_title="Other",
+				route="/other",
+				blocks=frappe.as_json([component_ref(component)]),
+			)
+			path = os.path.join(page.get_component_folder_path(), f"{frappe.scrub(component.name)}.json")
+			self.assertTrue(os.path.exists(path))
+
+			page.blocks = "[]"
+			page.save()
+			self.assertTrue(os.path.exists(path))  # still used by the other page
+
+			other.delete()
+			self.assertFalse(os.path.exists(path))
+
+	def test_standard_pages_cannot_be_changed_outside_developer_mode(self):
+		app = make_studio_app(app_name="deployed-" + frappe.generate_hash(length=10))
+		page = make_studio_page(app.name)
+		app.db_set({"is_standard": 1, "frappe_app": "studio"})
+		page.db_set("is_standard", 1)
+		with patch.dict(frappe.conf, {"developer_mode": 0}):
+			page.page_title = "Edited Page"
+			self.assertRaises(frappe.PermissionError, page.save)
+			self.assertRaises(frappe.PermissionError, make_studio_page, app.name, route="/new-page")
+			self.assertRaises(frappe.PermissionError, frappe.delete_doc, "Studio Page", page.name)
 
 	def test_paste_rejects_target_page_from_another_app(self):
 		app = make_studio_app(app_name="target-" + frappe.generate_hash(length=10))
@@ -355,6 +429,7 @@ class TestGuestRendering(IntegrationTestCase):
 			cls.app.name,
 			page_title="Public Page",
 			route="/public",
+			tab_title="{{ count > 1 ? 'Items' : 'Item' }}",
 			allow_guest=1,
 			blocks=frappe.as_json([{"componentName": "div", "children": [component_ref(cls.hero)]}]),
 		)
@@ -364,9 +439,11 @@ class TestGuestRendering(IntegrationTestCase):
 			route="/private",
 			blocks=frappe.as_json([component_ref(cls.secret_widget)]),
 		)
-		make_studio_page(cls.app.name, page_title="Draft Page", route="/draft", published=0, allow_guest=1)
+		cls.draft_page = make_studio_page(
+			cls.app.name, page_title="Draft Page", route="/draft", published=0, allow_guest=1
+		)
 		cls.members_app = make_studio_app(app_title="Members App", app_name="members-app")
-		make_studio_page(cls.members_app.name, page_title="Members Home", route="/home")
+		cls.members_page = make_studio_page(cls.members_app.name, page_title="Members Home", route="/home")
 
 	@classmethod
 	def delete_leftover_fixtures(cls):
@@ -386,24 +463,34 @@ class TestGuestRendering(IntegrationTestCase):
 
 	def test_guest_gets_public_page(self):
 		self.as_guest()
-		page = get_page(self.app.name, "/public")
+		page = get_page(self.app.name, self.public_page.name)
 		self.assertEqual(page["name"], self.public_page.name)
+		self.assertEqual(page["tab_title"], "{{ count > 1 ? 'Items' : 'Item' }}")
 
 	def test_guest_gets_404_for_anything_not_public(self):
 		self.as_guest()
-		for route in ("/private", "/draft", "/nonexistent"):
+		for page_name in (self.private_page.name, self.draft_page.name, "page-nonexistent"):
+			frappe.local.message_log = []
 			with self.assertRaises(frappe.DoesNotExistError):
-				get_page(self.app.name, route)
+				get_page(self.app.name, page_name)
+			# one reply for every case, so a guest can't tell a private page from a missing one
+			self.assertEqual(
+				[m["message"] for m in map(frappe.parse_json, frappe.local.message_log)], ["Page not found"]
+			)
+
+	def test_page_of_another_app_is_not_found(self):
+		with self.assertRaises(frappe.DoesNotExistError):
+			get_page(self.app.name, self.members_page.name)
 
 	def test_guest_cannot_preview_public_pages(self):
 		self.as_guest()
 		with self.assertRaisesRegex(
 			frappe.PermissionError, "You do not have permission to preview this page"
 		):
-			get_page(self.app.name, "/public", preview=True)
+			get_page(self.app.name, self.public_page.name, preview=True)
 
 	def test_logged_in_user_gets_private_page(self):
-		page = get_page(self.app.name, "/private")
+		page = get_page(self.app.name, self.private_page.name)
 		self.assertEqual(page["name"], self.private_page.name)
 
 	def test_renderer_serves_guests_only_apps_with_public_pages(self):
@@ -441,7 +528,7 @@ class TestGuestRendering(IntegrationTestCase):
 
 	def test_page_ships_its_component_definitions(self):
 		self.as_guest()
-		page = get_page(self.app.name, "/public")
+		page = get_page(self.app.name, self.public_page.name)
 		components = {component["name"]: component for component in page["components"]}
 		self.assertEqual(set(components), {self.hero.name, self.nested_card.name})
 		self.assertEqual(components[self.hero.name]["inputs"][0]["input_name"], "title")

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia"
 import { ref, computed } from "vue"
-import app_router from "@/router/app_router"
+import { useRouter } from "vue-router"
 
 import useCodeStore from "@/stores/codeStore"
 
@@ -9,18 +9,13 @@ import type { StudioPage } from "@/types/Studio/StudioPage"
 const useAppStore = defineStore("appStore", () => {
 	const activePage = ref<StudioPage | null>(null)
 
-	const routeObject = computed(() => app_router.currentRoute.value)
+	const router = useRouter()
+	const routeObject = computed(() => router.currentRoute.value)
 	const codeStore = useCodeStore()
 	codeStore.setRouteObject(routeObject)
-	codeStore.setRouterObject(app_router)
-
-	async function initializePage(page: StudioPage) {
-		activePage.value = page
-		await codeStore.initializePage(page, { preloadedResources: page.resources })
-	}
+	codeStore.setRouterObject(router)
 
 	return {
-		initializePage,
 		activePage,
 		routeObject,
 	}

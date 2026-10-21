@@ -26,6 +26,7 @@ export interface AIChatContext {
 	reloadPageData: (opts: {
 		resources?: boolean
 		script?: boolean
+		router?: boolean
 		modified?: string
 	}) => void
 }
@@ -168,6 +169,7 @@ export class AIChatController {
 		this.ctx.reloadPageData({
 			resources: !!data.resources,
 			script: !!data.script,
+			router: !!data.router,
 			modified: data.modified,
 		})
 	}

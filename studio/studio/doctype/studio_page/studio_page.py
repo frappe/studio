@@ -16,15 +16,17 @@ from studio.export import (
 	delete_file,
 	delete_folder,
 	parse_json,
-	remove_null_fields,
+	validate_standard_app_change,
 	write_code_file,
 	write_document_file,
 )
 from studio.realtime import publish_doc_change
-from studio.studio.doctype.studio_component.studio_component import get_components_for_blocks
+from studio.studio.doctype.studio_component.studio_component import (
+	get_components_for_blocks,
+	mark_components_standard,
+)
 from studio.studio.doctype.studio_page.copy_paste_handler import (
 	PAGE_RESOURCE_FIELDS,
-	PAGE_VARIABLE_FIELDS,
 	parse_list,
 	pick,
 )
@@ -54,6 +56,7 @@ class StudioPage(Document):
 		route: DF.Data | None
 		script: DF.Code | None
 		studio_app: DF.Link | None
+		tab_title: DF.Data | None
 	# end: auto-generated types
 
 	def autoname(self):
@@ -91,6 +94,7 @@ class StudioPage(Document):
 			self.route = f"/{self.route}"
 
 	def validate(self):
+		validate_standard_app_change(self)
 		# passed from the frontend for faster page saves when resources are not changed
 		if not hasattr(self, "_skip_validate"):
 			self.process_resources()
@@ -140,23 +144,23 @@ class StudioPage(Document):
 
 	@frappe.whitelist()
 	def get_copy(self, blocks=None) -> dict:
-		"""Page settings, data sources, variables, script and the components `blocks` use, for copy-paste."""
+		"""Page settings, data sources, script and the components `blocks` use, for copy-paste."""
 		self.check_permission("read")
 		blocks = parse_list(blocks if blocks is not None else self.draft_blocks or self.blocks, "blocks")
 		script = self.get_script_source()
 		return {
 			**self.get_dependencies(blocks, script),
 			"page_title": self.page_title,
+			"tab_title": self.tab_title,
 			"allow_guest": self.allow_guest,
 			"resources": [pick(row, PAGE_RESOURCE_FIELDS) for row in self.resources],
-			"variables": [pick(row, PAGE_VARIABLE_FIELDS) for row in self.variables],
 			"script": script,
 		}
 
 	@frappe.whitelist()
 	def get_dependencies(self, blocks, script: str = "") -> dict:
 		"""What `blocks` (and `script`) need from outside themselves, for copy-paste: Studio components,
-		app files, and this page's data sources and variables they reference."""
+		app files, and this page's data sources they reference."""
 		self.check_permission("read")
 		blocks = parse_list(blocks, "blocks")
 		text = frappe.as_json(blocks)
@@ -168,7 +172,6 @@ class StudioPage(Document):
 			"components": get_components_for_blocks(blocks),
 			"files": self.get_app_files(script, blocks),
 			"resources": [pick(r, PAGE_RESOURCE_FIELDS) for r in self.resources if used(r.resource_name)],
-			"variables": [pick(v, PAGE_VARIABLE_FIELDS) for v in self.variables if used(v.variable_name)],
 		}
 
 	def get_app_files(self, script: str, blocks) -> list[dict]:
@@ -208,46 +211,6 @@ class StudioPage(Document):
 			os.rename(old_page_script, self.get_script_file_path())
 		delete_folder(old_folder)
 
-	def export_components(self):
-		if components := self.get_studio_components():
-			folder = self.get_component_folder_path()
-			frappe.create_folder(folder)
-			for component in components:
-				doc = frappe.get_doc("Studio Component", component)
-				write_document_file(doc, folder=folder)
-
-	def get_studio_components(self):
-		components = set()
-
-		def add_component(block):
-			if block.get("isStudioComponent"):
-				components.add(block.get("componentName"))
-
-			for child in block.get("children", []):
-				add_component(child)
-
-			if slots := block.get("componentSlots"):
-				for slot in slots.values():
-					content = slot.get("slotContent")
-					if not isinstance(content, list):
-						continue
-					for slot_child in content:
-						add_component(slot_child)
-
-		def get_root_block(blocks):
-			if isinstance(blocks, str):
-				blocks = frappe.parse_json(blocks)
-			return blocks[0]
-
-		if self.has_blocks():
-			root_block = get_root_block(self.blocks)
-			add_component(root_block)
-		if self.has_blocks(check_draft=True):
-			root_block = get_root_block(self.draft_blocks)
-			add_component(root_block)
-
-		return components
-
 	def has_blocks(self, check_draft: bool = False):
 		if check_draft:
 			if self.draft_blocks and self.draft_blocks != "[]":
@@ -257,9 +220,11 @@ class StudioPage(Document):
 		return False
 
 	def on_trash(self):
+		validate_standard_app_change(self)
 		self.delete_ai_sessions()
 		if can_export(self):
 			delete_folder(self.get_folder_path())
+			self.delete_unused_component_files(deleting=True)
 
 	def delete_ai_sessions(self):
 		for session in frappe.get_all("Studio AI Session", filters={"page": self.name}, pluck="name"):
@@ -315,8 +280,6 @@ class StudioPage(Document):
 		doc.blocks = parse_json(doc.blocks)
 		doc.draft_blocks = parse_json(doc.draft_blocks)
 
-		remove_null_fields(doc)
-
 	def before_import(self):
 		self.name = self.page_name
 
@@ -333,13 +296,16 @@ class StudioPage(Document):
 		return self.modified
 
 	@frappe.whitelist()
-	def save_page_field(self, fieldname: str, value, known_modified: str | None = None):
-		"""Update an editor-owned field using the page's optimistic lock."""
-		FIELDS = ["page_title", "route", "script", "allow_guest"]
-		if fieldname not in FIELDS:
-			frappe.throw(_("Field {0} is not editable outside the Studio editor").format(fieldname))
+	def save_page_field(self, fieldname: str | dict, value=None, known_modified: str | None = None):
+		"""Update editor-owned fields using the page's optimistic lock. Pass a dict as `fieldname` to
+		save several fields at once, so they save together or not at all."""
+		FIELDS = ["page_title", "tab_title", "route", "script", "allow_guest"]
+		values = fieldname if isinstance(fieldname, dict) else {fieldname: value}
+		for field in values:
+			if field not in FIELDS:
+				frappe.throw(_("Field {0} is not editable outside the Studio editor").format(field))
 		self.reject_if_stale(known_modified)
-		self.set(fieldname, value)
+		self.update(values)
 		self._skip_validate = True
 		self.save()
 		return self.modified
@@ -405,9 +371,33 @@ class StudioPage(Document):
 			path.append(self.get_file_name())
 		return frappe.get_app_source_path(self.frappe_app, *path)
 
+	def export_components(self):
+		components = get_components_for_blocks(get_blocks(self))
+		if components:
+			frappe.create_folder(self.get_component_folder_path())
+			mark_components_standard([component.name for component in components])
+		for component in components:
+			doc = frappe.get_doc("Studio Component", component.name)
+			write_document_file(doc, folder=self.get_component_folder_path())
+		self.delete_unused_component_files()
+
+	def delete_unused_component_files(self, deleting: bool = False):
+		"""Remove the files of components that no page of the app uses any more"""
+		folder = self.get_component_folder_path()
+		if not os.path.isdir(folder):
+			return
+		filters = {"studio_app": self.studio_app}
+		if deleting:
+			filters["name"] = ["!=", self.name]
+		pages = frappe.get_all("Studio Page", filters=filters, fields=["blocks", "draft_blocks"])
+		blocks = [block for page in pages for block in get_blocks(page)]
+		used = {frappe.scrub(component.name) for component in get_components_for_blocks(blocks)}
+		for file in os.listdir(folder):
+			if file.removesuffix(".json") not in used:
+				delete_file(folder, file)
+
 	def get_component_folder_path(self) -> str:
-		path = ["studio", self.studio_app, "studio_components"]
-		return frappe.get_app_source_path(self.frappe_app, *path)
+		return frappe.get_app_source_path(self.frappe_app, "studio", self.studio_app, "studio_components")
 
 	def get_file_name(self):
 		return f"{self.get_export_docname()}.json"
@@ -416,20 +406,26 @@ class StudioPage(Document):
 		return os.path.join(self.get_folder_path(), f"{self.get_export_docname()}.ts")
 
 
-@frappe.whitelist()
-def find_page_with_route(app_name: str, page_route: str) -> str | None:
-	if not page_route.startswith("/"):
-		page_route = f"/{page_route}"
+def get_blocks(page) -> list[dict]:
+	"""The published and draft blocks of a page together"""
+	return [*(parse_json(page.blocks) or []), *(parse_json(page.draft_blocks) or [])]
+
+
+def get_app_page(app_name: str, page_name: str) -> "StudioPage":
+	"""The cached page, or the same 404 whether it is missing or belongs to another app."""
 	try:
-		return frappe.db.get_value(
-			"Studio Page", dict(studio_app=app_name, route=page_route), "name", cache=True
-		)
+		page = frappe.get_cached_doc("Studio Page", page_name) if page_name else None
 	except frappe.DoesNotExistError:
-		pass
+		# get_doc queues "Studio Page <name> not found" for the client; keep the reply to "Page not found"
+		frappe.clear_last_message()
+		page = None
+	if not page or page.studio_app != app_name:
+		frappe.throw(_("Page not found"), frappe.DoesNotExistError)
+	return page
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
-def get_page(app_name: str, page_route: str, preview: bool = False) -> dict:
+def get_page(app_name: str, page_name: str, preview: bool = False) -> dict:
 	"""Serve a page definition to the app renderer in a single call.
 
 	Published pages need no role — a published definition is markup; the data it
@@ -440,11 +436,7 @@ def get_page(app_name: str, page_route: str, preview: bool = False) -> dict:
 
 	The served blocks' component definitions ship in the same payload, so what a
 	caller can see of components is exactly what the pages they can fetch use."""
-	page_name = find_page_with_route(app_name, page_route)
-	if not page_name:
-		frappe.throw(_("Page not found"), frappe.DoesNotExistError)
-
-	page = frappe.get_cached_doc("Studio Page", page_name)
+	page = get_app_page(app_name, page_name)
 	is_guest = frappe.session.user == "Guest"
 	if preview:
 		if not frappe.has_permission("Studio Page", ptype="read", doc=page):
@@ -459,6 +451,7 @@ def get_page(app_name: str, page_route: str, preview: bool = False) -> dict:
 	return {
 		"name": page.name,
 		"page_title": page.page_title,
+		"tab_title": page.tab_title,
 		"route": page.route,
 		"studio_app": page.studio_app,
 		"is_standard": page.is_standard,

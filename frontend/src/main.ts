@@ -7,7 +7,6 @@ import studio_router from "@/router/studio_router"
 import App from "./App.vue"
 
 import { resourcesPlugin, frappeRequest } from "frappe-ui"
-import { spritePlugin } from "frappe-ui/icons"
 import { registerGlobalComponents } from "./globals"
 
 import { COMPONENTS } from "@/data/components"
@@ -22,7 +21,6 @@ const pinia = createPinia()
 // For the main app builder
 studio.use(studio_router)
 studio.use(resourcesPlugin)
-studio.use(spritePlugin)
 studio.use(pinia)
 registerGlobalComponents(studio)
 window.__APP_COMPONENTS__ = studio._context.components
@@ -37,7 +35,11 @@ declare global {
 }
 
 if (window.is_developer_mode && typeof window.is_developer_mode === "string") {
-	window.is_developer_mode = window.is_developer_mode === "1" || window.is_developer_mode === "True"
+	// an unrendered "{{ ... }}" means the Vite dev server, which needs developer mode
+	window.is_developer_mode =
+		window.is_developer_mode === "1" ||
+		window.is_developer_mode === "True" ||
+		(window.is_developer_mode as string).startsWith("{{")
 }
 
 let socket

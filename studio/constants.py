@@ -1,7 +1,3 @@
-NON_VUE_COMPONENTS = ["div", "container", "header"]
-# used by studio components internally so needs to be included in the build
-DEFAULT_COMPONENTS = ["FeatherIcon"]
-
 # All standard component names (frappe-ui + studio built-in) used for conflict detection
 STANDARD_COMPONENT_NAMES = {
 	# frappe-ui
@@ -17,18 +13,20 @@ STANDARD_COMPONENT_NAMES = {
 	"TimePicker",
 	"DateTimePicker",
 	"DateRangePicker",
-	"MonthPicker",
 	"Dialog",
 	"Divider",
 	"Dropdown",
 	"ErrorMessage",
-	"FeatherIcon",
 	"FileUploader",
 	"FormLabel",
 	"FormControl",
+	"Icon",
 	"ListView",
 	"MultiSelect",
+	"Password",
 	"Progress",
+	"Radio",
+	"RadioGroup",
 	"Rating",
 	"Select",
 	"Sidebar",
@@ -40,25 +38,23 @@ STANDARD_COMPONENT_NAMES = {
 	"TextEditor",
 	"Tooltip",
 	"Tree",
-	"AxisChart",
-	"NumberChart",
+	"AreaChart",
+	"BarChart",
+	"LineChart",
 	"DonutChart",
+	"FunnelChart",
+	"HeatmapChart",
+	"ScatterChart",
+	"SankeyChart",
+	"NumberCard",
 	# frappe
 	"Filter",
 	"Link",
 	# studio built-in
 	"Container",
-	"FitContainer",
 	"Repeater",
 	"HTML",
 	"Header",
-	"SplitView",
-	"AvatarCard",
-	"CardList",
-	"Audio",
 	"ImageView",
 	"TextBlock",
-	"AppHeader",
-	"BottomTabs",
-	"MarkdownEditor",
 }

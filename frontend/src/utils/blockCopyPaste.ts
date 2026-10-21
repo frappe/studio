@@ -1,7 +1,7 @@
 import { dialog, toast, call } from "frappe-ui"
 import useStudioStore from "@/stores/studioStore"
 import useCanvasStore from "@/stores/canvasStore"
-import useCodeStore from "@/stores/codeStore"
+import { usePageScope } from "@/stores/codeStore"
 import useComponentStore from "@/stores/componentStore"
 import { studioPages } from "@/data/studioPages"
 import { hasPageScript as hasCompiledPageScript } from "@/data/studioPageScripts"
@@ -22,9 +22,9 @@ const DATA_SOURCE_DOCTYPE = "Studio Page Resource"
 
 export interface PageCopy {
 	page_title?: string
+	tab_title?: string
 	allow_guest?: 0 | 1
 	resources: Record<string, any>[]
-	variables: Record<string, any>[]
 	script: string
 }
 
@@ -32,7 +32,6 @@ interface Dependencies {
 	components: Record<string, any>[]
 	files: { path: string; content: string }[]
 	resources: Record<string, any>[]
-	variables: Record<string, any>[]
 }
 
 interface ClipboardSource {
@@ -63,7 +62,6 @@ interface PasteConflict {
 interface PasteConflicts {
 	components?: PasteConflict[]
 	resources?: PasteConflict[]
-	variables?: PasteConflict[]
 }
 
 export function copyEntirePage() {
@@ -89,7 +87,7 @@ export function copyBlocks(e: ClipboardEvent) {
 	dialog.confirm({
 		title: "Copy entire page?",
 		message:
-			"Do you want to copy the entire page including its data sources, variables and script along with its blocks?",
+			"Do you want to copy the entire page including its data sources and script along with its blocks?",
 		actions: [
 			{
 				label: "No, just blocks",
@@ -171,7 +169,7 @@ async function createDataSource(resource: DataSourceClipboardPayload) {
 		)
 		if (store.activePage?.name !== page.name) return
 		store.syncPageModified(result)
-		await store.setPageData(page)
+		await usePageScope().setPageResources(page)
 		toast.success(`Data source "${resource.resource_name}" created`)
 	} catch (error: any) {
 		toast.error(`Failed to create Data source "${resource.resource_name}"`, {
@@ -226,7 +224,7 @@ async function pasteCopiedBlocks(payload: ClipboardPayload) {
 }
 
 function hasPasteConflicts(conflicts: PasteConflicts): boolean {
-	return [conflicts.resources, conflicts.variables, conflicts.components].some((items) => items?.length)
+	return [conflicts.resources, conflicts.components].some((items) => items?.length)
 }
 
 function reviewPasteConflicts(
@@ -252,7 +250,7 @@ function reviewPasteConflicts(
 
 function getPasteConflictChoices(conflicts: PasteConflicts): Omit<PasteConflictChoice, "resolution">[] {
 	const choices: Omit<PasteConflictChoice, "resolution">[] = []
-	for (const kind of ["resources", "variables", "components"] as PasteConflictKind[]) {
+	for (const kind of ["resources", "components"] as PasteConflictKind[]) {
 		for (const [index, conflict] of (conflicts[kind] || []).entries()) {
 			choices.push({ id: `${kind}:${conflict.name}:${index}`, kind, ...conflict })
 		}
@@ -266,7 +264,6 @@ function getCopiedDependencies(choices: PasteConflictChoice[]): Partial<Dependen
 	return {
 		components: definitionsFor("components"),
 		resources: definitionsFor("resources"),
-		variables: definitionsFor("variables"),
 	}
 }
 
@@ -371,8 +368,8 @@ function usesComponents(blocks: BlockOptions[]): boolean {
 }
 
 function usesPageData(blocks: BlockOptions[]): boolean {
-	const codeStore = useCodeStore()
-	const names = Object.keys(codeStore.resources)
+	const pageScope = usePageScope()
+	const names = Object.keys(pageScope.resources)
 	const text = JSON.stringify(blocks)
 	return names.some((name) => name && text.includes(name))
 }
@@ -391,8 +388,8 @@ async function createMissingDependencies(
 	payload: Partial<Dependencies>,
 	overwriteConflicts = false,
 ): Promise<PasteConflicts> {
-	const { components, files, resources, variables } = payload
-	if (![components, files, resources, variables].some((list) => list?.length)) return {}
+	const { components, files, resources } = payload
+	if (![components, files, resources].some((list) => list?.length)) return {}
 	const store = useStudioStore()
 	const pageName = store.activePage!.name
 	const result = await call(
@@ -403,7 +400,6 @@ async function createMissingDependencies(
 			components,
 			files,
 			resources,
-			variables,
 			overwrite_conflicts: overwriteConflicts,
 		},
 	)
@@ -412,9 +408,7 @@ async function createMissingDependencies(
 		await Promise.all(components.map(({ name }) => useComponentStore().reloadComponent(name)))
 	}
 	if (files?.length) await store.setCustomComponents()
-	if (resources?.length || variables?.length) {
-		await store.setPageData(store.activePage!)
-	}
+	if (resources?.length) await usePageScope().setPageResources(store.activePage!)
 	return result.conflicts || {}
 }
 
@@ -429,7 +423,7 @@ function handlePastePage(payload: ClipboardPayload) {
 	dialog.confirm({
 		title: "Pasting a page!",
 		message:
-			"You are about to paste a page with data sources, variables, and scripts. Do you want to create a new page, or update the current one?",
+			"You are about to paste a page with data sources and scripts. Do you want to create a new page, or update the current one?",
 		actions: [
 			{ label: "Create new page", onClick: () => store.pastePage(copy) },
 			{

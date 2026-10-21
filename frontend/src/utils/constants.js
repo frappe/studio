@@ -1,31 +1,27 @@
 export const FRAPPE_UI_COMPONENTS = [
 	"Alert",
-	"Autocomplete",
 	"Avatar",
 	"Badge",
 	"Button",
 	"Breadcrumbs",
 	"Checkbox",
-	"Calendar",
-	"CodeEditor",
 	"Combobox",
 	"ContextMenu",
 	"DatePicker",
 	"TimePicker",
 	"DateTimePicker",
 	"DateRangePicker",
-	"MonthPicker",
 	"Dialog",
 	"Divider",
 	"Dropdown",
 	"Duration",
 	"ErrorMessage",
-	"FeatherIcon",
 	"FileUploader",
 	"FormLabel",
 	"FormControl",
-	"ListView",
+	"Icon",
 	"MultiSelect",
+	"Password",
 	"Popover",
 	"Progress",
 	"Rating",
@@ -37,12 +33,8 @@ export const FRAPPE_UI_COMPONENTS = [
 	"TabButtons",
 	"Textarea",
 	"TextInput",
-	"TextEditor",
 	"Tooltip",
 	"Tree",
-	"AxisChart",
-	"NumberChart",
-	"DonutChart",
 	// SettingsDialog family
 	"SettingsDialog",
 	"SettingsSidebar",
@@ -59,6 +51,13 @@ export const FRAPPE_UI_COMPONENTS = [
 	"SidebarItem",
 	"SidebarLabel",
 	"SidebarCollapseToggle",
+	"SidebarCard",
+	// SidebarRail family
+	"SidebarRail",
+	"SidebarRailItem",
+	// RadioGroup family
+	"RadioGroup",
+	"Radio",
 ]
 
 // frappe-ui "molecules"
@@ -72,9 +71,21 @@ export const FRAPPE_UI_MOLECULES = [
 	"ListHeaderCellSort",
 	"ListGroup",
 ]
-// Legacy frappe-ui/frappe components. Filter and Link now ship from @framework/ui
-// (see FRAMEWORK_UI_COMPONENTS), so this list is currently empty.
-export const FRAPPE_COMPONENTS = []
+// frappe-ui/experimental: families parked outside the stable root export
+export const FRAPPE_UI_EXPERIMENTAL_COMPONENTS = ["Calendar", "ListView", "TextEditor"]
+
+// frappe-ui/charts
+export const FRAPPE_UI_CHARTS = [
+	"AreaChart",
+	"BarChart",
+	"LineChart",
+	"DonutChart",
+	"FunnelChart",
+	"HeatmapChart",
+	"ScatterChart",
+	"SankeyChart",
+	"NumberCard",
+]
 
 // @framework/ui — the in-house shared component library from apps/frappe/ui.
 export const FRAMEWORK_UI_COMPONENTS = [
@@ -99,21 +110,7 @@ export const FRAMEWORK_UI_COMPONENTS = [
 	"AttachmentsList",
 	"UploadTray",
 ]
-export const STUDIO_COMPONENTS = [
-	"Container",
-	"FitContainer",
-	"Repeater",
-	"HTML",
-	"SplitView",
-	"AvatarCard",
-	"CardList",
-	"Audio",
-	"ImageView",
-	"TextBlock",
-	"AppHeader",
-	"BottomTabs",
-	"MarkdownEditor",
-]
+export const STUDIO_COMPONENTS = ["Container", "Repeater", "HTML", "ImageView", "TextBlock"]
 
 // Matches strings that are entirely wrapped in double curly braces, e.g., "{{ expression }}" (allows whitespace inside)
 export const DYNAMIC_EXPRESSION_REGEX = /^\{\{[\s\S]*\}\}$/
