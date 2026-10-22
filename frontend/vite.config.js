@@ -9,6 +9,7 @@ import studioFolderWatcher from "./vite/studioFolderWatcher"
 import studioRootAlias from "./vite/studioRootAlias"
 import frameworkUIAlias from "./vite/frameworkUIAlias"
 import lucideStaticAlias from "./vite/lucideStaticAlias"
+import pthAppStudioDirs from "./vite/pthAppSources"
 import skipBuiltRendererInDevMode from "./vite/skipBuiltRendererInDevMode"
 
 const viteDevServerPort = getViteDevServerPort()
@@ -25,6 +26,9 @@ const appSymlinkedSources = fs.readdirSync(appsDir).flatMap((entry) => {
 		return []
 	}
 })
+
+// Apps installed from a checkout outside apps/ (registered as a .pth in the venv) need the same
+const appPthSources = pthAppStudioDirs(path.resolve(appsDir, ".."))
 
 // @framework/ui (apps/frappe/ui) only exists on newer frappe (develop). On older
 // frappe it's absent, so its vite plugin, aliases, and component imports must be
@@ -63,8 +67,8 @@ export default defineConfig(async () => {
 			cors: true,
 			fs: {
 				// Allow serving custom Vue components and page scripts from any app, including ones
-				// symlinked from outside apps/
-				allow: [appsDir, ...appSymlinkedSources],
+				// symlinked into or installed from outside apps/
+				allow: [appsDir, ...appSymlinkedSources, ...appPthSources],
 			},
 			watch: {
 				// unplugin-vue-components generates this file which causes HMR while building other studio apps
@@ -87,7 +91,7 @@ export default defineConfig(async () => {
 			studioRootAlias(),
 			// Root must be the frontend dir
 			sharedDependencyResolver(path.resolve(__dirname)),
-			studioFolderWatcher(appsDir),
+			studioFolderWatcher(appsDir, appPthSources),
 			skipBuiltRendererInDevMode(),
 		],
 		resolve: {
