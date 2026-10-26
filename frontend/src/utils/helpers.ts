@@ -310,7 +310,8 @@ async function fetchAppPage(appName: string, pageName: string, preview: boolean 
 	try {
 		await page.fetch()
 	} catch (error) {
-		return null
+		if ((error as { exc_type?: string })?.exc_type === "DoesNotExistError") return null
+		throw error
 	}
 	return page.data
 }
