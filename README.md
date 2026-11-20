@@ -1,3 +1,7 @@
+> [!CAUTION]
+> This repository was archived in November 2026. Studio is now a part of Frappe Framework ([frappe/frappe](https://github.com/frappe/frappe)).
+> This repository is read-only. Please open related issues and pull requests there.
+
 <div align="center">
 
 <img src="https://github.com/user-attachments/assets/5f1cd3ee-9985-4385-8ac1-a984f1e66979" height="80" lt="Frappe Studio Logo">
@@ -12,8 +16,6 @@
     </picture>
 </div>
 </div>
-
-⚠️ **WARNING**: This project is in a very early development stage. Expect breaking changes, incomplete features, and bugs. Not recommended for production use yet.
 
 Watch a demo [here](https://www.youtube.com/live/BMjG0Dn39DM?si=jmaeUWtfYy4TS3ap&t=15360)
 
