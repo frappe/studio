@@ -1,5 +1,5 @@
 > [!CAUTION]
-> This repository was archived in November 2026. Studio is now a part of Frappe Framework ([frappe/frappe](https://github.com/frappe/frappe)).
+> This repository was archived in November 2026. Studio is now a part of the Frappe Framework ([frappe/frappe](https://github.com/frappe/frappe)).
 > This repository is read-only. Please open related issues and pull requests there.
 
 <div align="center">
